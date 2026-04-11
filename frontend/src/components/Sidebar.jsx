@@ -25,12 +25,15 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
     return () => window.removeEventListener('click', fn);
   }, []);
 
-  const NAV_ITEMS = [
-    { path: '/dashboard',  icon: 'grid_view',      label: 'Dashboard' },
-    { path: '/analytics',  icon: 'analytics',      label: 'Analytics' },
-    { path: '/challenges', icon: 'military_tech',   label: 'Challenges' },
-    { path: '/friends',    icon: 'group',           label: 'Friends' },
-    { path: '/community',  icon: 'public',          label: 'Community' },
+  const NAV_TOP = [
+    { path: '/dashboard', icon: 'grid_view',  label: 'Dashboard' },
+    { path: '/analytics', icon: 'analytics',  label: 'Analytics' },
+  ];
+
+  const NAV_BOTTOM = [
+    { path: '/challenges', icon: 'military_tech', label: 'Challenges' },
+    { path: '/friends',    icon: 'group',          label: 'Friends'    },
+    { path: '/community',  icon: 'public',         label: 'Community', faded: true },
   ];
 
   const PRACTICE_ITEMS = [
@@ -39,10 +42,14 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
     { path: '/resources',  icon: 'menu_book',         label: 'Resources' },
   ];
 
-  const NavItem = ({ path, icon, label }) => (
+  const NavItem = ({ path, icon, label, faded = false }) => (
     <NavLink to={path} end={path === '/dashboard'}
       className={({ isActive }) => `nav-item${isActive ? ' active-item' : ''}`}
-      style={({ isActive }) => ({ color: isActive ? '#6366F1' : textMuted, backgroundColor: isActive ? 'rgba(99,102,241,0.08)' : 'transparent' })}
+      style={({ isActive }) => ({
+        color: isActive ? '#6366F1' : textMuted,
+        backgroundColor: isActive ? 'rgba(99,102,241,0.08)' : 'transparent',
+        opacity: faded ? 0.45 : 1,
+      })}
     >
       <div className="icon-container">
         <span className="material-symbols-outlined">{icon}</span>
@@ -85,7 +92,7 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
       {/* Navigation */}
       <nav className="flex-grow py-4 overflow-y-auto overflow-x-hidden mt-2">
         <div className="space-y-1">
-          {NAV_ITEMS.map(item => <NavItem key={item.path} {...item} />)}
+          {NAV_TOP.map(item => <NavItem key={item.path} {...item} />)}
 
           {/* Practice submenu */}
           <div className={`${isPracticeOpen ? 'submenu-active' : ''}`}>
@@ -114,6 +121,8 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
               </div>
             </div>
           </div>
+
+          {NAV_BOTTOM.map(item => <NavItem key={item.path} {...item} />)}
 
           {/* AI Mentor */}
           <NavLink to="/chatbot"

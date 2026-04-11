@@ -1,191 +1,348 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const PLANS = [
   {
-    id:       'basic',
-    name:     'Basic',
-    price:    0,
-    period:   'free forever',
-    icon:     '🌱',
-    color:    '#22C55E',
-    gradient: 'linear-gradient(135deg,#22C55E,#16A34A)',
-    shadow:   'rgba(34,197,94,0.25)',
-    current:  true,
-    cta:      'Current Plan',
-    benefits: [],
+    id: 'basic',
+    name: 'Basic',
+    price: 0,
+    label: 'Free forever',
+    cta: 'Current Plan',
+    current: true,
+    accentColor: '#64748B',
+    features: [
+      { text: 'Chat with friends', included: true },
+      { text: 'Basic AI mentor', included: true },
+      { text: 'Limited challenge set', included: true },
+      { text: 'Limited personalization', included: true },
+      { text: 'Study material access', included: false },
+      { text: 'Contest free entries', included: false },
+      { text: 'Media sharing in chat', included: false },
+      { text: 'Advanced AI models', included: false },
+    ],
   },
   {
-    id:       'plus',
-    name:     'AlgoMind Plus',
-    price:    100,
-    period:   'per month',
-    icon:     '⚡',
-    color:    '#6366F1',
-    gradient: 'linear-gradient(135deg,#6366F1,#4F46E5)',
-    shadow:   'rgba(99,102,241,0.35)',
-    popular:  true,
-    cta:      'Upgrade to Plus',
-    benefits: [],
+    id: 'plus',
+    name: 'AlgoMind Plus',
+    price: 159,
+    label: 'per month',
+    cta: 'Get Plus',
+    popular: true,
+    accentColor: '#6366F1',
+    features: [
+      { text: 'Everything in Basic', included: true },
+      { text: 'Media sharing up to 3 MB', included: true },
+      { text: 'Advanced AI mentor (limited)', included: true },
+      { text: 'Study material access', included: true },
+      { text: 'Increased challenge tokens', included: true },
+      { text: '2 free contest entries / month', included: true, note: 'Weekly contests only' },
+      { text: 'Monthly contest entries', included: false },
+      { text: 'Mock & amplitude tests', included: false },
+    ],
   },
   {
-    id:       'ultimate',
-    name:     'Ultimate',
-    price:    200,
-    period:   'per month',
-    icon:     '🏆',
-    color:    '#F59E0B',
-    gradient: 'linear-gradient(135deg,#F59E0B,#D97706)',
-    shadow:   'rgba(245,158,11,0.35)',
-    cta:      'Go Ultimate',
-    benefits: [],
+    id: 'pro',
+    name: 'AlgoMind Pro',
+    price: 279,
+    label: 'per month',
+    cta: 'Get Pro',
+    accentColor: '#A78BFA',
+    features: [
+      { text: 'Everything in Plus', included: true },
+      { text: 'Media sharing 20+ MB', included: true, note: 'Better quality' },
+      { text: 'Full advanced AI access', included: true, note: 'More tokens' },
+      { text: 'Mock & amplitude tests', included: true },
+      { text: 'Unlimited challenges', included: true },
+      { text: 'All affiliated contest entries', included: true, note: 'Monthly cap applies' },
+      { text: 'Priority support', included: true },
+      { text: 'Early feature access', included: true },
+    ],
   },
 ];
 
-function PlansPage({ isDark, toggleTheme }) {
-  const navigate = useNavigate();
-  const [selected, setSelected] = useState('plus');
+function PlanCard({ plan, isDark, isHighlighted, onSelect }) {
+  const cardRef = useRef(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0, shine: { x: 50, y: 50 } });
+  const [hovered, setHovered] = useState(false);
 
-  const bg      = isDark
-    ? 'radial-gradient(ellipse at 0% 0%, rgba(99,102,241,0.12) 0%, transparent 45%), #0A0A0B'
-    : 'linear-gradient(180deg,#FAFAFF 0%,#F0EDFF 60%,#F8FAFC 100%)';
-  const surface = isDark ? '#1b1c1e' : '#FFFFFF';
-  const border  = isDark ? 'rgba(70,69,84,0.2)' : 'rgba(0,0,0,0.08)';
-  const textPri = isDark ? '#e3e2e5' : '#0F172A';
-  const textSec = isDark ? '#908fa0' : '#475569';
+  const handleMouseMove = (e) => {
+    const card = cardRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = (e.clientX - cx) / (rect.width / 2);
+    const dy = (e.clientY - cy) / (rect.height / 2);
+    const shineX = ((e.clientX - rect.left) / rect.width) * 100;
+    const shineY = ((e.clientY - rect.top) / rect.height) * 100;
+    setTilt({ x: dy * -8, y: dx * 8, shine: { x: shineX, y: shineY } });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0, shine: { x: 50, y: 50 } });
+    setHovered(false);
+  };
+
+  const surface = isDark ? '#111114' : '#FFFFFF';
+  const border = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+  const textPri = isDark ? '#f1f0f5' : '#0F172A';
+  const textSec = isDark ? '#7c7b8a' : '#64748B';
+  const textMuted = isDark ? '#4a4958' : '#94A3B8';
+  const divider = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
 
   return (
-    <div className="min-h-screen font-body" style={{ background: bg, color: textPri }}>
+    <div
+      ref={cardRef}
+      onMouseMove={(e) => { setHovered(true); handleMouseMove(e); }}
+      onMouseLeave={handleMouseLeave}
+      onClick={() => !plan.current && onSelect(plan)}
+      style={{
+        background: surface,
+        border: isHighlighted ? `1.5px solid ${plan.accentColor}` : `1px solid ${border}`,
+        borderRadius: '20px',
+        padding: '2rem',
+        position: 'relative',
+        overflow: 'hidden',
+        cursor: plan.current ? 'default' : 'pointer',
+        transform: `perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) ${hovered && !plan.current ? 'translateY(-4px)' : 'translateY(0)'}`,
+        transition: hovered ? 'box-shadow 0.15s ease' : 'transform 0.5s cubic-bezier(0.23,1,0.32,1), box-shadow 0.5s ease',
+        boxShadow: isHighlighted
+          ? `0 0 0 1px ${plan.accentColor}22, 0 24px 48px -12px ${plan.accentColor}33`
+          : hovered
+            ? isDark ? '0 20px 40px -12px rgba(0,0,0,0.6)' : '0 20px 40px -12px rgba(0,0,0,0.12)'
+            : isDark ? '0 1px 3px rgba(0,0,0,0.4)' : '0 1px 3px rgba(0,0,0,0.06)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      {/* Shine overlay */}
+      {hovered && (
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: '20px', pointerEvents: 'none',
+          background: `radial-gradient(circle at ${tilt.shine.x}% ${tilt.shine.y}%, rgba(255,255,255,${isDark ? '0.04' : '0.12'}) 0%, transparent 60%)`,
+          transition: 'background 0.1s',
+        }} />
+      )}
+
+      {/* Top accent line */}
+      <div style={{
+        position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px',
+        background: `linear-gradient(90deg, transparent, ${plan.accentColor}88, transparent)`,
+        opacity: isHighlighted ? 1 : 0.3,
+      }} />
+
+      {/* Popular badge */}
+      {plan.popular && (
+        <div style={{
+          position: 'absolute', top: '1.25rem', right: '1.25rem',
+          background: `${plan.accentColor}18`,
+          color: plan.accentColor,
+          fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em',
+          padding: '3px 10px', borderRadius: '20px',
+          border: `1px solid ${plan.accentColor}30`,
+          textTransform: 'uppercase',
+        }}>
+          Popular
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <p style={{ fontSize: '13px', fontWeight: 600, color: plan.accentColor, marginBottom: '6px', letterSpacing: '0.02em' }}>
+          {plan.name}
+        </p>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+          <span style={{ fontSize: '2.75rem', fontWeight: 800, color: textPri, lineHeight: 1, letterSpacing: '-0.03em', fontFamily: 'inherit' }}>
+            {plan.price === 0 ? 'Free' : `₹${plan.price}`}
+          </span>
+          {plan.price > 0 && (
+            <span style={{ fontSize: '13px', color: textSec }}>{plan.label}</span>
+          )}
+        </div>
+        {plan.current && (
+          <span style={{ fontSize: '11px', color: textMuted, marginTop: '4px', display: 'block' }}>Your current plan</span>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div style={{ height: '1px', background: divider, marginBottom: '1.5rem' }} />
+
+      {/* Features */}
+      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+        {plan.features.map((f, i) => (
+          <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <span style={{
+              flexShrink: 0, width: '16px', height: '16px', borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '1px',
+              background: f.included ? `${plan.accentColor}18` : 'transparent',
+            }}>
+              {f.included ? (
+                <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                  <path d="M1 3.5L3.5 6L8 1" stroke={plan.accentColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              ) : (
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                  <path d="M1 1l6 6M7 1L1 7" stroke={textMuted} strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              )}
+            </span>
+            <span style={{ fontSize: '13.5px', lineHeight: '1.4' }}>
+              <span style={{ color: f.included ? textPri : textMuted }}>{f.text}</span>
+              {f.note && (
+                <span style={{ display: 'block', fontSize: '11px', color: textMuted, marginTop: '1px' }}>{f.note}</span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {/* CTA */}
+      <button
+        disabled={plan.current}
+        onClick={(e) => { e.stopPropagation(); !plan.current && onSelect(plan); }}
+        style={{
+          marginTop: '2rem', width: '100%', padding: '12px',
+          borderRadius: '12px', fontSize: '14px', fontWeight: 600,
+          cursor: plan.current ? 'default' : 'pointer',
+          border: 'none', outline: 'none',
+          background: plan.current
+            ? isDark ? '#1e1e22' : '#F1F5F9'
+            : plan.id === 'pro'
+              ? `linear-gradient(135deg, ${plan.accentColor}, #7C3AED)`
+              : plan.accentColor,
+          color: plan.current ? textMuted : '#ffffff',
+          transition: 'opacity 0.2s, transform 0.1s',
+          boxShadow: plan.current ? 'none' : `0 8px 20px -6px ${plan.accentColor}55`,
+        }}
+        onMouseEnter={(e) => { if (!plan.current) e.currentTarget.style.opacity = '0.88'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+      >
+        {plan.cta}
+      </button>
+    </div>
+  );
+}
+
+function PlansPage({ isDark, toggleTheme }) {
+  const navigate = useNavigate();
+  const [highlighted, setHighlighted] = useState('plus');
+
+  const bg = isDark
+    ? 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,0.08) 0%, transparent 70%), #0A0A0B'
+    : 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,0.05) 0%, transparent 70%), #FAFAFA';
+  const textPri = isDark ? '#f1f0f5' : '#0F172A';
+  const textSec = isDark ? '#7c7b8a' : '#64748B';
+  const navBg = isDark ? 'rgba(10,10,11,0.85)' : 'rgba(250,250,250,0.85)';
+  const navBorder = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+
+  const handleSelect = (plan) => {
+    navigate(`/payment?plan=${plan.id}&name=${encodeURIComponent(plan.name)}&price=${plan.price}`);
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: bg, color: textPri, fontFamily: 'inherit' }}>
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .plan-fade-up { animation: fadeUp 0.5s cubic-bezier(0.23,1,0.32,1) both; }
+        .plan-fade-up:nth-child(1) { animation-delay: 0.05s; }
+        .plan-fade-up:nth-child(2) { animation-delay: 0.12s; }
+        .plan-fade-up:nth-child(3) { animation-delay: 0.19s; }
+      `}</style>
+
       {/* Navbar */}
-      <nav className="w-full h-16 px-8 sticky top-0 z-50 flex items-center justify-between"
-        style={{ background: isDark ? 'rgba(10,10,11,0.9)' : 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', borderBottom: `1px solid ${border}` }}>
-        <button onClick={() => navigate(-1)} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg,#6366F1,#4F46E5)' }}>
-            <span className="material-symbols-outlined text-white text-base">hub</span>
+      <nav style={{
+        position: 'sticky', top: 0, zIndex: 50, height: '56px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 2rem', background: navBg,
+        backdropFilter: 'blur(20px)', borderBottom: `1px solid ${navBorder}`,
+      }}>
+        <button onClick={() => navigate(-1)} style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+        }}>
+          <div style={{
+            width: '26px', height: '26px', borderRadius: '8px',
+            background: 'linear-gradient(135deg,#6366F1,#4F46E5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1L11 6L6 11M1 6H11" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </div>
-          <span className="font-headline font-extrabold text-xl tracking-tighter" style={{ color: textPri }}>AlgoMind</span>
+          <span style={{ fontWeight: 800, fontSize: '15px', letterSpacing: '-0.03em', color: textPri }}>AlgoMind</span>
         </button>
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="text-xs font-semibold flex items-center gap-1 hover:opacity-70" style={{ color: '#6366F1' }}>
-            <span className="material-symbols-outlined text-sm">arrow_back</span> Back
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button onClick={() => navigate(-1)} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: '13px', fontWeight: 600, color: '#6366F1',
+            display: 'flex', alignItems: 'center', gap: '4px',
+          }}>
+            ← Back
           </button>
-          <button onClick={toggleTheme}
-            className="p-2 rounded-xl hover:opacity-70"
-            style={{ background: isDark ? '#1b1c1e' : '#F1F5F9', border: `1px solid ${border}`, color: textPri }}>
-            <span className="material-symbols-outlined text-lg">{isDark ? 'dark_mode' : 'light_mode'}</span>
+          <button onClick={toggleTheme} style={{
+            width: '32px', height: '32px', borderRadius: '8px',
+            background: isDark ? '#1a1a1e' : '#F1F5F9',
+            border: `1px solid ${navBorder}`,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: textSec, fontSize: '14px',
+          }}>
+            {isDark ? '☀' : '◑'}
           </button>
         </div>
       </nav>
 
-      <div className="max-w-5xl mx-auto px-6 py-16">
+      {/* Content */}
+      <div style={{ maxWidth: '960px', margin: '0 auto', padding: '4rem 1.5rem 6rem' }}>
 
-        {/* Hero */}
-        <div className="text-center mb-16">
-          <span className="inline-block text-[11px] font-bold uppercase tracking-widest mb-4 px-4 py-1.5 rounded-full"
-            style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1' }}>
-            Choose Your Plan
-          </span>
-          <h1 className="text-5xl font-headline font-extrabold tracking-tight mb-5" style={{ color: textPri }}>
-            Unlock Your Full Potential
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+          <p style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6366F1', marginBottom: '12px' }}>
+            Pricing
+          </p>
+          <h1 style={{
+            fontSize: 'clamp(2rem, 5vw, 3rem)', fontWeight: 800,
+            letterSpacing: '-0.04em', lineHeight: 1.1, color: textPri, margin: '0 0 14px',
+          }}>
+            Simple, transparent pricing
           </h1>
-          <p className="text-lg max-w-xl mx-auto leading-relaxed" style={{ color: textSec }}>
-            Start free, upgrade when you're ready. All plans give you access to AlgoMind's core learning engine.
+          <p style={{ fontSize: '16px', color: textSec, maxWidth: '440px', margin: '0 auto', lineHeight: 1.6 }}>
+            Start free. Upgrade when you need more. No hidden fees, cancel anytime.
           </p>
         </div>
 
-        {/* Plan Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
-          {PLANS.map((plan) => {
-            const isSelected = selected === plan.id;
-            return (
-              <div
-                key={plan.id}
-                className={`rounded-3xl flex flex-col overflow-hidden transition-all duration-300 cursor-pointer hover:scale-[1.02] card-3d
-                  ${plan.popular ? 'plan-card-popular' : ''}`}
-                style={{
-                  background: surface,
-                  border: isSelected
-                    ? `2px solid ${plan.color}`
-                    : `1px solid ${border}`,
-                  boxShadow: isSelected
-                    ? `0 20px 50px -15px ${plan.shadow}, 0 0 0 1px ${plan.color}22`
-                    : isDark ? 'none' : '0 8px 30px -8px rgba(0,0,0,0.08)',
-                  transform: isSelected ? 'scale(1.03)' : undefined,
-                }}
-                onClick={() => setSelected(plan.id)}
-              >
-                {/* Popular badge */}
-                {plan.popular && (
-                  <div className="text-center py-2 text-[10px] font-extrabold uppercase tracking-widest text-white"
-                    style={{ background: plan.gradient }}>
-                    ⭐ Most Popular
-                  </div>
-                )}
-
-                <div className="p-7 flex flex-col flex-grow">
-                  {/* Plan header */}
-                  <div className="mb-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className="text-3xl">{plan.icon}</span>
-                      <div>
-                        <h2 className="font-headline font-extrabold text-lg" style={{ color: textPri }}>{plan.name}</h2>
-                        {plan.current && (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
-                            style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>
-                            Current Plan
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Price */}
-                    <div className="flex items-end gap-2">
-                      <span className="text-4xl font-headline font-extrabold" style={{ color: plan.color }}>
-                        {plan.price === 0 ? 'Free' : `₹${plan.price}`}
-                      </span>
-                      <span className="text-sm mb-1" style={{ color: textSec }}>/ {plan.period}</span>
-                    </div>
-                  </div>
-
-                  {/* Benefits placeholder */}
-                  <div className="flex-grow mb-6">
-                    <div className="rounded-2xl p-4 text-center"
-                      style={{ background: isDark ? '#292a2c' : '#F8FAFC', border: `1px dashed ${border}` }}>
-                      <span className="material-symbols-outlined text-2xl mb-2 block" style={{ color: textSec }}>construction</span>
-                      <p className="text-xs" style={{ color: textSec }}>Benefits coming soon</p>
-                    </div>
-                  </div>
-
-                  {/* CTA */}
-                  <button
-                    className="w-full py-4 rounded-2xl font-headline font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98]"
-                    style={plan.current ? {
-                      background: isDark ? '#292a2c' : '#F1F5F9',
-                      color: textSec,
-                      cursor: 'default',
-                    } : {
-                      background: plan.gradient,
-                      color: '#FFFFFF',
-                      boxShadow: `0 12px 30px -8px ${plan.shadow}`,
-                    }}
-                    disabled={plan.current}
-                  >
-                    {plan.cta}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        {/* Plan cards grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: '16px',
+          alignItems: 'start',
+        }}>
+          {PLANS.map((plan) => (
+            <div key={plan.id} className="plan-fade-up">
+              <PlanCard
+                plan={plan}
+                isDark={isDark}
+                isHighlighted={highlighted === plan.id}
+                onSelect={handleSelect}
+              />
+            </div>
+          ))}
         </div>
 
-        {/* Footer note */}
-        <div className="text-center mt-12">
-          <p className="text-sm" style={{ color: textSec }}>
-            🔒 Secure payments · Cancel anytime · No hidden fees
+        {/* Footnote */}
+        <div style={{ textAlign: 'center', marginTop: '3rem' }}>
+          <p style={{ fontSize: '13px', color: textSec }}>
+            All prices in INR · Secure payments · Cancel anytime
           </p>
-          <button className="mt-4 text-xs font-semibold hover:opacity-70" style={{ color: '#6366F1' }} onClick={() => navigate('/support')}>
-            Have questions? Contact support →
+          <button
+            onClick={() => navigate('/support')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', marginTop: '8px', fontSize: '13px', color: '#6366F1', fontWeight: 600 }}
+          >
+            Questions? Contact support →
           </button>
         </div>
       </div>

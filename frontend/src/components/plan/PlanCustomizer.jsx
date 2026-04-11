@@ -1,9 +1,11 @@
+import { useNavigate } from 'react-router-dom';
+
 const INTENSITY_LEVELS = ['Relaxed', 'Balanced', 'Aggressive'];
 
 const WEAK_AREAS = [
-  { priority: 'Priority 1', label: 'Dynamic Programming', opacity: ''           },
-  { priority: 'Priority 2', label: 'Graphs & Search',     opacity: 'opacity-70' },
-  { priority: 'Priority 3', label: 'Bit Manipulation',    opacity: 'opacity-40' },
+  { priority: 'Priority 1', label: 'Dynamic Programming' },
+  { priority: 'Priority 2', label: 'Graphs & Search'     },
+  { priority: 'Priority 3', label: 'Bit Manipulation'    },
 ];
 
 function PlanCustomizer({
@@ -12,6 +14,7 @@ function PlanCustomizer({
   onTopicClick, onOpenModal,
   onUsePlan, onCustomize, isDark,
 }) {
+  const navigate    = useNavigate();
   const surface     = isDark ? 'rgba(28,29,32,0.95)' : '#FFFFFF';
   const surfaceHigh = isDark ? 'rgba(38,39,42,0.9)'  : '#F8FAFC';
   const border      = isDark ? 'rgba(70,69,84,0.2)'  : 'rgba(0,0,0,0.07)';
@@ -19,9 +22,9 @@ function PlanCustomizer({
   const textSec     = isDark ? '#908fa0'              : '#64748B';
 
   return (
-    <section className="lg:col-span-7 flex flex-col space-y-8 plan-3d-container">
+    <section className="lg:col-span-8 flex flex-col space-y-8">
       <div
-        className="rounded-3xl p-8 space-y-10 plan-3d-card"
+        className="rounded-2xl p-8 space-y-10"
         style={{
           background: surface,
           border: `1px solid ${border}`,
@@ -34,10 +37,10 @@ function PlanCustomizer({
         <div className="space-y-5">
           <SectionHeader icon="psychology" label="Core Improvement Areas" textSec={textSec} />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {WEAK_AREAS.map(({ priority, label, opacity }) => (
+            {WEAK_AREAS.map(({ priority, label }) => (
               <div
                 key={priority}
-                className={`p-4 pl-6 rounded-2xl flex flex-col gap-2 relative hover:scale-[1.02] transition-transform ${opacity}`}
+                className="p-4 pl-6 rounded-xl flex flex-col gap-2 relative hover:scale-[1.02] transition-transform"
                 style={{ background: surfaceHigh, border: `1px solid ${border}` }}
               >
                 <div className="weak-accent" />
@@ -133,6 +136,19 @@ function PlanCustomizer({
           onClick={onCustomize}
         >
           Customise Plan
+        </button>
+      </div>
+
+      {/* AI Mentor link */}
+      <div className="flex items-center justify-center gap-2">
+        <span className="text-[11px]" style={{ color: textSec }}>Not sure about a topic?</span>
+        <button
+          onClick={() => navigate('/chatbot')}
+          className="inline-flex items-center gap-1.5 text-[11px] font-bold hover:opacity-75 transition-opacity"
+          style={{ color: '#6366F1' }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: '13px', fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+          Ask AI Mentor
         </button>
       </div>
     </section>

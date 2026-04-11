@@ -18,6 +18,7 @@ import ProfilePage    from '../pages/Profile/ProfilePage.jsx';
 import SupportPage    from '../pages/Support/SupportPage.jsx';
 import PrivacyPage    from '../pages/Privacy/PrivacyPage.jsx';
 import PlansPage      from '../pages/Plans/PlansPage.jsx';
+import PaymentPage    from '../pages/Payment/PaymentPage.jsx';
 
 function App() {
   const [isDark, setIsDark] = useState(() => {
@@ -70,6 +71,7 @@ function App() {
       <Route path="/support"    element={<SupportPage    {...thin} />} />
       <Route path="/privacy"    element={<PrivacyPage    {...thin} />} />
       <Route path="/plans"      element={<PlansPage      {...thin} />} />
+      <Route path="/payment"    element={<PaymentPage    {...thin} />} />
     </Routes>
   );
 }

@@ -23,10 +23,7 @@ function PlanPage({ isDark, toggleTheme }) {
     });
   };
 
-  // From modal: receive flat array, no recentlyAdded distinction
-  const handleApply = (newSelection) => {
-    setCurrentSelection(newSelection);
-  };
+  const handleApply = (newSelection) => setCurrentSelection(newSelection);
 
   const handleUsePlan = () => {
     const el = document.querySelector('main');
@@ -39,7 +36,7 @@ function PlanPage({ isDark, toggleTheme }) {
       className="plan-page min-h-screen flex flex-col transition-colors duration-300"
       style={{
         background: isDark
-          ? 'radial-gradient(ellipse at 0% 0%, rgba(99,102,241,0.1) 0%, transparent 40%), radial-gradient(ellipse at 100% 100%, rgba(139,92,246,0.08) 0%, transparent 40%), #0A0A0B'
+          ? 'radial-gradient(ellipse at 0% 0%, rgba(99,102,241,0.08) 0%, transparent 40%), #0A0A0B'
           : 'linear-gradient(180deg, #FAFAFF 0%, #F0EDFF 50%, #F5F3FF 100%)',
       }}
     >
