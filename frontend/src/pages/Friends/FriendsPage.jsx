@@ -1,60 +1,91 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
+import api from '../../utils/api.js';
 
-const INITIAL_FRIENDS = [
-  { id: 1, name: 'Alex Chen',   handle: 'alex.c',  rank: 1, rating: 1842, solved: 520, avatar: 'AC', color: '#6366F1', online: true  },
-  { id: 2, name: 'Sara Kim',    handle: 'sara.k',  rank: 2, rating: 1791, solved: 480, avatar: 'SK', color: '#A855F7', online: true  },
-  { id: 3, name: 'Raj Patel',   handle: 'raj.p',   rank: 3, rating: 1743, solved: 445, avatar: 'RP', color: '#22C55E', online: false },
-  { id: 4, name: 'You',         handle: 'you',      rank: 4, rating: 1680, solved: 412, avatar: 'ME', color: '#F59E0B', online: true,  isSelf: true },
-  { id: 5, name: 'Jake Wilson', handle: 'jake.w',  rank: 5, rating: 1620, solved: 398, avatar: 'JW', color: '#EF4444', online: false },
-  { id: 6, name: 'Mia Scott',   handle: 'mia.s',   rank: 6, rating: 1580, solved: 372, avatar: 'MS', color: '#06B6D4', online: true  },
-];
-
-const REQUESTS = [
-  { id: 8, name: 'Priya Nair',   handle: 'priya.n', avatar: 'PN', color: '#8B5CF6', mutuals: 3 },
-  { id: 9, name: 'Omar Hassan',  handle: 'omar.h',  avatar: 'OH', color: '#F59E0B', mutuals: 1 },
-];
+const COLOURS = ['#6366F1','#A855F7','#22C55E','#F59E0B','#EF4444','#06B6D4','#EC4899','#8B5CF6'];
+const colourFor = (id) => COLOURS[(id ?? 0) % COLOURS.length];
+const initials  = (name) => (name ?? '??').slice(0, 2).toUpperCase();
 
 function FriendsPage({ theme, toggleTheme }) {
   const isDark = theme === 'dark';
-  const [tab,        setTab]        = useState('leaderboard');
-  const [friends,    setFriends]    = useState(INITIAL_FRIENDS);
-  const [requests,   setRequests]   = useState(REQUESTS);
-  const [removingId, setRemovingId] = useState(null);
 
-  // Chat is handled by DashboardLayout — we trigger it via onOpenChat from props
-  // But DashboardLayout auto-provides onOpenChat via context pattern; here we pass down via props
-  const surface  = isDark ? '#1b1c1e' : '#FFFFFF';
-  const surfLow  = isDark ? '#292a2c' : '#F8FAFC';
-  const border   = isDark ? 'rgba(70,69,84,0.15)' : 'rgba(0,0,0,0.08)';
-  const textPri  = isDark ? '#e3e2e5' : '#0F172A';
-  const textSec  = isDark ? '#908fa0' : '#64748B';
+  const [tab,         setTab]         = useState('leaderboard');
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [friends,     setFriends]     = useState([]);
+  const [requests,    setRequests]    = useState([]);
+  const [searchQ,     setSearchQ]     = useState('');
+  const [searchRes,   setSearchRes]   = useState([]);
+  const [searching,   setSearching]   = useState(false);
+  const [loading,     setLoading]     = useState(true);
+  const [actionId,    setActionId]    = useState(null);
 
-  const removeFriend = (id) => {
-    setRemovingId(id);
-    setTimeout(() => {
-      setFriends(prev => prev.filter(f => f.id !== id));
-      setRemovingId(null);
+  const surface = isDark ? '#1b1c1e' : '#FFFFFF';
+  const surfLow = isDark ? '#292a2c' : '#F8FAFC';
+  const border  = isDark ? 'rgba(70,69,84,0.15)' : 'rgba(0,0,0,0.08)';
+  const textPri = isDark ? '#e3e2e5' : '#0F172A';
+  const textSec = isDark ? '#908fa0' : '#64748B';
+
+  const loadLeaderboard = useCallback(() =>
+    api.get('/auth/leaderboard/?limit=50').then(d => setLeaderboard(d.leaderboard ?? [])).catch(() => {}), []);
+  const loadFriends     = useCallback(() =>
+    api.get('/friends/list/').then(d => setFriends(Array.isArray(d) ? d : (d?.results ?? []))).catch(() => {}), []);
+  const loadRequests    = useCallback(() =>
+    api.get('/friends/requests/').then(d => setRequests(Array.isArray(d) ? d : (d?.results ?? []))).catch(() => {}), []);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([loadLeaderboard(), loadFriends(), loadRequests()]).finally(() => setLoading(false));
+  }, [loadLeaderboard, loadFriends, loadRequests]);
+
+  /* Debounced user search */
+  useEffect(() => {
+    if (!searchQ.trim() || searchQ.length < 2) { setSearchRes([]); return; }
+    const t = setTimeout(() => {
+      setSearching(true);
+      api.get(`/auth/search/?q=${encodeURIComponent(searchQ)}`)
+        .then(d => setSearchRes(d.results ?? []))
+        .catch(() => setSearchRes([]))
+        .finally(() => setSearching(false));
     }, 400);
+    return () => clearTimeout(t);
+  }, [searchQ]);
+
+  const sendRequest = async (userId) => {
+    setActionId(userId);
+    try {
+      await api.post('/friends/send/', { receiver_id: userId });
+      setSearchRes(prev => prev.filter(u => u.id !== userId));
+    } catch (e) { alert(e?.detail ?? 'Could not send request.'); }
+    finally { setActionId(null); }
   };
 
-  const acceptRequest = (id) => {
-    const req = requests.find(r => r.id === id);
-    if (req) {
-      const newFriend = { ...req, rank: friends.length + 1, rating: 1400, solved: 200, online: false };
-      setFriends(prev => [...prev, newFriend]);
-      setRequests(prev => prev.filter(r => r.id !== id));
-    }
+  const acceptRequest = async (reqId) => {
+    setActionId(reqId);
+    try { await api.post(`/friends/requests/${reqId}/accept/`); loadRequests(); loadFriends(); }
+    finally { setActionId(null); }
   };
 
-  const declineRequest = (id) => setRequests(prev => prev.filter(r => r.id !== id));
+  const declineRequest = async (reqId) => {
+    setActionId(reqId);
+    try { await api.post(`/friends/requests/${reqId}/reject/`); loadRequests(); }
+    finally { setActionId(null); }
+  };
 
-  const myFriends = friends.filter(f => !f.isSelf);
+  const removeFriend = async (friendUserId) => {
+    if (!window.confirm('Remove this friend?')) return;
+    setActionId(friendUserId);
+    try { await api.delete(`/friends/remove/${friendUserId}/`); loadFriends(); }
+    finally { setActionId(null); }
+  };
+
+  const openChat = (friendUser) =>
+    window.dispatchEvent(new CustomEvent('algomind:openchat', { detail: { ...friendUser, id: friendUser.id } }));
 
   const TABS = [
     { id: 'leaderboard', label: 'Leaderboard' },
-    { id: 'friends',     label: `Friends (${myFriends.length})` },
+    { id: 'friends',     label: `Friends (${friends.length})` },
     { id: 'requests',    label: `Requests${requests.length ? ` (${requests.length})` : ''}` },
+    { id: 'add',         label: 'Add Friend' },
   ];
 
   return (
@@ -67,117 +98,122 @@ function FriendsPage({ theme, toggleTheme }) {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 p-1 rounded-xl w-fit" style={{ background: surfLow, border: `1px solid ${border}` }}>
-          {TABS.map(({ id, label }) => (
-            <button key={id} onClick={() => setTab(id)}
-              className="px-5 py-2 rounded-lg text-xs font-bold transition-all"
-              style={tab === id ? { background: '#6366F1', color: '#fff' } : { color: textSec }}>
-              {label}
+        <div className="flex gap-2 p-1 rounded-xl w-fit flex-wrap" style={{ background: surfLow, border: `1px solid ${border}` }}>
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className="px-4 py-2 rounded-lg text-xs font-bold transition-all relative"
+              style={tab === t.id ? { background: '#6366F1', color: '#fff' } : { color: textSec }}>
+              {t.label}
+              {t.id === 'requests' && requests.length > 0 && tab !== 'requests' && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center font-bold">
+                  {requests.length}
+                </span>
+              )}
             </button>
           ))}
         </div>
 
-        {/* ── Leaderboard ── */}
-        {tab === 'leaderboard' && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-4 gap-4 px-4 pb-2">
-              {['Rank','Name','Solved','Rating'].map(h => (
+        {loading && (
+          <div className="text-center py-16" style={{ color: textSec }}>
+            <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            Loading...
+          </div>
+        )}
+
+        {/* Leaderboard */}
+        {!loading && tab === 'leaderboard' && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-[40px_1fr_80px_90px] gap-4 px-4 pb-1">
+              {['Rank','Name','Level','Rating'].map(h => (
                 <span key={h} className="text-[10px] font-bold uppercase tracking-widest" style={{ color: textSec }}>{h}</span>
               ))}
             </div>
-            {[...friends].sort((a,b) => a.rank - b.rank).map(f => (
-              <div
-                key={f.id}
-                className="rounded-2xl p-4 transition-all hover:scale-[1.005]"
+            {leaderboard.length === 0 && (
+              <p className="text-center py-10 text-sm" style={{ color: textSec }}>No users yet.</p>
+            )}
+            {leaderboard.map(entry => (
+              <div key={entry.id}
+                className="rounded-2xl p-4 transition-all hover:scale-[1.003]"
                 style={{
-                  background: f.isSelf ? (isDark ? 'rgba(99,102,241,0.08)' : '#EEF2FF') : surface,
-                  border: `1px solid ${f.isSelf ? 'rgba(99,102,241,0.25)' : border}`,
-                  opacity: removingId === f.id ? 0.2 : 1,
-                  transition: 'opacity 0.4s ease, transform 0.3s ease',
-                }}
-              >
-                <div className="grid grid-cols-4 gap-4 items-center">
+                  background: entry.is_self ? (isDark ? 'rgba(99,102,241,0.08)' : '#EEF2FF') : surface,
+                  border: `1px solid ${entry.is_self ? 'rgba(99,102,241,0.3)' : border}`,
+                }}>
+                <div className="grid grid-cols-[40px_1fr_80px_90px] gap-4 items-center">
                   <span className="text-lg font-headline font-extrabold"
-                    style={{ color: f.rank <= 3 ? ['#F59E0B','#94A3B8','#CD7C2F'][f.rank-1] : textSec }}>
-                    {f.rank <= 3 ? ['🥇','🥈','🥉'][f.rank-1] : `#${f.rank}`}
+                    style={{ color: entry.rank <= 3 ? ['#F59E0B','#94A3B8','#CD7C2F'][entry.rank-1] : textSec }}>
+                    {entry.rank <= 3 ? ['🥇','🥈','🥉'][entry.rank-1] : `#${entry.rank}`}
                   </span>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold text-white shrink-0"
-                      style={{ background: f.color }}>{f.avatar}</div>
+                    {entry.avatar
+                      ? <img src={entry.avatar} className="w-8 h-8 rounded-full object-cover shrink-0" alt="" />
+                      : <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold text-white shrink-0"
+                          style={{ background: colourFor(entry.id) }}>{initials(entry.username)}</div>
+                    }
                     <div>
-                      <p className="text-sm font-bold" style={{ color: f.isSelf ? '#6366F1' : textPri }}>
-                        {f.name}
-                        {f.isSelf && <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded" style={{ background:'rgba(99,102,241,0.15)',color:'#6366F1' }}>You</span>}
+                      <p className="text-sm font-bold" style={{ color: entry.is_self ? '#6366F1' : textPri }}>
+                        {entry.username}
+                        {entry.is_self && <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded" style={{ background:'rgba(99,102,241,0.15)',color:'#6366F1' }}>You</span>}
                       </p>
-                      <div className="flex items-center gap-1">
-                        <div className="w-1.5 h-1.5 rounded-full" style={{ background: f.online ? '#22C55E' : '#64748B' }} />
-                        <span className="text-[9px]" style={{ color: textSec }}>{f.online ? 'Online' : 'Offline'}</span>
-                      </div>
+                      <p className="text-[9px]" style={{ color: textSec }}>🔥 {entry.streak}d streak</p>
                     </div>
                   </div>
-                  <span className="text-sm font-bold" style={{ color: textPri }}>{f.solved}</span>
-                  <span className="text-sm font-bold" style={{ color: f.color }}>{f.rating}</span>
+                  <span className="text-sm font-bold" style={{ color: textPri }}>Lv {entry.level}</span>
+                  <span className="text-sm font-bold" style={{ color: colourFor(entry.id) }}>{entry.rating}</span>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* ── Friends List ── */}
-        {tab === 'friends' && (
+        {/* Friends List */}
+        {!loading && tab === 'friends' && (
           <div className="space-y-3">
-            {myFriends.length === 0 && (
+            {friends.length === 0 && (
               <div className="text-center py-16" style={{ color: textSec }}>
                 <span className="material-symbols-outlined text-4xl block mb-3">group_off</span>
-                <p>No friends yet. Accept some requests!</p>
+                <p>No friends yet. Go to <strong>Add Friend</strong> to search for users!</p>
               </div>
             )}
-            {myFriends.map(f => (
-              <div
-                key={f.id}
-                className="friend-card rounded-2xl p-4 flex items-center justify-between"
-                style={{
-                  background: surface,
-                  border: `1px solid ${border}`,
-                  opacity: removingId === f.id ? 0.2 : 1,
-                  transition: 'opacity 0.4s ease, transform 0.2s ease',
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0"
-                    style={{ background: f.color }}>{f.avatar}</div>
-                  <div>
-                    <p className="text-sm font-bold" style={{ color: textPri }}>{f.name}</p>
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: f.online ? '#22C55E' : '#64748B' }} />
-                      <span className="text-[10px]" style={{ color: textSec }}>Rank #{f.rank} · {f.solved} solved</span>
+            {friends.map(f => {
+              const friend = f.friend;
+              return (
+                <div key={f.id}
+                  className="friend-card rounded-2xl p-4 flex items-center justify-between"
+                  style={{ background: surface, border: `1px solid ${border}` }}>
+                  <div className="flex items-center gap-4">
+                    {friend?.avatar
+                      ? <img src={friend.avatar} className="w-10 h-10 rounded-full object-cover shrink-0" alt="" />
+                      : <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0"
+                          style={{ background: colourFor(friend?.id) }}>{initials(friend?.username)}</div>
+                    }
+                    <div>
+                      <p className="text-sm font-bold" style={{ color: textPri }}>{friend?.username}</p>
+                      <p className="text-[10px]" style={{ color: textSec }}>Lv {friend?.level} · Rating {friend?.rating} · 🔥{friend?.streak}d</p>
                     </div>
                   </div>
+                  <div className="flex gap-2">
+                    <button
+                      className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-80"
+                      style={{ background: surfLow, color: textSec, border: `1px solid ${border}` }}
+                      onClick={() => openChat(friend)}>
+                      <span className="material-symbols-outlined text-sm align-middle mr-1">chat</span>Chat
+                    </button>
+                    <button
+                      disabled={actionId === friend?.id}
+                      className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-90 disabled:opacity-50"
+                      style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}
+                      onClick={() => removeFriend(friend?.id)}>
+                      Remove
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  {/* Challenge */}
-                  <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-80"
-                    style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1', border: '1px solid rgba(99,102,241,0.2)' }}>
-                    Challenge
-                  </button>
-                  {/* Open Chat — triggers DashboardLayout's chat drawer via layout */}
-                  <OpenChatButton friend={f} isDark={isDark} border={border} textSec={textSec} surfLow={surfLow} />
-                  {/* Remove */}
-                  <button
-                    className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-90"
-                    style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}
-                    onClick={() => removeFriend(f.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
-        {/* ── Requests ── */}
-        {tab === 'requests' && (
+        {/* Requests */}
+        {!loading && tab === 'requests' && (
           <div className="space-y-3">
             {requests.length === 0
               ? <div className="text-center py-16" style={{ color: textSec }}>No pending requests</div>
@@ -185,50 +221,92 @@ function FriendsPage({ theme, toggleTheme }) {
                 <div key={r.id} className="rounded-2xl p-4 flex items-center justify-between"
                   style={{ background: surface, border: `1px solid ${border}` }}>
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white"
-                      style={{ background: r.color }}>{r.avatar}</div>
+                    {r.sender_info?.avatar
+                      ? <img src={r.sender_info.avatar} className="w-10 h-10 rounded-full object-cover" alt="" />
+                      : <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white"
+                          style={{ background: colourFor(r.sender_info?.id) }}>{initials(r.sender_info?.username)}</div>
+                    }
                     <div>
-                      <p className="text-sm font-bold" style={{ color: textPri }}>{r.name}</p>
-                      <p className="text-[10px]" style={{ color: textSec }}>{r.mutuals} mutual friends</p>
+                      <p className="text-sm font-bold" style={{ color: textPri }}>{r.sender_info?.username}</p>
+                      <p className="text-[10px]" style={{ color: textSec }}>Lv {r.sender_info?.level} · Rating {r.sender_info?.rating}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      className="px-4 py-1.5 rounded-lg text-[10px] font-bold hover:opacity-90 active:scale-95"
+                    <button disabled={actionId === r.id}
+                      className="px-4 py-1.5 rounded-lg text-[10px] font-bold hover:opacity-90 active:scale-95 disabled:opacity-50"
                       style={{ background: '#6366F1', color: '#fff' }}
-                      onClick={() => acceptRequest(r.id)}>
-                      Accept
-                    </button>
-                    <button
-                      className="px-4 py-1.5 rounded-lg text-[10px] font-bold hover:opacity-80"
+                      onClick={() => acceptRequest(r.id)}>Accept</button>
+                    <button disabled={actionId === r.id}
+                      className="px-4 py-1.5 rounded-lg text-[10px] font-bold hover:opacity-80 disabled:opacity-50"
                       style={{ background: surfLow, color: textSec, border: `1px solid ${border}` }}
-                      onClick={() => declineRequest(r.id)}>
-                      Decline
-                    </button>
+                      onClick={() => declineRequest(r.id)}>Decline</button>
                   </div>
                 </div>
               ))
             }
           </div>
         )}
+
+        {/* Add Friend */}
+        {!loading && tab === 'add' && (
+          <div className="space-y-4">
+            <div className="flex gap-3 rounded-2xl p-3" style={{ background: surface, border: `1px solid ${border}` }}>
+              <span className="material-symbols-outlined self-center" style={{ color: textSec }}>search</span>
+              <input
+                value={searchQ}
+                onChange={e => setSearchQ(e.target.value)}
+                placeholder="Search by username…"
+                className="flex-grow bg-transparent outline-none text-sm"
+                style={{ color: textPri }}
+                autoFocus
+              />
+              {searching && <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin self-center" />}
+            </div>
+
+            {searchRes.length > 0 && (
+              <div className="space-y-2">
+                {searchRes.map(u => (
+                  <div key={u.id}
+                    className="rounded-2xl p-4 flex items-center justify-between"
+                    style={{ background: surface, border: `1px solid ${border}` }}>
+                    <div className="flex items-center gap-3">
+                      {u.avatar
+                        ? <img src={u.avatar} className="w-9 h-9 rounded-full object-cover" alt="" />
+                        : <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-white text-[11px]"
+                            style={{ background: colourFor(u.id) }}>{initials(u.username)}</div>
+                      }
+                      <div>
+                        <p className="text-sm font-bold" style={{ color: textPri }}>{u.username}</p>
+                        <p className="text-[10px]" style={{ color: textSec }}>Lv {u.level} · Rating {u.rating}</p>
+                      </div>
+                    </div>
+                    <button
+                      disabled={actionId === u.id}
+                      onClick={() => sendRequest(u.id)}
+                      className="px-4 py-1.5 rounded-xl text-[10px] font-bold disabled:opacity-50 transition-all hover:opacity-90"
+                      style={{ background: '#6366F1', color: '#fff' }}>
+                      {actionId === u.id ? 'Sending…' : '+ Add Friend'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {searchQ.length >= 2 && !searching && searchRes.length === 0 && (
+              <p className="text-center text-sm py-8" style={{ color: textSec }}>No users found for "{searchQ}"</p>
+            )}
+
+            {searchQ.length < 2 && (
+              <div className="text-center py-10" style={{ color: textSec }}>
+                <span className="material-symbols-outlined text-3xl block mb-2">person_search</span>
+                Type at least 2 characters to search
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
     </DashboardLayout>
-  );
-}
-
-/* Uses a custom event to trigger DashboardLayout's chat drawer */
-function OpenChatButton({ friend, isDark, border, textSec, surfLow }) {
-  const openChat = () => {
-    window.dispatchEvent(new CustomEvent('algomind:openchat', { detail: friend }));
-  };
-  return (
-    <button
-      className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-80"
-      style={{ background: surfLow, color: textSec, border: `1px solid ${border}` }}
-      onClick={openChat}
-    >
-      <span className="material-symbols-outlined text-sm align-middle mr-1">chat</span>Chat
-    </button>
   );
 }
 

@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 
 function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
   const navigate       = navProp || useNavigate();
+  const { user, logout } = useAuth();
+
   const [isPinned,       setIsPinned]       = useState(false);
   const [isHovered,      setIsHovered]      = useState(false);
   const [isPracticeOpen, setIsPracticeOpen] = useState(false);
@@ -41,6 +44,17 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
     { path: '/arena',      icon: 'workspace_premium', label: 'Arena' },
     { path: '/resources',  icon: 'menu_book',         label: 'Resources' },
   ];
+
+  // Build avatar URL: use uploaded avatar or fallback to dicebear seeded with username
+  const avatarUrl = user?.avatar
+    ? user.avatar
+    : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user?.username ?? 'user')}`;
+
+  const handleLogout = async () => {
+    setIsProfileOpen(false);
+    await logout();
+    navigate('/');
+  };
 
   const NavItem = ({ path, icon, label, faded = false }) => (
     <NavLink to={path} end={path === '/dashboard'}
@@ -161,18 +175,27 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
               </div>
             </div>
           </div>
-          {[
-            { icon: 'person',   label: 'Profile',  path: '/profile',  color: isDark ? '#e3e2e5' : '#0F172A' },
-            { icon: 'settings', label: 'Settings', path: '/settings', color: isDark ? '#e3e2e5' : '#0F172A' },
-            { icon: 'logout',   label: 'Log Out',  path: '/',         color: '#EF4444' },
-          ].map(({ icon, label, path, color }) => (
-            <button key={label}
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
-              style={{ color }}
-              onClick={() => { setIsProfileOpen(false); navigate(path); }}>
-              <span className="material-symbols-outlined text-lg">{icon}</span> {label}
-            </button>
-          ))}
+
+          <button
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
+            style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}
+            onClick={() => { setIsProfileOpen(false); navigate('/profile'); }}>
+            <span className="material-symbols-outlined text-lg">person</span> Profile
+          </button>
+
+          <button
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
+            style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}
+            onClick={() => { setIsProfileOpen(false); navigate('/settings'); }}>
+            <span className="material-symbols-outlined text-lg">settings</span> Settings
+          </button>
+
+          <button
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
+            style={{ color: '#EF4444' }}
+            onClick={handleLogout}>
+            <span className="material-symbols-outlined text-lg">logout</span> Log Out
+          </button>
         </div>
 
         {/* Profile Button */}
@@ -183,11 +206,13 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
         >
           <div className="icon-container">
             <div className="h-8 w-8 rounded-full overflow-hidden shrink-0 border-2" style={{ borderColor: isDark ? 'rgba(99,102,241,0.4)' : 'rgba(99,102,241,0.3)' }}>
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=AlgoMind" alt="avatar" className="w-full h-full object-cover" />
+              <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
             </div>
           </div>
           <div className="sidebar-content-text flex-grow truncate text-left">
-            <p className="text-xs font-bold truncate" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>Alex Chen</p>
+            <p className="text-xs font-bold truncate" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
+              {user?.username ?? '...'}
+            </p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase leading-none"
                 style={{ background: 'rgba(99,102,241,0.15)', color: '#6366F1' }}>Basic</span>

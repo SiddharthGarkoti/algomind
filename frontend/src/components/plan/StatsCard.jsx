@@ -1,26 +1,4 @@
-/* ── Platform data — purple shades only ── */
-const DATA = {
-  lc: {
-    label:    'LeetCode',
-    color:    '#6366F1',
-    solved:   205,
-    solvedOf: '3,200+',
-    hard:     { solved: 25,  total: 600  },
-    medium:   { solved: 100, total: 1800 },
-    easy:     { solved: 80,  total: 800  },
-    streak:   14,
-  },
-  cf: {
-    label:    'Codeforces',
-    color:    '#6366F1',
-    solved:   84,
-    solvedOf: 'problems',
-    hard:     { solved: 8,  total: 221, label: 'Div. A' },
-    medium:   { solved: 32, total: 337, label: 'Div. B' },
-    easy:     { solved: 44, total: 135, label: 'Div. C' },
-    streak:   5,
-  },
-};
+import { useNavigate } from 'react-router-dom';
 
 /* ── Real platform logos as inline SVG ── */
 function LCLogo({ color, size = 16 }) {
@@ -39,127 +17,166 @@ function CFLogo({ color, size = 16 }) {
   );
 }
 
-/* ── Card face — shared layout for LC and CF ── */
-function CardFace({ pKey, surfLow, border, textPri, textSec, isDark }) {
-  const d = DATA[pKey];
-  const Logo = pKey === 'lc' ? LCLogo : CFLogo;
+/* ── Card face — shared layout ── */
+function CardFace({ pKey, platform, surfLow, border, textPri, textSec, isDark, onSaveAccount }) {
+  const navigate = useNavigate();
+  const Logo    = pKey === 'lc' ? LCLogo : CFLogo;
+  const label   = pKey === 'lc' ? 'LeetCode' : 'Codeforces';
+
+  /* platform is the full profile object: { platform_name, handle, stats: {...}, isGuest? } */
+
+  /* Not connected at all */
+  if (!platform) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center p-8 text-center gap-4">
+        <Logo color={textSec} size={28} />
+        <div>
+          <p className="text-sm font-bold" style={{ color: textPri }}>{label}</p>
+          <p className="text-xs mt-1" style={{ color: textSec }}>Not connected</p>
+        </div>
+        <button
+          onClick={() => navigate('/settings')}
+          className="px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90"
+          style={{ background: '#6366F1', color: '#fff' }}>
+          Connect
+        </button>
+      </div>
+    );
+  }
+
+  /* Guest preview — handle entered but no real auth stats */
+  const platformStats = platform?.stats;
+  if (!platformStats) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center p-8 text-center gap-4">
+        <Logo color="#6366F1" size={28} />
+        <div>
+          <p className="text-sm font-bold" style={{ color: textPri }}>{label}</p>
+          <p className="text-xs mt-1 font-mono" style={{ color: '#6366F1' }}>@{platform.handle}</p>
+          <p className="text-xs mt-1" style={{ color: textSec }}>Sign in to load full stats</p>
+        </div>
+        {onSaveAccount && (
+          <button
+            onClick={onSaveAccount}
+            className="px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90"
+            style={{ background: '#6366F1', color: '#fff' }}>
+            Save Account
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  /* Real stats — platformStats has: problems_solved, easy_solved, medium_solved, hard_solved, rating, contests */
+  const total  = platformStats.problems_solved ?? 0;
+  const easy   = platformStats.easy_solved     ?? 0;
+  const medium = platformStats.medium_solved   ?? 0;
+  const hard   = platformStats.hard_solved     ?? 0;
+  const rating = platformStats.rating          ?? 0;
+
+  const totalOf     = pKey === 'lc' ? '3,200+' : 'problems';
+  const easyTotal   = pKey === 'lc' ? 800  : Math.max(easy   * 3, 50);
+  const mediumTotal = pKey === 'lc' ? 1800 : Math.max(medium * 3, 50);
+  const hardTotal   = pKey === 'lc' ? 600  : Math.max(hard   * 3, 50);
+
+  const diffBars = [
+    { key: 'hard',   label: pKey === 'cf' ? 'Div. A' : 'Hard',   color: '#EF4444', solved: hard,   total: hardTotal   },
+    { key: 'medium', label: pKey === 'cf' ? 'Div. B' : 'Medium', color: '#F59E0B', solved: medium, total: mediumTotal },
+    { key: 'easy',   label: pKey === 'cf' ? 'Div. C' : 'Easy',   color: '#22C55E', solved: easy,   total: easyTotal   },
+  ];
+
+  const profileUrl = pKey === 'lc'
+    ? `https://leetcode.com/${platform.handle}/`
+    : `https://codeforces.com/profile/${platform.handle}`;
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
-      {/* 3D ambient orb — top-right glow */}
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          top: '-40px',
-          right: '-30px',
-          width: '160px',
-          height: '160px',
-          borderRadius: '50%',
-          background: isDark
-            ? 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%)'
-            : 'radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }}
-      />
+      {/* Ambient orb */}
+      <div aria-hidden style={{
+        position: 'absolute', top: '-40px', right: '-30px', width: '160px', height: '160px',
+        borderRadius: '50%',
+        background: isDark
+          ? 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%)'
+          : 'radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
 
       {/* Header */}
-      <div
-        className="px-5 py-3.5 flex items-center justify-between"
-        style={{ borderBottom: `1px solid ${border}`, background: surfLow }}
-      >
+      <div className="px-5 py-3.5 flex items-center justify-between"
+        style={{ borderBottom: `1px solid ${border}`, background: surfLow }}>
         <div className="flex items-center gap-2">
-          <Logo color={d.color} size={15} />
-          <span className="text-[12px] font-bold" style={{ color: d.color }}>{d.label}</span>
+          <Logo color="#6366F1" size={15} />
+          <span className="text-[12px] font-bold" style={{ color: '#6366F1' }}>{label}</span>
+          {platform.handle && (
+            <a href={profileUrl} target="_blank" rel="noopener noreferrer"
+              className="text-[10px] hover:underline"
+              style={{ color: textSec }}>
+              @{platform.handle}
+            </a>
+          )}
         </div>
-        <span
-          className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-          style={{ background: `${d.color}15`, color: d.color }}
-        >
+        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+          style={{ background: 'rgba(99,102,241,0.15)', color: '#6366F1' }}>
           CONNECTED
         </span>
       </div>
 
       {/* Body */}
       <div className="p-5 flex flex-col gap-5 flex-grow">
-
-        {/* Solved count with subtle 3D card inset */}
-        <div
-          className="rounded-2xl p-4"
-          style={{
-            background: isDark
-              ? 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(99,102,241,0.04) 100%)'
-              : 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(99,102,241,0.02) 100%)',
-            border: `1px solid ${isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.15)'}`,
-            boxShadow: isDark
-              ? 'inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 12px -4px rgba(0,0,0,0.3)'
-              : 'inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 12px -4px rgba(99,102,241,0.1)',
-          }}
-        >
+        {/* Solved count */}
+        <div className="rounded-2xl p-4" style={{
+          background: isDark
+            ? 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(99,102,241,0.04) 100%)'
+            : 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(99,102,241,0.02) 100%)',
+          border: `1px solid ${isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.15)'}`,
+        }}>
           <p className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: textSec }}>
             Questions Solved
           </p>
           <div className="flex items-baseline gap-1.5">
-            <span
-              className="text-5xl font-headline font-extrabold leading-none"
-              style={{
-                color: d.color,
-                textShadow: isDark
-                  ? '0 2px 8px rgba(99,102,241,0.4)'
-                  : '0 2px 8px rgba(99,102,241,0.2)',
-              }}
-            >
-              {d.solved}
+            <span className="text-5xl font-headline font-extrabold leading-none"
+              style={{ color: '#6366F1' }}>
+              {total}
             </span>
-            <span className="text-[11px]" style={{ color: textSec }}>/ {d.solvedOf}</span>
+            <span className="text-[11px]" style={{ color: textSec }}>/ {totalOf}</span>
           </div>
+          {rating > 0 && (
+            <p className="text-[11px] mt-1" style={{ color: textSec }}>
+              Rating: <span style={{ color: '#6366F1', fontWeight: 700 }}>{rating}</span>
+            </p>
+          )}
         </div>
 
         {/* Difficulty bars */}
         <div className="space-y-3">
-          {[
-            { key: 'hard',   label: d.hard.label   ?? 'Hard',   color: '#EF4444', data: d.hard   },
-            { key: 'medium', label: d.medium.label ?? 'Medium', color: '#F59E0B', data: d.medium },
-            { key: 'easy',   label: d.easy.label   ?? 'Easy',   color: '#22C55E', data: d.easy   },
-          ].map(({ key, label, color, data }) => {
-            const pct = Math.round((data.solved / data.total) * 100);
+          {diffBars.map(({ key, label: dLabel, color, solved, total: tot }) => {
+            const pct = tot > 0 ? Math.min(100, Math.round((solved / tot) * 100)) : 0;
             return (
               <div key={key}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-bold" style={{ color }}>{label}</span>
+                  <span className="text-[11px] font-bold" style={{ color }}>{dLabel}</span>
                   <span className="text-[11px]" style={{ color: textSec }}>
-                    <span style={{ color: textPri, fontWeight: 700 }}>{data.solved}</span>/{data.total}
+                    <span style={{ color: textPri, fontWeight: 700 }}>{solved}</span>/{tot}
                   </span>
                 </div>
-                <div
-                  className="h-1.5 rounded-full overflow-hidden"
-                  style={{
-                    background: surfLow,
-                    boxShadow: isDark ? 'inset 0 1px 2px rgba(0,0,0,0.3)' : 'inset 0 1px 2px rgba(0,0,0,0.06)',
-                  }}
-                >
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{
-                      width: `${pct}%`,
-                      background: color,
-                      boxShadow: `0 0 6px 0 ${color}55`,
-                    }}
-                  />
+                <div className="h-1.5 rounded-full overflow-hidden"
+                  style={{ background: surfLow }}>
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${pct}%`, background: color }} />
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Streak — bottom */}
-        <div
-          className="flex items-center gap-2 mt-auto pt-3"
-          style={{ borderTop: `1px solid ${border}` }}
-        >
-          <span>🔥</span>
-          <span className="text-sm font-extrabold" style={{ color: d.color }}>{d.streak}d</span>
-          <span className="text-[11px]" style={{ color: textSec }}>streak</span>
+        {/* View profile link */}
+        <div className="mt-auto pt-3 flex justify-end" style={{ borderTop: `1px solid ${border}` }}>
+          <a href={profileUrl} target="_blank" rel="noopener noreferrer"
+            className="text-[10px] font-bold flex items-center gap-1 hover:underline"
+            style={{ color: '#6366F1' }}>
+            View Profile
+            <span className="material-symbols-outlined text-xs">open_in_new</span>
+          </a>
         </div>
       </div>
     </div>
@@ -168,8 +185,7 @@ function CardFace({ pKey, surfLow, border, textPri, textSec, isDark }) {
 
 /* ══════════════════════════════════════════════════════════════ */
 
-function StatsCard({ platform, onSwitch, isDark }) {
-  /* Derive flip state directly from platform — LC=front, CF=back */
+function StatsCard({ platform, onSwitch, isDark, lcStats, cfStats, loading, onSaveAccount }) {
   const isFlipped = platform === 'cf';
 
   const surface = isDark ? '#1b1c1e' : '#FFFFFF';
@@ -178,79 +194,63 @@ function StatsCard({ platform, onSwitch, isDark }) {
   const textPri = isDark ? '#e3e2e5' : '#0F172A';
   const textSec = isDark ? '#908fa0' : '#64748B';
 
-  const faceProps = { surfLow, border, textPri, textSec, isDark };
+  const faceProps = { surfLow, border, textPri, textSec, isDark, onSaveAccount };
+
+  if (loading) {
+    return (
+      <div className="lg:col-span-4 flex flex-col gap-4">
+        <div className="h-10 rounded-2xl animate-pulse" style={{ background: surfLow }} />
+        <div className="h-96 rounded-3xl animate-pulse" style={{ background: surface }} />
+      </div>
+    );
+  }
 
   return (
     <div className="lg:col-span-4 flex flex-col gap-4">
 
-      {/* ── Toggle ── */}
-      <div
-        className="flex p-1 rounded-2xl w-fit gap-1"
-        style={{
-          background: surfLow,
-          border: `1px solid ${border}`,
-          boxShadow: isDark
-            ? 'inset 0 1px 0 rgba(255,255,255,0.03), 0 2px 8px rgba(0,0,0,0.2)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 8px rgba(0,0,0,0.06)',
-        }}
-      >
-        {(['lc', 'cf']).map(p => {
-          const active = platform === p;
-          const Logo   = p === 'lc' ? LCLogo : CFLogo;
+      {/* Toggle */}
+      <div className="flex p-1 rounded-2xl w-fit gap-1" style={{
+        background: surfLow, border: `1px solid ${border}`,
+        boxShadow: isDark
+          ? 'inset 0 1px 0 rgba(255,255,255,0.03), 0 2px 8px rgba(0,0,0,0.2)'
+          : 'inset 0 1px 0 rgba(255,255,255,0.8), 0 2px 8px rgba(0,0,0,0.06)',
+      }}>
+        {[{ key: 'lc', label: 'LeetCode', Logo: LCLogo }, { key: 'cf', label: 'Codeforces', Logo: CFLogo }].map(({ key, label, Logo }) => {
+          const active = platform === key;
           return (
-            <button
-              key={p}
-              onClick={() => onSwitch(p)}
+            <button key={key} onClick={() => onSwitch(key)}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-[11px] font-bold transition-all"
-              style={active
-                ? {
-                    background: DATA[p].color,
-                    color: '#fff',
-                    boxShadow: `0 4px 14px -3px ${DATA[p].color}66`,
-                  }
-                : { color: textSec }
-              }
-            >
+              style={active ? {
+                background: '#6366F1', color: '#fff',
+                boxShadow: '0 4px 14px -3px rgba(99,102,241,0.66)',
+              } : { color: textSec }}>
               <Logo color={active ? '#fff' : textSec} size={12} />
-              {DATA[p].label}
+              {label}
             </button>
           );
         })}
       </div>
 
-      {/* ── Flip card — LC front / CF back ── */}
+      {/* Flip card */}
       <div className="flip-container" style={{ minHeight: '380px' }}>
-        <div
-          className={`flip-card-inner h-full${isFlipped ? ' flipped' : ''}`}
-          style={{ minHeight: '380px' }}
-        >
+        <div className={`flip-card-inner h-full${isFlipped ? ' flipped' : ''}`} style={{ minHeight: '380px' }}>
 
-          {/* Front: LeetCode */}
-          <div
-            className="flip-card-front overflow-hidden rounded-3xl"
-            style={{
-              background: surface,
-              border: `1px solid ${border}`,
-              boxShadow: isDark
-                ? '0 20px 40px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03)'
-                : '0 20px 40px -12px rgba(99,102,241,0.12), 0 0 0 1px rgba(255,255,255,0.8)',
-            }}
-          >
-            <CardFace pKey="lc" {...faceProps} />
+          <div className="flip-card-front overflow-hidden rounded-3xl" style={{
+            background: surface, border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? '0 20px 40px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03)'
+              : '0 20px 40px -12px rgba(99,102,241,0.12), 0 0 0 1px rgba(255,255,255,0.8)',
+          }}>
+            <CardFace pKey="lc" platform={lcStats} {...faceProps} />
           </div>
 
-          {/* Back: Codeforces */}
-          <div
-            className="flip-card-back overflow-hidden rounded-3xl"
-            style={{
-              background: surface,
-              border: `1px solid ${border}`,
-              boxShadow: isDark
-                ? '0 20px 40px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03)'
-                : '0 20px 40px -12px rgba(99,102,241,0.12), 0 0 0 1px rgba(255,255,255,0.8)',
-            }}
-          >
-            <CardFace pKey="cf" {...faceProps} />
+          <div className="flip-card-back overflow-hidden rounded-3xl" style={{
+            background: surface, border: `1px solid ${border}`,
+            boxShadow: isDark
+              ? '0 20px 40px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03)'
+              : '0 20px 40px -12px rgba(99,102,241,0.12), 0 0 0 1px rgba(255,255,255,0.8)',
+          }}>
+            <CardFace pKey="cf" platform={cfStats} {...faceProps} />
           </div>
 
         </div>

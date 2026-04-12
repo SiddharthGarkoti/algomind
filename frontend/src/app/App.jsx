@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+
+import { AuthProvider, useAuth } from '../context/AuthContext.jsx';
+import { GuestOrAuthRoute, AuthOnlyRoute } from '../components/common/PrivateRoute.jsx';
+import GuestConvertBanner from '../components/common/GuestConvertBanner.jsx';
 
 import LoginPage      from '../pages/Login/LoginPage.jsx';
 import GoalPage       from '../pages/Goal/GoalPage.jsx';
@@ -19,8 +23,27 @@ import SupportPage    from '../pages/Support/SupportPage.jsx';
 import PrivacyPage    from '../pages/Privacy/PrivacyPage.jsx';
 import PlansPage      from '../pages/Plans/PlansPage.jsx';
 import PaymentPage    from '../pages/Payment/PaymentPage.jsx';
+import OAuthCallbackPage    from '../pages/OAuthCallback/OAuthCallbackPage.jsx';
+import ConnectPlatformsPage from '../pages/ConnectPlatforms/ConnectPlatformsPage.jsx';
 
-function App() {
+/**
+ * SmartRoot: shows the login page, but silently redirects to /dashboard
+ * if the user is already authenticated — no flicker, no double-nav useEffect.
+ */
+function SmartRoot(props) {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0B]">
+        <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  return <LoginPage {...props} />;
+}
+
+function AppRoutes() {
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('theme');
     if (saved) return saved === 'dark';
@@ -42,37 +65,56 @@ function App() {
     setTimeout(() => root.classList.remove('theme-transition'), 400);
   };
 
-  // Props for each page type
-  const thin  = { isDark, toggleTheme };                         // Login / Goal / Plan / Support / Privacy / Plans
-  const dash  = { theme: isDark ? 'dark' : 'light', toggleTheme }; // Dashboard + all sub-pages
+  const thin = { isDark, toggleTheme };
+  const dash = { theme: isDark ? 'dark' : 'light', toggleTheme };
+
+  // Shorthand wrappers
+  const G = ({ children }) => <GuestOrAuthRoute>{children}</GuestOrAuthRoute>;
+  const A = ({ children }) => <AuthOnlyRoute>{children}</AuthOnlyRoute>;
 
   return (
-    <Routes>
-      {/* ── Onboarding flow ──────────────────────────────── */}
-      <Route path="/"          element={<LoginPage     {...thin} />} />
-      <Route path="/goal"      element={<GoalPage      {...thin} />} />
-      <Route path="/plan"      element={<PlanPage      {...thin} />} />
+    <>
+      <Routes>
+        {/* ── Public ───────────────────────────────────────────── */}
+        <Route path="/"          element={<SmartRoot {...thin} />} />
+        <Route path="/support"   element={<SupportPage {...thin} />} />
+        <Route path="/privacy"   element={<PrivacyPage {...thin} />} />
+        <Route path="/plans"     element={<PlansPage   {...thin} />} />
+        <Route path="/payment"   element={<PaymentPage {...thin} />} />
+        {/* OAuth callback — must be public, outside GuestOrAuthRoute */}
+        <Route path="/oauth-callback"    element={<OAuthCallbackPage />} />
+        <Route path="/connect-platforms" element={<ConnectPlatformsPage />} />
 
-      {/* ── Dashboard ────────────────────────────────────── */}
-      <Route path="/dashboard"  element={<Dashboard      {...dash} />} />
-      <Route path="/analytics"  element={<AnalyticsPage  {...dash} />} />
-      <Route path="/plan-view"  element={<PlanViewPage   {...dash} />} />
-      <Route path="/arena"      element={<ArenaPage      {...dash} />} />
-      <Route path="/resources"  element={<ResourcesPage  {...dash} />} />
-      <Route path="/challenges" element={<ChallengesPage {...dash} />} />
-      <Route path="/friends"    element={<FriendsPage    {...dash} />} />
-      <Route path="/leaderboard"element={<FriendsPage    {...dash} />} />
-      <Route path="/community"  element={<CommunityPage  {...dash} />} />
-      <Route path="/chatbot"    element={<ChatbotPage    {...dash} />} />
-      <Route path="/settings"   element={<SettingsPage   {...dash} />} />
-      <Route path="/profile"    element={<ProfilePage    {...dash} />} />
+        {/* ── Onboarding: guest OR real user ───────────────────── */}
+        <Route path="/goal"  element={<G><GoalPage {...thin} /></G>} />
+        <Route path="/plan"  element={<G><PlanPage {...thin} /></G>} />
 
-      {/* ── Standalone pages ─────────────────────────────── */}
-      <Route path="/support"    element={<SupportPage    {...thin} />} />
-      <Route path="/privacy"    element={<PrivacyPage    {...thin} />} />
-      <Route path="/plans"      element={<PlansPage      {...thin} />} />
-      <Route path="/payment"    element={<PaymentPage    {...thin} />} />
-    </Routes>
+        {/* ── Dashboard: guest OR real user ────────────────────── */}
+        <Route path="/dashboard"   element={<G><Dashboard      {...dash} /></G>} />
+        <Route path="/analytics"   element={<G><AnalyticsPage  {...dash} /></G>} />
+        <Route path="/plan-view"   element={<G><PlanViewPage   {...dash} /></G>} />
+        <Route path="/arena"       element={<G><ArenaPage      {...dash} /></G>} />
+        <Route path="/resources"   element={<G><ResourcesPage  {...dash} /></G>} />
+        <Route path="/challenges"  element={<G><ChallengesPage {...dash} /></G>} />
+        <Route path="/friends"     element={<G><FriendsPage    {...dash} /></G>} />
+        <Route path="/leaderboard" element={<G><FriendsPage    {...dash} /></G>} />
+        <Route path="/community"   element={<G><CommunityPage  {...dash} /></G>} />
+
+        {/* ── Auth-only: real JWT required ─────────────────────── */}
+        <Route path="/chatbot"  element={<G><ChatbotPage  {...dash} /></G>} />
+        <Route path="/profile"  element={<A><ProfilePage  {...dash} /></A>} />
+        <Route path="/settings" element={<A><SettingsPage {...dash} /></A>} />
+      </Routes>
+      <GuestConvertBanner />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 }
 
