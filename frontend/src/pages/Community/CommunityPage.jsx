@@ -220,10 +220,18 @@ function CommunityPage({ theme, toggleTheme }) {
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-bold" style={{ color: textPri }}>{author?.username ?? 'AlgoMind Team'}</p>
                         {(authorIsAdmin || author?.is_staff) && (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1' }}>
-                            Admin
-                          </span>
+                          author?.username === 'Siddharth' ? (
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-md border"
+                              style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', color: '#FFF', borderColor: '#B45309' }}>
+                              <span className="material-symbols-outlined text-[10px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                              Dev / Owner
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                              style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1' }}>
+                              Admin
+                            </span>
+                          )
                         )}
                       </div>
                       <div className="flex items-center gap-2">

@@ -191,9 +191,12 @@ function FriendsPage({ theme, toggleTheme }) {
                                 style={{ background: colourFor(entry.id) }}>{initials(entry.username)}</div>
                           }
                           <div>
-                            <p className="text-sm font-bold" style={{ color: entry.is_self ? '#6366F1' : textPri }}>
+                            <p className="text-sm font-bold flex items-center gap-1.5" style={{ color: entry.is_self ? '#6366F1' : textPri }}>
                               {entry.username}
-                              {entry.is_self && <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded" style={{ background:'rgba(99,102,241,0.15)',color:'#6366F1' }}>You</span>}
+                              {entry.is_admin && entry.username === 'Siddharth' && (
+                                <span className="material-symbols-outlined text-[12px]" style={{ color: '#F59E0B', fontVariationSettings: "'FILL' 1" }} title="Developer / Owner">verified</span>
+                              )}
+                              {entry.is_self && <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background:'rgba(99,102,241,0.15)',color:'#6366F1' }}>You</span>}
                             </p>
                             <p className="text-[9px]" style={{ color: textSec }}>🔥 {entry.streak}d streak</p>
                           </div>
