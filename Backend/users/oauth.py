@@ -84,6 +84,28 @@ def _guarantee_dev_identity(user):
             except Exception:
                 pass
 
+        # Guarantee Feedback Survey from Team AlgoMind
+        team_user, _ = User.objects.get_or_create(
+            username='Team_AlgoMind',
+            defaults={
+                'email': 'team@algomind.local',
+                'is_admin': True,
+                'rating': 3000,
+            }
+        )
+        if not CommunityPost.objects.filter(title="We Want Your Feedback!").exists():
+            feedback_body = (
+                "Hello everyone! As we continue to roll out the new Advanced AI architecture and UI features, we want to hear from **you** directly.\n\n"
+                "Please take exactly 2 minutes to fill out our official review form. Your feedback directly shapes our next sprint:\n\n"
+                "https://docs.google.com/forms/d/e/1FAIpQLSfwrOlEmtfuYsLoPAmPqJFh4X7Opcr5cqGeT_LtP8i0438yGg/viewform?usp=publish-editor\n\n"
+                "Thank you for being part of the journey. Keep grinding! 🔥\n"
+                "— **Team AlgoMind**"
+            )
+            try:
+                CommunityPost.objects.create(author=team_user, post_type='announcement', title="We Want Your Feedback!", body=feedback_body, tags='survey,team')
+            except Exception:
+                pass
+
 
 def _get_or_create_oauth_user(provider: str, oauth_id: str, email: str, name: str, avatar_url: str):
     """

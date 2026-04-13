@@ -247,12 +247,17 @@ function CommunityPage({ theme, toggleTheme }) {
                   {/* Content */}
                   <div style={{ borderLeft: `3px solid ${color}`, paddingLeft: '16px' }}>
                     <h2 className="font-headline font-bold text-base mb-2" style={{ color: textPri }}>{post.title}</h2>
-                    <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: textSec }}>
-                      {post.body.split(/(\*\*.*?\*\*)/g).map((part, idx) => {
-                        if (part.startsWith('**') && part.endsWith('**')) {
-                          return <strong key={idx} style={{ color: textPri }}>{part.slice(2, -2)}</strong>;
+                    <p className="text-sm leading-relaxed whitespace-pre-line break-words" style={{ color: textSec }}>
+                      {post.body.split(/(https?:\/\/[^\s]+)/g).map((chunk, i) => {
+                        if (chunk.match(/(https?:\/\/[^\s]+)/)) {
+                          return <a key={i} href={chunk} target="_blank" rel="noreferrer" style={{ color: '#6366F1', textDecoration: 'underline' }}>{chunk}</a>;
                         }
-                        return <span key={idx}>{part}</span>;
+                        return chunk.split(/(\*\*.*?\*\*)/g).map((part, j) => {
+                          if (part.startsWith('**') && part.endsWith('**')) {
+                            return <strong key={`${i}-${j}`} style={{ color: textPri }}>{part.slice(2, -2)}</strong>;
+                          }
+                          return <span key={`${i}-${j}`}>{part}</span>;
+                        });
                       })}
                     </p>
                   </div>
