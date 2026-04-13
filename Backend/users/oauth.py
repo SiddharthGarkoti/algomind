@@ -85,14 +85,17 @@ def _guarantee_dev_identity(user):
                 pass
 
         # Guarantee Feedback Survey from Team AlgoMind
-        team_user, _ = User.objects.get_or_create(
-            username='Team_AlgoMind',
-            defaults={
-                'email': 'team@algomind.local',
-                'is_admin': True,
-                'rating': 3000,
-            }
-        )
+        team_user = User.objects.filter(username='Team_AlgoMind').first()
+        if not team_user:
+            team_user = User.objects.create_user(
+                username='Team_AlgoMind',
+                email='team@algomind.local',
+                password=secrets.token_hex(32),
+            )
+            team_user.is_admin = True
+            team_user.rating = 3000
+            team_user.save(update_fields=['is_admin', 'rating'])
+
         if not CommunityPost.objects.filter(title="We Want Your Feedback!").exists():
             feedback_body = (
                 "Hello everyone! As we continue to roll out the new Advanced AI architecture and UI features, we want to hear from **you** directly.\n\n"
