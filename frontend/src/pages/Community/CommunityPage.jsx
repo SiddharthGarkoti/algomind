@@ -247,7 +247,14 @@ function CommunityPage({ theme, toggleTheme }) {
                   {/* Content */}
                   <div style={{ borderLeft: `3px solid ${color}`, paddingLeft: '16px' }}>
                     <h2 className="font-headline font-bold text-base mb-2" style={{ color: textPri }}>{post.title}</h2>
-                    <p className="text-sm leading-relaxed" style={{ color: textSec }}>{post.body}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: textSec }}>
+                      {post.body.split(/(\*\*.*?\*\*)/g).map((part, idx) => {
+                        if (part.startsWith('**') && part.endsWith('**')) {
+                          return <strong key={idx} style={{ color: textPri }}>{part.slice(2, -2)}</strong>;
+                        }
+                        return <span key={idx}>{part}</span>;
+                      })}
+                    </p>
                   </div>
 
                   {/* Tags + Actions */}
