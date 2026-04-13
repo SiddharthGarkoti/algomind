@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
+import SignInModal from '../../components/login/SignInModal.jsx';
 import api from '../../utils/api.js';
 
 /* ── Donut SVG ── */
@@ -47,14 +48,15 @@ function AnalyticsPage({ theme, toggleTheme }) {
   const textPri = isDark ? '#e3e2e5' : '#0F172A';
   const textSec = isDark ? '#908fa0' : '#64748B';
 
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
 
-  const [solvedTab,   setSolvedTab]   = useState('total');
-  const [platforms,   setPlatforms]   = useState(null);   // null = loading
-  const [summary,     setSummary]     = useState(null);
-  const [topics,      setTopics]      = useState([]);
-  const [recentSubs,  setRecentSubs]  = useState([]);
-  const [refreshing,  setRefreshing]  = useState('');
+  const [solvedTab,    setSolvedTab]    = useState('total');
+  const [platforms,    setPlatforms]    = useState(null);   // null = loading
+  const [summary,      setSummary]      = useState(null);
+  const [topics,       setTopics]       = useState([]);
+  const [recentSubs,   setRecentSubs]   = useState([]);
+  const [refreshing,   setRefreshing]   = useState('');
+  const [showSignIn,   setShowSignIn]   = useState(false);
 
   const hasRealData = platforms !== null && platforms.length > 0;
 
@@ -141,6 +143,28 @@ function AnalyticsPage({ theme, toggleTheme }) {
           <div className="text-center py-16" style={{ color: textSec }}>
             <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
             Loading your analytics…
+          </div>
+        )}
+
+        {/* Guest sign-in banner */}
+        {isGuest && (
+          <div className="flex items-center justify-between gap-4 rounded-2xl p-4 border"
+            style={{ background: 'rgba(99,102,241,0.06)', borderColor: 'rgba(99,102,241,0.2)' }}>
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-2xl shrink-0" style={{ color: '#6366F1' }}>person_off</span>
+              <div>
+                <p className="text-sm font-bold" style={{ color: textPri }}>You're in guest mode</p>
+                <p className="text-xs mt-0.5" style={{ color: textSec }}>
+                  Sign in to save your progress, track history, and unlock full analytics.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSignIn(true)}
+              className="shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90"
+              style={{ background: '#6366F1', color: '#fff' }}>
+              Sign In
+            </button>
           </div>
         )}
 
@@ -383,6 +407,12 @@ function AnalyticsPage({ theme, toggleTheme }) {
         )}
 
       </div>
+
+      <SignInModal
+        isOpen={showSignIn}
+        onClose={() => setShowSignIn(false)}
+        onSuccess={() => setShowSignIn(false)}
+      />
     </DashboardLayout>
   );
 }

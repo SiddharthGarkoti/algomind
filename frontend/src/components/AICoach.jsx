@@ -1,13 +1,51 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import api from '../utils/api.js';
 
 function AICoach({ isDark }) {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
   const surface  = isDark ? 'rgba(99,102,241,0.06)' : 'linear-gradient(180deg, #F3F4FF 0%, #EEF2FF 100%)';
   const border   = isDark ? 'rgba(99,102,241,0.2)' : '#E0E7FF';
   const textPri  = isDark ? '#e3e2e5' : '#1e1b4b';
   const textSec  = isDark ? '#908fa0' : '#4338CA';
   const btnBg    = isDark ? 'rgba(255,255,255,0.05)' : '#E5E7EB';
   const btnColor = isDark ? '#e3e2e5' : '#111827';
+
+  const [analysis, setAnalysis] = useState(null);
+  const [loading,  setLoading]  = useState(true);
+
+  useEffect(() => {
+    if (!isAuthenticated) { setLoading(false); return; }
+    const cached = sessionStorage.getItem('algomind_mentor_analysis');
+    const cachedTs = sessionStorage.getItem('algomind_mentor_analysis_ts');
+    // Cache for 10 minutes
+    if (cached && cachedTs && Date.now() - Number(cachedTs) < 600_000) {
+      try { setAnalysis(JSON.parse(cached)); setLoading(false); return; } catch {}
+    }
+    api.get('/auth/mentor-analysis/')
+      .then(data => {
+        setAnalysis(data);
+        sessionStorage.setItem('algomind_mentor_analysis', JSON.stringify(data));
+        sessionStorage.setItem('algomind_mentor_analysis_ts', String(Date.now()));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [isAuthenticated]);
+
+  const specialist  = analysis?.specialist  ?? 'DSA';
+  const observation = analysis?.observation ?? 'Analysing your recent submissions…';
+  const insight     = analysis?.insight     ?? '';
+  const weakness    = analysis?.weakness    ?? '';
+  const direction   = analysis?.direction   ?? '';
+
+  const blocks = [
+    { label: 'Observation', color: textSec,   text: observation },
+    { label: 'Insight',     color: textSec,   text: insight },
+    { label: 'Weakness',    color: '#EF4444', text: weakness },
+  ].filter(b => b.text);
 
   return (
     <div
@@ -28,35 +66,46 @@ function AICoach({ isDark }) {
         <div>
           <h4 className="text-sm font-headline font-bold ai-mentor-card-h4" style={{ color: isDark ? '#e3e2e5' : '#4338CA' }}>AI Coach</h4>
           <p className="text-[10px] font-semibold tracking-wider uppercase tag" style={{ color: isDark ? '#c0c1ff' : '#4F46E5' }}>
-            Graph Specialist
+            {loading ? 'Loading…' : `${specialist} Specialist`}
           </p>
         </div>
       </div>
 
-      {/* Insight blocks */}
-      <div className="space-y-4 mb-5 relative z-10 pl-3">
-        {[
-          { label: 'Observation', color: textSec, text: 'I reviewed your last 5 graph attempts.' },
-          { label: 'Insight',     color: textSec, text: <>You're solving correctly, but <span style={{ color: '#6366F1', fontWeight: 700 }}>too slow</span> on medium problems.</> },
-          { label: 'Weakness',    color: '#EF4444', text: <>You're confusing <em>topological sort</em> with <em>BFS layering</em>.</> },
-        ].map(({ label, color, text }) => (
-          <div key={label} className="space-y-1">
-            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color }}>{label}</p>
-            <p className="text-[11px] leading-relaxed" style={{ color: textPri }}>{text}</p>
-          </div>
-        ))}
-        <div className="p-2.5 rounded-r-lg" style={{ background: 'rgba(99,102,241,0.08)', borderLeft: '2px solid #6366F1' }}>
-          <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: '#6366F1' }}>Direction</p>
-          <p className="text-[11px] leading-tight font-medium" style={{ color: textPri }}>
-            Solve 2 DAG-based problems under time constraint.
-          </p>
+      {loading ? (
+        <div className="space-y-3 mb-5 relative z-10 pl-3">
+          {[1,2,3].map(i => (
+            <div key={i} className="space-y-1">
+              <div className="h-2 w-16 rounded animate-pulse" style={{ background: 'rgba(99,102,241,0.15)' }} />
+              <div className="h-3 w-full rounded animate-pulse" style={{ background: 'rgba(99,102,241,0.1)' }} />
+            </div>
+          ))}
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Insight blocks */}
+          <div className="space-y-4 mb-5 relative z-10 pl-3">
+            {blocks.map(({ label, color, text }) => (
+              <div key={label} className="space-y-1">
+                <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color }}>{label}</p>
+                <p className="text-[11px] leading-relaxed" style={{ color: textPri }}>{text}</p>
+              </div>
+            ))}
+            {direction && (
+              <div className="p-2.5 rounded-r-lg" style={{ background: 'rgba(99,102,241,0.08)', borderLeft: '2px solid #6366F1' }}>
+                <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: '#6366F1' }}>Direction</p>
+                <p className="text-[11px] leading-tight font-medium" style={{ color: textPri }}>
+                  {direction}
+                </p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Actions */}
       <div className="space-y-2 relative z-10 pl-3">
         {[
-          { label: 'Explain this mistake',   path: '/chatbot?mode=analysis'  },
+          { label: 'Explain this weakness',  path: '/chatbot?mode=analysis'  },
           { label: 'Give me a strategy',     path: '/chatbot?mode=strategy'  },
           { label: 'Show similar problems',  path: '/arena'                  },
         ].map(({ label, path }) => (

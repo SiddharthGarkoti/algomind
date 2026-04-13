@@ -67,36 +67,146 @@ PROBLEM_POOL = [
 ]
 
 
-def shuffle_for_party(solved_slugs: set, count: int = 4) -> list:
+# Topic tags per slug — used for filter-based shuffle
+SLUG_TOPICS = {
+    'two-sum': ['array', 'hash-table'],
+    'valid-parentheses': ['stack', 'string'],
+    'climbing-stairs': ['dynamic-programming'],
+    'best-time-to-buy-and-sell-stock': ['array', 'dynamic-programming'],
+    'maximum-depth-of-binary-tree': ['tree', 'binary-tree'],
+    'reverse-linked-list': ['linked-list'],
+    'merge-sorted-array': ['array', 'two-pointers'],
+    'valid-anagram': ['string', 'hash-table'],
+    'binary-search': ['binary-search', 'array'],
+    'invert-binary-tree': ['tree', 'binary-tree'],
+    'single-number': ['array', 'bit-manipulation'],
+    'contains-duplicate': ['array', 'hash-table'],
+    'linked-list-cycle': ['linked-list', 'two-pointers'],
+    'implement-queue-using-stacks': ['stack', 'queue'],
+    'first-bad-version': ['binary-search'],
+    'add-two-numbers': ['linked-list', 'math'],
+    'longest-substring-without-repeating-characters': ['string', 'sliding-window', 'hash-table'],
+    'container-with-most-water': ['array', 'two-pointers', 'greedy'],
+    '3sum': ['array', 'two-pointers'],
+    'remove-nth-node-from-end-of-list': ['linked-list', 'two-pointers'],
+    'binary-tree-level-order-traversal': ['tree', 'bfs'],
+    'number-of-islands': ['graph', 'bfs', 'dfs'],
+    'coin-change': ['dynamic-programming', 'array'],
+    'product-of-array-except-self': ['array', 'prefix-sum'],
+    'search-in-rotated-sorted-array': ['binary-search', 'array'],
+    'maximum-subarray': ['array', 'dynamic-programming'],
+    'jump-game': ['array', 'greedy'],
+    'merge-intervals': ['array', 'sorting'],
+    'unique-paths': ['dynamic-programming', 'math'],
+    'permutations': ['array', 'backtracking'],
+    'subsets': ['array', 'backtracking'],
+    'combination-sum': ['array', 'backtracking'],
+    'decode-ways': ['string', 'dynamic-programming'],
+    'house-robber': ['array', 'dynamic-programming'],
+    'lowest-common-ancestor-of-a-binary-search-tree': ['tree', 'bst'],
+    'kth-largest-element-in-an-array': ['array', 'heap'],
+    'top-k-frequent-elements': ['array', 'hash-table', 'heap'],
+    'daily-temperatures': ['array', 'stack', 'monotonic-stack'],
+    'task-scheduler': ['array', 'greedy', 'heap'],
+    'course-schedule': ['graph', 'topological-sort', 'dfs'],
+    'rotate-image': ['array', 'matrix'],
+    'spiral-matrix': ['array', 'matrix'],
+    'group-anagrams': ['array', 'hash-table', 'string'],
+    'evaluate-reverse-polish-notation': ['array', 'stack'],
+    'gas-station': ['array', 'greedy'],
+    'median-of-two-sorted-arrays': ['array', 'binary-search'],
+    'trapping-rain-water': ['array', 'two-pointers', 'stack'],
+    'longest-valid-parentheses': ['string', 'stack', 'dynamic-programming'],
+    'word-ladder': ['bfs', 'graph', 'string'],
+    'merge-k-sorted-lists': ['linked-list', 'heap', 'divide-and-conquer'],
+    'find-median-from-data-stream': ['heap', 'data-stream'],
+    'sliding-window-maximum': ['array', 'sliding-window', 'deque'],
+    'minimum-window-substring': ['string', 'sliding-window', 'hash-table'],
+    'basic-calculator': ['string', 'stack', 'math'],
+    'n-queens': ['backtracking'],
+    'edit-distance': ['string', 'dynamic-programming'],
+    'longest-increasing-subsequence': ['array', 'dynamic-programming', 'binary-search'],
+}
+
+# Canonical topic display names → slug aliases
+TOPIC_ALIASES = {
+    'Array': ['array'],
+    'String': ['string'],
+    'Dynamic Programming': ['dynamic-programming'],
+    'Tree': ['tree', 'binary-tree', 'bst'],
+    'Graph': ['graph', 'bfs', 'dfs', 'topological-sort'],
+    'Linked List': ['linked-list'],
+    'Binary Search': ['binary-search'],
+    'Stack': ['stack'],
+    'Hash Table': ['hash-table'],
+    'Two Pointers': ['two-pointers'],
+    'Greedy': ['greedy'],
+    'Backtracking': ['backtracking'],
+    'Heap': ['heap'],
+    'Sliding Window': ['sliding-window'],
+    'Matrix': ['matrix'],
+    'Math': ['math'],
+    'Bit Manipulation': ['bit-manipulation'],
+    'Sorting': ['sorting'],
+}
+
+# All selectable topic names for the UI
+ALL_TOPIC_NAMES = sorted(TOPIC_ALIASES.keys())
+
+
+def shuffle_for_party(solved_slugs: set, count: int = 4,
+                      topics: list = None, difficulties: list = None) -> list:
     """
     Return `count` problems the party members haven't solved yet.
-    Distribution: 1 easy, 2 medium, 1 hard (adjust if count differs).
+    Optional filters: topics (display names) and difficulties (easy/medium/hard).
     """
     import random as rnd
+
+    # Build allowed slug-sets for topic filter
+    allowed_topic_slugs = None
+    if topics:
+        allowed_topic_slugs = set()
+        for t in topics:
+            for alias in TOPIC_ALIASES.get(t, [t.lower()]):
+                allowed_topic_slugs.add(alias)
+
+    allowed_diffs = set(difficulties) if difficulties else {'easy', 'medium', 'hard'}
 
     by_diff = {'easy': [], 'medium': [], 'hard': []}
     for p in PROBLEM_POOL:
         title, slug, platform, url, diff = p
-        if slug not in solved_slugs:
-            by_diff[diff].append(p)
+        if slug in solved_slugs:
+            continue
+        if diff not in allowed_diffs:
+            continue
+        if allowed_topic_slugs:
+            prob_topics = set(SLUG_TOPICS.get(slug, []))
+            if not prob_topics.intersection(allowed_topic_slugs):
+                continue
+        by_diff[diff].append(p)
 
-    # Shuffle each bucket
     for k in by_diff:
         rnd.shuffle(by_diff[k])
 
-    # Distribution proportions
     easy_n   = max(1, count // 4)
     hard_n   = max(1, count // 4)
     medium_n = count - easy_n - hard_n
+
+    # Respect difficulty filter distribution
+    if 'easy' not in allowed_diffs:
+        medium_n += easy_n; easy_n = 0
+    if 'hard' not in allowed_diffs:
+        medium_n += hard_n; hard_n = 0
 
     selected = []
     selected += by_diff['easy'][:easy_n]
     selected += by_diff['medium'][:medium_n]
     selected += by_diff['hard'][:hard_n]
 
-    # Fill remaining from medium if any bucket was short
+    # Fill remaining slots from any available
     if len(selected) < count:
-        remaining = [p for p in by_diff['medium'] if p not in selected]
-        selected += remaining[:count - len(selected)]
+        pool = [p for p in (by_diff['easy'] + by_diff['medium'] + by_diff['hard']) if p not in selected]
+        selected += pool[:count - len(selected)]
 
+    rnd.shuffle(selected)
     return selected[:count]

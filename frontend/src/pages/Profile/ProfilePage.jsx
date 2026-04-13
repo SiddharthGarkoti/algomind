@@ -28,9 +28,10 @@ function ProfilePage({ theme, toggleTheme }) {
     if (user) {
       setUsername(user.username ?? '');
       setBio(user.bio ?? '');
-      setAvatarSrc(user.avatar ?? null);
+      // Only reset avatarSrc from user if we don't have a locally picked file
+      setAvatarSrc(prev => avatarFile ? prev : (user.avatar ?? null));
     }
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     Promise.all([
@@ -72,6 +73,8 @@ function ProfilePage({ theme, toggleTheme }) {
         updated = await api.patch('/auth/profile/', { username, bio });
       }
       updateUser(updated);
+      // Refresh avatar display from the server response so the new photo appears immediately
+      if (updated?.avatar) setAvatarSrc(updated.avatar);
       setAvatarFile(null);
       setEditing(false);
     } catch (err) {
@@ -85,6 +88,8 @@ function ProfilePage({ theme, toggleTheme }) {
   const handleCancel = () => {
     setUsername(user?.username ?? '');
     setBio(user?.bio ?? '');
+    // Revoke any blob URL to avoid memory leak, then reset to server URL
+    if (avatarSrc && avatarSrc.startsWith('data:')) { /* FileReader result, nothing to revoke */ }
     setAvatarSrc(user?.avatar ?? null);
     setAvatarFile(null);
     setSaveError('');

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
 import Editor from '@monaco-editor/react';
+import { useAuth } from '../../context/AuthContext.jsx';
+import api from '../../utils/api.js';
 
 const QUESTIONS = [
   { id: 1, title: 'Two Sum',                     diff: 'Easy',   topic: 'Arrays',   lcId: 'two-sum',                   cfId: null },
@@ -28,6 +30,7 @@ int main() {
 
 function ArenaPage({ theme, toggleTheme }) {
   const isDark = theme === 'dark';
+  const { isAuthenticated } = useAuth();
   const [topicFilter, setTopicFilter] = useState('All');
   const [diffFilter,  setDiffFilter]  = useState('All');
   const [search,      setSearch]      = useState('');
@@ -35,6 +38,22 @@ function ArenaPage({ theme, toggleTheme }) {
   const [showIDE,     setShowIDE]     = useState(false);
   const [code,        setCode]        = useState(STARTER);
   const [output,      setOutput]      = useState('');
+  const [solvedSlugs, setSolvedSlugs] = useState(new Set());
+
+  // Fetch which arena problems the user has already solved on LeetCode
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const lcSlugs = QUESTIONS.filter(q => q.lcId).map(q => q.lcId);
+    Promise.all(
+      lcSlugs.map(slug =>
+        api.post('/analytics/verify-solved/', { platform: 'leetcode', slug })
+          .then(r => r.verified ? slug : null)
+          .catch(() => null)
+      )
+    ).then(results => {
+      setSolvedSlugs(new Set(results.filter(Boolean)));
+    });
+  }, [isAuthenticated]);
 
   const surface  = isDark ? '#1b1c1e' : '#FFFFFF';
   const surfLow  = isDark ? '#292a2c' : '#F8FAFC';
@@ -154,7 +173,15 @@ function ArenaPage({ theme, toggleTheme }) {
               <div className="flex items-center gap-4">
                 <span className="text-[11px] font-bold w-8 text-center" style={{ color: textSec }}>#{q.id}</span>
                 <div>
-                  <h3 className="text-sm font-headline font-bold" style={{ color: textPri }}>{q.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-headline font-bold" style={{ color: textPri }}>{q.title}</h3>
+                    {q.lcId && solvedSlugs.has(q.lcId) && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>
+                        ✓ Solved
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-2 mt-1">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded"
                       style={{ background: `${DIFF_COLORS[q.diff]}18`, color: DIFF_COLORS[q.diff] }}>

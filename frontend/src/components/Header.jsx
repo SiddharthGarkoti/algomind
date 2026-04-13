@@ -28,12 +28,32 @@ function Header({ theme, toggleTheme, onOpenChat }) {
   // ── streak (real) ────────────────────────────────────────────────
   const streak = user?.streak ?? 0;
 
+  // ── chat message popup ───────────────────────────────────────────
+  const [chatPopup, setChatPopup] = useState(null); // { sender, text }
+  const chatPopupTimer = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      try {
+        const s = JSON.parse(localStorage.getItem('algomind_notif_settings') || '{}');
+        if (s.notifChat === false) return;
+      } catch {}
+      setChatPopup(e.detail);
+      clearTimeout(chatPopupTimer.current);
+      chatPopupTimer.current = setTimeout(() => setChatPopup(null), 4000);
+    };
+    window.addEventListener('algomind:chatmessage', handler);
+    return () => { window.removeEventListener('algomind:chatmessage', handler); clearTimeout(chatPopupTimer.current); };
+  }, []);
+
   // ── notifications (real) ─────────────────────────────────────────
   const [notifications,   setNotifications]   = useState([]);
   const [unread,          setUnread]          = useState(0);
   const [streakAtRisk,    setStreakAtRisk]    = useState(false);
   const [showNotifDrop,   setShowNotifDrop]   = useState(false);
   const [loadingNotifs,   setLoadingNotifs]   = useState(false);
+  const [onlineFriends,   setOnlineFriends]   = useState([]);
+  const [aiInsights,      setAiInsights]      = useState(['Loading insights...']);
 
   // banner rotation
   const [notifIndex, setNotifIndex] = useState(0);
@@ -57,12 +77,36 @@ function Header({ theme, toggleTheme, onOpenChat }) {
     }
   }, [isAuthenticated]);
 
-  // Fetch on mount + every 60 s
+  // ── fetch friend online statuses (every 2 min) ────────────────────
+  const fetchOnlineFriends = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const data = await api.get('/auth/friends/online/');
+      setOnlineFriends((data.friends ?? []).filter(f => f.is_online));
+    } catch { /* non-critical */ }
+  }, [isAuthenticated]);
+
+  // ── fetch AI insight (every 10 min, once on mount) ────────────────
+  const fetchAiInsight = useCallback(async () => {
+    if (!isAuthenticated) return;
+    try {
+      const data = await api.get('/auth/ai-insight/');
+      if (data.insights && data.insights.length > 0) {
+        setAiInsights(data.insights);
+      }
+    } catch { /* non-critical */ }
+  }, [isAuthenticated]);
+
+  // Fetch on mount + polling
   useEffect(() => {
     fetchNotifications();
-    const id = setInterval(fetchNotifications, 60_000);
-    return () => clearInterval(id);
-  }, [fetchNotifications]);
+    fetchOnlineFriends();
+    fetchAiInsight();
+    const notifId   = setInterval(fetchNotifications,   60_000);
+    const onlineId  = setInterval(fetchOnlineFriends,  120_000);
+    const insightId = setInterval(fetchAiInsight,      600_000);
+    return () => { clearInterval(notifId); clearInterval(onlineId); clearInterval(insightId); };
+  }, [fetchNotifications, fetchOnlineFriends, fetchAiInsight]);
 
   // Show streak +1 pop if user just got a new streak day
   useEffect(() => {
@@ -78,27 +122,32 @@ function Header({ theme, toggleTheme, onOpenChat }) {
   }, [user, streak]);
 
   // ── Banner notifications ──────────────────────────────────────────
-  // Build dynamic banner items from real data
+  // Mix real-time state with the AI-generated actionable insights
   const BANNER_NOTIFS = (() => {
     const items = [];
+    
     if (streakAtRisk) {
-      items.push(
-        <><span style={{ color: '#EF4444', fontWeight: 700 }}>Streak at risk</span> — solve today!</>
-      );
+      items.push(<><span style={{ color: '#EF4444', fontWeight: 700 }}>Solve 1 more question</span> to keep your streak 🔥</>);
     }
-    if (unread > 0) {
-      items.push(
-        <><span style={{ color: '#6366F1', fontWeight: 700 }}>{unread} new</span> notification{unread > 1 ? 's' : ''}</>
-      );
+    
+    if (onlineFriends.length > 0) {
+      const name = onlineFriends[0].username;
+      items.push(<><span style={{ color: '#22C55E', fontWeight: 700 }}>{name}</span> is online tracking their goals 🟢</>);
     }
-    if (streak >= 7) {
-      items.push(
-        <><span style={{ color: '#A855F7', fontWeight: 700 }}>{streak}-day</span> streak 🔥 Keep it up!</>
-      );
-    }
-    if (items.length === 0) {
-      items.push(<>Welcome back! Keep grinding 💪</>);
-    }
+    
+    // Add in the AI actionable tips (parsed for *keyword* colors)
+    aiInsights.forEach(text => {
+      if (text !== 'Loading insights...' || items.length === 0) {
+         // split by * to colorize emphasis
+         const parts = text.split('*').map((part, i) => 
+            i % 2 === 1 
+              ? <span key={i} style={{ color: '#F59E0B', fontWeight: 700 }}>{part}</span> 
+              : part
+         );
+         items.push(<span style={{ color: isDark ? '#c7c4d7' : '#475569' }}>{parts}</span>);
+      }
+    });
+
     return items;
   })();
 
@@ -130,6 +179,13 @@ function Header({ theme, toggleTheme, onOpenChat }) {
     try { await api.post(`/auth/notifications/${id}/read/`, {}); } catch { /* best-effort */ }
   };
 
+  const deleteNotif = async (e, id, isRead) => {
+    e.stopPropagation();
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    if (!isRead) setUnread(prev => Math.max(0, prev - 1));
+    try { await api.delete(`/auth/notifications/${id}/delete/`); } catch {}
+  };
+
   const markAllRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnread(0);
@@ -144,6 +200,36 @@ function Header({ theme, toggleTheme, onOpenChat }) {
   const dropBg  = isDark ? '#1F2022' : '#FFFFFF';
 
   return (
+    <>
+    {/* Chat message popup toast */}
+    {chatPopup && (
+      <div
+        className="fixed bottom-6 right-6 z-[400] flex items-start gap-3 px-4 py-3 rounded-2xl shadow-2xl"
+        style={{
+          background: isDark ? '#1F2022' : '#FFFFFF',
+          border: '1px solid rgba(99,102,241,0.25)',
+          boxShadow: '0 8px 32px -8px rgba(99,102,241,0.35)',
+          maxWidth: '300px',
+          animation: 'notification-slide-in 0.3s ease',
+        }}
+      >
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+          style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)' }}>
+          {chatPopup.sender.slice(0, 2).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold mb-0.5" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
+            {chatPopup.sender}
+          </p>
+          <p className="text-[11px] truncate" style={{ color: isDark ? '#908fa0' : '#64748B' }}>
+            {chatPopup.text}
+          </p>
+        </div>
+        <button onClick={() => setChatPopup(null)} className="shrink-0 opacity-50 hover:opacity-100" style={{ color: isDark ? '#908fa0' : '#64748B' }}>
+          <span className="material-symbols-outlined text-sm">close</span>
+        </button>
+      </div>
+    )}
     <header className="w-full px-6 pt-6 pb-2 flex justify-end items-center shrink-0">
       <div className="flex items-center gap-3">
 
@@ -208,7 +294,24 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                 )}
               </div>
 
-              <div className="max-h-80 overflow-y-auto custom-scrollbar">
+              {/* Friends online strip */}
+              {onlineFriends.length > 0 && (
+                <div className="px-4 py-2 flex items-center gap-2 flex-wrap"
+                  style={{ borderBottom: `1px solid ${border}`, background: isDark ? 'rgba(34,197,94,0.04)' : 'rgba(34,197,94,0.03)' }}>
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: '#22C55E' }} />
+                  <p className="text-[10px] font-semibold" style={{ color: '#22C55E' }}>
+                    Online now:
+                  </p>
+                  {onlineFriends.slice(0, 4).map(f => (
+                    <span key={f.id} className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                      style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>
+                      {f.username}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="max-h-72 overflow-y-auto custom-scrollbar">
                 {loadingNotifs ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -232,19 +335,32 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                         }}
                         onClick={() => !notif.read && markRead(notif.id)}
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-3 relative group">
                           <div
                             className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
                             style={{ background: notif.color || meta.color }}
                           >
                             {avatarDisplay}
                           </div>
-                          <div className="flex-grow min-w-0">
+                          <div className="flex-grow min-w-0 pr-8">
                             <p className="text-xs font-semibold" style={{ color: textPri }}>{notif.title}</p>
                             <p className="text-[11px] leading-tight mt-0.5" style={{ color: textSec }}>{notif.body}</p>
                             <p className="text-[9px] mt-0.5" style={{ color: textSec }}>{timeAgo(notif.created_at)}</p>
                           </div>
-                          {!notif.read && <div className="w-2 h-2 rounded-full shrink-0 mt-1" style={{ background: '#6366F1' }} />}
+                          
+                          {/* UI actions (Read & Delete) */}
+                          <div className="absolute right-0 top-0 h-full flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {!notif.read && (
+                              <button onClick={(e) => { e.stopPropagation(); markRead(notif.id); }} className="hover:scale-110" style={{ color: '#22C55E' }} title="Mark as read">
+                                <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                              </button>
+                            )}
+                            <button onClick={(e) => deleteNotif(e, notif.id, notif.read)} className="hover:scale-110" style={{ color: '#EF4444' }} title="Clear notification">
+                              <span className="material-symbols-outlined text-[16px]">cancel</span>
+                            </button>
+                          </div>
+
+                          {!notif.read && <div className="w-2 h-2 rounded-full shrink-0 mt-1 opacity-100 group-hover:opacity-0 transition-opacity" style={{ background: '#6366F1' }} />}
                         </div>
                       </div>
                     );
@@ -292,6 +408,7 @@ function Header({ theme, toggleTheme, onOpenChat }) {
         </button>
       </div>
     </header>
+    </>
   );
 }
 

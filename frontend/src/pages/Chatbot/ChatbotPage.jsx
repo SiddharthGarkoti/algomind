@@ -20,9 +20,31 @@ function ChatbotPage({ theme, toggleTheme }) {
   const [input,        setInput]        = useState('');
   const [sending,      setSending]      = useState(false);
   const [modalOpen,    setModalOpen]    = useState(false);
+  const [agent,        setAgent]        = useState('advanced'); // 'advanced' | 'basic'
   const messagesEnd = useRef(null);
+  const autoSentRef = useRef(false);
 
   useEffect(() => { messagesEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // Auto-send ?ask= URL param (e.g. from Plan page "Ask AI" button)
+  useEffect(() => {
+    if (isGuest || autoSentRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const ask = params.get('ask');
+    if (ask) {
+      autoSentRef.current = true;
+      // Small delay so the component is fully mounted
+      setTimeout(() => send(ask), 300);
+    }
+  }, [isGuest]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Detect intent from message text → choose correct AI endpoint
+  const detectEndpoint = (text) => {
+    const t = text.toLowerCase();
+    if (/\b(hint|stuck|clue|nudge|tip)\b/.test(t)) return '/ai/hint/';
+    if (/\b(debug|bug|error|wrong|fix|crash|exception|traceback)\b/.test(t)) return '/ai/debug/';
+    return '/ai/explain/'; // default: explain / general chat
+  };
 
   const send = async (text) => {
     if (!text.trim() || sending) return;
@@ -32,7 +54,8 @@ function ChatbotPage({ theme, toggleTheme }) {
     setSending(true);
 
     try {
-      const data = await api.post('/ai/explain/', { message: text });
+      const endpoint = detectEndpoint(text);
+      const data = await api.post(endpoint, { message: text });
       setMessages(m => [...m, {
         from: 'bot',
         text: data.response,
@@ -49,6 +72,7 @@ function ChatbotPage({ theme, toggleTheme }) {
     }
   };
 
+
   const surface  = isDark ? '#1b1c1e' : '#FFFFFF';
   const surfLow  = isDark ? '#292a2c' : '#F8FAFC';
   const border   = isDark ? 'rgba(70,69,84,0.15)' : 'rgba(0,0,0,0.08)';
@@ -62,11 +86,11 @@ function ChatbotPage({ theme, toggleTheme }) {
         {/* Header */}
         <div className="flex items-center gap-4 rounded-2xl p-4"
           style={{ background: surface, border: `1px solid ${border}` }}>
-          <div className="w-10 h-10 rounded-full flex items-center justify-center"
+          <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
             style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)' }}>
             <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="font-headline font-bold text-base" style={{ color: textPri }}>AI Mentor</h1>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -150,6 +174,27 @@ function ChatbotPage({ theme, toggleTheme }) {
               style={{ color: textPri }}
               disabled={sending || isGuest}
             />
+            {/* Agent toggle — Advanced requires Plus/Pro */}
+            <div className="flex items-center gap-1 rounded-xl p-1 shrink-0"
+              style={{ background: surfLow, border: `1px solid ${border}` }}>
+              <button
+                onClick={() => setAgent('basic')}
+                className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all"
+                style={agent === 'basic'
+                  ? { background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff' }
+                  : { color: textSec }}>
+                Basic
+              </button>
+              <button
+                onClick={() => alert('Advanced Mentor requires AlgoMind Plus or Pro. Upgrade in Settings → Plans.')}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all"
+                style={agent === 'advanced'
+                  ? { background: 'linear-gradient(135deg,#F59E0B,#EF4444)', color: '#fff' }
+                  : { color: '#F59E0B' }}>
+                Advanced
+                <span className="material-symbols-outlined" style={{ fontSize: '10px' }}>lock</span>
+              </button>
+            </div>
             <button
               onClick={() => send(input)}
               disabled={sending || !input.trim() || isGuest}

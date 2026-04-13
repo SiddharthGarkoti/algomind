@@ -7,6 +7,7 @@ from .views import (
     RefreshPlatformView,
     RecentSubmissionsView,
     PreviewStatsView,
+    VerifySolvedView,
 )
 
 urlpatterns = [
@@ -17,4 +18,5 @@ urlpatterns = [
     path('refresh/<str:platform>/',         RefreshPlatformView.as_view(),    name='refresh_platform'),
     path('validate/<str:platform>/<str:handle>/', ValidateHandleView.as_view(), name='validate_handle'),
     path('preview/<str:platform>/<str:handle>/', PreviewStatsView.as_view(),  name='preview_stats'),
+    path('verify-solved/',                  VerifySolvedView.as_view(),       name='verify_solved'),
 ]

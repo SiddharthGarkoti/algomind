@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import SignInModal from './login/SignInModal.jsx';
 
 function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
   const navigate       = navProp || useNavigate();
-  const { user, logout } = useAuth();
+  const { user, isGuest, logout } = useAuth();
 
   const [isPinned,       setIsPinned]       = useState(false);
   const [isHovered,      setIsHovered]      = useState(false);
   const [isPracticeOpen, setIsPracticeOpen] = useState(false);
   const [isProfileOpen,  setIsProfileOpen]  = useState(false);
+  const [showSignIn,     setShowSignIn]     = useState(false);
   const isExpanded = isPinned || isHovered;
 
   const profileMenuRef = useRef(null);
@@ -45,10 +47,10 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
     { path: '/resources',  icon: 'menu_book',         label: 'Resources' },
   ];
 
-  // Build avatar URL: use uploaded avatar or fallback to dicebear seeded with username
-  const avatarUrl = user?.avatar
-    ? user.avatar
-    : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user?.username ?? 'user')}`;
+  // Build avatar URL only for authenticated users
+  const avatarUrl = user
+    ? (user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.username ?? 'user')}`)
+    : null;
 
   const handleLogout = async () => {
     setIsProfileOpen(false);
@@ -73,6 +75,7 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
   );
 
   return (
+    <>
     <aside
       id="sidebar"
       className={`flex flex-col shrink-0${isExpanded ? ' expanded' : ''}`}
@@ -155,78 +158,124 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
         </div>
       </nav>
 
-      {/* Profile */}
-      <div style={{ borderTop: `1px solid ${borderCol}` }} className="relative shrink-0">
-        {/* Profile Dropdown */}
-        <div
-          ref={profileMenuRef}
-          className={`absolute bottom-full left-2 w-52 mb-2 rounded-2xl shadow-2xl overflow-hidden py-2 z-[70]${isProfileOpen ? ' block' : ' hidden'}`}
-          style={{ background: isDark ? '#292a2c' : '#FFFFFF', border: `1px solid ${borderCol}` }}
-        >
-          {/* Upgrade Banner */}
-          <div className="mx-2 mb-2 rounded-xl p-3 cursor-pointer hover:opacity-90 transition-opacity"
-            style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.15),rgba(168,85,247,0.15))', border: '1px solid rgba(99,102,241,0.2)' }}
-            onClick={() => { setIsProfileOpen(false); navigate('/plans'); }}>
-            <div className="flex items-center gap-2">
-              <span className="text-lg">⚡</span>
-              <div>
-                <p className="text-[11px] font-extrabold" style={{ color: '#6366F1' }}>Upgrade to Plus</p>
-                <p className="text-[9px]" style={{ color: isDark ? '#908fa0' : '#64748B' }}>₹100/month · Unlock all features</p>
+      {/* Bottom section — differs for guest vs authenticated */}
+      {isGuest && !user ? (
+        /* Guest: sign-in nav-item row + guest identity row */
+        <div style={{ borderTop: `1px solid ${borderCol}` }} className="shrink-0">
+          {/* Sign In — styled exactly like a nav item so it collapses properly */}
+          <button
+            onClick={() => setShowSignIn(true)}
+            className="nav-item w-full text-left transition-all hover:opacity-90"
+            style={{ color: '#6366F1', background: 'rgba(99,102,241,0.06)' }}
+          >
+            <div className="icon-container">
+              <span className="material-symbols-outlined text-lg" style={{ color: '#6366F1' }}>login</span>
+            </div>
+            <div className="sidebar-content-text">
+              <p className="text-xs font-bold leading-none" style={{ color: '#6366F1' }}>Sign In</p>
+              <p className="text-[9px] mt-0.5 leading-none" style={{ color: textMuted }}>Save your progress</p>
+            </div>
+          </button>
+          {/* Guest identity row */}
+          <button
+            className="nav-item w-full text-left opacity-50 cursor-default"
+            style={{ color: textMuted }}
+            tabIndex={-1}
+          >
+            <div className="icon-container">
+              <div className="h-8 w-8 rounded-full flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${borderCol}` }}>
+                <span className="material-symbols-outlined text-lg" style={{ color: textMuted, fontVariationSettings: "'FILL' 1" }}>person</span>
               </div>
             </div>
-          </div>
-
-          <button
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
-            style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}
-            onClick={() => { setIsProfileOpen(false); navigate('/profile'); }}>
-            <span className="material-symbols-outlined text-lg">person</span> Profile
-          </button>
-
-          <button
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
-            style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}
-            onClick={() => { setIsProfileOpen(false); navigate('/settings'); }}>
-            <span className="material-symbols-outlined text-lg">settings</span> Settings
-          </button>
-
-          <button
-            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
-            style={{ color: '#EF4444' }}
-            onClick={handleLogout}>
-            <span className="material-symbols-outlined text-lg">logout</span> Log Out
+            <div className="sidebar-content-text flex-grow truncate text-left">
+              <p className="text-xs font-bold truncate" style={{ color: textMuted }}>Guest</p>
+              <p className="text-[9px]" style={{ color: textMuted }}>Not signed in</p>
+            </div>
           </button>
         </div>
 
-        {/* Profile Button */}
-        <button
-          ref={profileBtnRef}
-          className="w-full flex items-center h-16 overflow-hidden transition-colors hover:opacity-80"
-          onClick={e => { e.stopPropagation(); if (isExpanded) setIsProfileOpen(p => !p); }}
-        >
-          <div className="icon-container">
-            <div className="h-8 w-8 rounded-full overflow-hidden shrink-0 border-2" style={{ borderColor: isDark ? 'rgba(99,102,241,0.4)' : 'rgba(99,102,241,0.3)' }}>
-              <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+      ) : (
+        /* Authenticated: full profile dropdown */
+        <div style={{ borderTop: `1px solid ${borderCol}` }} className="relative shrink-0">
+          {/* Profile Dropdown */}
+          <div
+            ref={profileMenuRef}
+            className={`absolute bottom-full left-2 w-52 mb-2 rounded-2xl shadow-2xl overflow-hidden py-2 z-[70]${isProfileOpen ? ' block' : ' hidden'}`}
+            style={{ background: isDark ? '#292a2c' : '#FFFFFF', border: `1px solid ${borderCol}` }}
+          >
+            {/* Upgrade Banner */}
+            <div className="mx-2 mb-2 rounded-xl p-3 cursor-pointer hover:opacity-90 transition-opacity"
+              style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.15),rgba(168,85,247,0.15))', border: '1px solid rgba(99,102,241,0.2)' }}
+              onClick={() => { setIsProfileOpen(false); navigate('/plans'); }}>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">⚡</span>
+                <div>
+                  <p className="text-[11px] font-extrabold" style={{ color: '#6366F1' }}>Upgrade to Plus</p>
+                  <p className="text-[9px]" style={{ color: isDark ? '#908fa0' : '#64748B' }}>₹100/month · Unlock all features</p>
+                </div>
+              </div>
             </div>
+
+            <button
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
+              style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}
+              onClick={() => { setIsProfileOpen(false); navigate('/profile'); }}>
+              <span className="material-symbols-outlined text-lg">person</span> Profile
+            </button>
+
+            <button
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
+              style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}
+              onClick={() => { setIsProfileOpen(false); navigate('/settings'); }}>
+              <span className="material-symbols-outlined text-lg">settings</span> Settings
+            </button>
+
+            <button
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
+              style={{ color: '#EF4444' }}
+              onClick={handleLogout}>
+              <span className="material-symbols-outlined text-lg">logout</span> Log Out
+            </button>
           </div>
-          <div className="sidebar-content-text flex-grow truncate text-left">
-            <p className="text-xs font-bold truncate" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
-              {user?.username ?? '...'}
-            </p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase leading-none"
-                style={{ background: 'rgba(99,102,241,0.15)', color: '#6366F1' }}>Basic</span>
-              <button
-                className="text-[9px] font-bold flex items-center gap-0.5 hover:opacity-70 leading-none"
-                style={{ color: '#F59E0B' }}
-                onClick={e => { e.stopPropagation(); navigate('/plans'); }}>
-                <span>⚡</span> Upgrade
-              </button>
+
+          {/* Profile Button */}
+          <button
+            ref={profileBtnRef}
+            className="w-full flex items-center h-16 overflow-hidden transition-colors hover:opacity-80"
+            onClick={e => { e.stopPropagation(); if (isExpanded) setIsProfileOpen(p => !p); }}
+          >
+            <div className="icon-container">
+              <div className="h-8 w-8 rounded-full overflow-hidden shrink-0 border-2" style={{ borderColor: isDark ? 'rgba(99,102,241,0.4)' : 'rgba(99,102,241,0.3)' }}>
+                <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+              </div>
             </div>
-          </div>
-        </button>
-      </div>
+            <div className="sidebar-content-text flex-grow truncate text-left">
+              <p className="text-xs font-bold truncate" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
+                {user?.username ?? '...'}
+              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase leading-none"
+                  style={{ background: 'rgba(99,102,241,0.15)', color: '#6366F1' }}>Basic</span>
+                <button
+                  className="text-[9px] font-bold flex items-center gap-0.5 hover:opacity-70 leading-none"
+                  style={{ color: '#F59E0B' }}
+                  onClick={e => { e.stopPropagation(); navigate('/plans'); }}>
+                  <span>⚡</span> Upgrade
+                </button>
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
     </aside>
+
+    <SignInModal
+      isOpen={showSignIn}
+      onClose={() => setShowSignIn(false)}
+      onSuccess={() => { setShowSignIn(false); navigate('/dashboard'); }}
+    />
+    </>
   );
 }
 

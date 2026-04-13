@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
 
 const COLOURS = ['#6366F1','#A855F7','#22C55E','#F59E0B','#EF4444','#06B6D4','#EC4899','#8B5CF6'];
@@ -8,16 +10,20 @@ const initials  = (name) => (name ?? '??').slice(0, 2).toUpperCase();
 
 function FriendsPage({ theme, toggleTheme }) {
   const isDark = theme === 'dark';
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const [tab,         setTab]         = useState('leaderboard');
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [friends,     setFriends]     = useState([]);
-  const [requests,    setRequests]    = useState([]);
-  const [searchQ,     setSearchQ]     = useState('');
-  const [searchRes,   setSearchRes]   = useState([]);
-  const [searching,   setSearching]   = useState(false);
-  const [loading,     setLoading]     = useState(true);
-  const [actionId,    setActionId]    = useState(null);
+  const [tab,            setTab]            = useState('friends');
+  const [lbMode,         setLbMode]         = useState('global');   // 'global' | 'friends'
+  const [leaderboard,    setLeaderboard]    = useState([]);
+  const [friendsLb,      setFriendsLb]      = useState([]);
+  const [friends,        setFriends]        = useState([]);
+  const [requests,       setRequests]       = useState([]);
+  const [searchQ,        setSearchQ]        = useState('');
+  const [searchRes,      setSearchRes]      = useState([]);
+  const [searching,      setSearching]      = useState(false);
+  const [loading,        setLoading]        = useState(true);
+  const [actionId,       setActionId]       = useState(null);
 
   const surface = isDark ? '#1b1c1e' : '#FFFFFF';
   const surfLow = isDark ? '#292a2c' : '#F8FAFC';
@@ -27,9 +33,19 @@ function FriendsPage({ theme, toggleTheme }) {
 
   const loadLeaderboard = useCallback(() =>
     api.get('/auth/leaderboard/?limit=50').then(d => setLeaderboard(d.leaderboard ?? [])).catch(() => {}), []);
-  const loadFriends     = useCallback(() =>
-    api.get('/friends/list/').then(d => setFriends(Array.isArray(d) ? d : (d?.results ?? []))).catch(() => {}), []);
-  const loadRequests    = useCallback(() =>
+  const loadFriends = useCallback(() =>
+    api.get('/friends/list/').then(d => {
+      const list = Array.isArray(d) ? d : (d?.results ?? []);
+      setFriends(list);
+      // Build friends leaderboard: extract friend user objects, sort by rating
+      const friendUsers = list
+        .map(f => f.friend)
+        .filter(Boolean)
+        .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+        .map((u, i) => ({ ...u, rank: i + 1 }));
+      setFriendsLb(friendUsers);
+    }).catch(() => {}), []);
+  const loadRequests = useCallback(() =>
     api.get('/friends/requests/').then(d => setRequests(Array.isArray(d) ? d : (d?.results ?? []))).catch(() => {}), []);
 
   useEffect(() => {
@@ -82,10 +98,10 @@ function FriendsPage({ theme, toggleTheme }) {
     window.dispatchEvent(new CustomEvent('algomind:openchat', { detail: { ...friendUser, id: friendUser.id } }));
 
   const TABS = [
-    { id: 'leaderboard', label: 'Leaderboard' },
     { id: 'friends',     label: `Friends (${friends.length})` },
     { id: 'requests',    label: `Requests${requests.length ? ` (${requests.length})` : ''}` },
     { id: 'add',         label: 'Add Friend' },
+    { id: 'leaderboard', label: 'Leaderboard' },
   ];
 
   return (
@@ -121,49 +137,77 @@ function FriendsPage({ theme, toggleTheme }) {
         )}
 
         {/* Leaderboard */}
-        {!loading && tab === 'leaderboard' && (
-          <div className="space-y-2">
-            <div className="grid grid-cols-[40px_1fr_80px_90px] gap-4 px-4 pb-1">
-              {['Rank','Name','Level','Rating'].map(h => (
-                <span key={h} className="text-[10px] font-bold uppercase tracking-widest" style={{ color: textSec }}>{h}</span>
-              ))}
-            </div>
-            {leaderboard.length === 0 && (
-              <p className="text-center py-10 text-sm" style={{ color: textSec }}>No users yet.</p>
-            )}
-            {leaderboard.map(entry => (
-              <div key={entry.id}
-                className="rounded-2xl p-4 transition-all hover:scale-[1.003]"
-                style={{
-                  background: entry.is_self ? (isDark ? 'rgba(99,102,241,0.08)' : '#EEF2FF') : surface,
-                  border: `1px solid ${entry.is_self ? 'rgba(99,102,241,0.3)' : border}`,
-                }}>
-                <div className="grid grid-cols-[40px_1fr_80px_90px] gap-4 items-center">
-                  <span className="text-lg font-headline font-extrabold"
-                    style={{ color: entry.rank <= 3 ? ['#F59E0B','#94A3B8','#CD7C2F'][entry.rank-1] : textSec }}>
-                    {entry.rank <= 3 ? ['🥇','🥈','🥉'][entry.rank-1] : `#${entry.rank}`}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    {entry.avatar
-                      ? <img src={entry.avatar} className="w-8 h-8 rounded-full object-cover shrink-0" alt="" />
-                      : <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold text-white shrink-0"
-                          style={{ background: colourFor(entry.id) }}>{initials(entry.username)}</div>
-                    }
-                    <div>
-                      <p className="text-sm font-bold" style={{ color: entry.is_self ? '#6366F1' : textPri }}>
-                        {entry.username}
-                        {entry.is_self && <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded" style={{ background:'rgba(99,102,241,0.15)',color:'#6366F1' }}>You</span>}
-                      </p>
-                      <p className="text-[9px]" style={{ color: textSec }}>🔥 {entry.streak}d streak</p>
-                    </div>
-                  </div>
-                  <span className="text-sm font-bold" style={{ color: textPri }}>Lv {entry.level}</span>
-                  <span className="text-sm font-bold" style={{ color: colourFor(entry.id) }}>{entry.rating}</span>
-                </div>
+        {!loading && tab === 'leaderboard' && (() => {
+          const entries = lbMode === 'friends'
+            ? friendsLb.map((u, i) => ({ ...u, rank: i + 1, is_self: u.username === user?.username }))
+            : leaderboard;
+          return (
+            <div className="space-y-4">
+              {/* Global / Friends toggle */}
+              <div className="flex gap-2 p-1 rounded-xl w-fit"
+                style={{ background: surfLow, border: `1px solid ${border}` }}>
+                {[
+                  { id: 'global',  label: '🌍 Global'  },
+                  { id: 'friends', label: '👥 Friends' },
+                ].map(m => (
+                  <button key={m.id} onClick={() => setLbMode(m.id)}
+                    className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all"
+                    style={lbMode === m.id ? { background: '#6366F1', color: '#fff' } : { color: textSec }}>
+                    {m.label}
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+
+              {lbMode === 'friends' && friendsLb.length === 0 && (
+                <div className="text-center py-12" style={{ color: textSec }}>
+                  <span className="material-symbols-outlined text-4xl block mb-3">leaderboard</span>
+                  <p className="text-sm">Add friends to see a friends leaderboard!</p>
+                </div>
+              )}
+
+              {entries.length > 0 && (
+                <>
+                  <div className="grid grid-cols-[40px_1fr_80px_90px] gap-4 px-4 pb-1">
+                    {['Rank','Name','Level','Rating'].map(h => (
+                      <span key={h} className="text-[10px] font-bold uppercase tracking-widest" style={{ color: textSec }}>{h}</span>
+                    ))}
+                  </div>
+                  {entries.map(entry => (
+                    <div key={entry.id}
+                      className="rounded-2xl p-4 transition-all hover:scale-[1.003]"
+                      style={{
+                        background: entry.is_self ? (isDark ? 'rgba(99,102,241,0.08)' : '#EEF2FF') : surface,
+                        border: `1px solid ${entry.is_self ? 'rgba(99,102,241,0.3)' : border}`,
+                      }}>
+                      <div className="grid grid-cols-[40px_1fr_80px_90px] gap-4 items-center">
+                        <span className="text-lg font-headline font-extrabold"
+                          style={{ color: entry.rank <= 3 ? ['#F59E0B','#94A3B8','#CD7C2F'][entry.rank-1] : textSec }}>
+                          {entry.rank <= 3 ? ['🥇','🥈','🥉'][entry.rank-1] : `#${entry.rank}`}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          {entry.avatar
+                            ? <img src={entry.avatar} className="w-8 h-8 rounded-full object-cover shrink-0" alt="" />
+                            : <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold text-white shrink-0"
+                                style={{ background: colourFor(entry.id) }}>{initials(entry.username)}</div>
+                          }
+                          <div>
+                            <p className="text-sm font-bold" style={{ color: entry.is_self ? '#6366F1' : textPri }}>
+                              {entry.username}
+                              {entry.is_self && <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded" style={{ background:'rgba(99,102,241,0.15)',color:'#6366F1' }}>You</span>}
+                            </p>
+                            <p className="text-[9px]" style={{ color: textSec }}>🔥 {entry.streak}d streak</p>
+                          </div>
+                        </div>
+                        <span className="text-sm font-bold" style={{ color: textPri }}>Lv {entry.level}</span>
+                        <span className="text-sm font-bold" style={{ color: colourFor(entry.id) }}>{entry.rating}</span>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Friends List */}
         {!loading && tab === 'friends' && (
@@ -181,17 +225,34 @@ function FriendsPage({ theme, toggleTheme }) {
                   className="friend-card rounded-2xl p-4 flex items-center justify-between"
                   style={{ background: surface, border: `1px solid ${border}` }}>
                   <div className="flex items-center gap-4">
-                    {friend?.avatar
-                      ? <img src={friend.avatar} className="w-10 h-10 rounded-full object-cover shrink-0" alt="" />
-                      : <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0"
-                          style={{ background: colourFor(friend?.id) }}>{initials(friend?.username)}</div>
-                    }
+                    <button
+                      onClick={() => navigate(`/profile/${friend?.username}`)}
+                      className="shrink-0 transition-transform hover:scale-105"
+                    >
+                      {friend?.avatar
+                        ? <img src={friend.avatar} className="w-10 h-10 rounded-full object-cover" alt="" />
+                        : <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white"
+                            style={{ background: colourFor(friend?.id) }}>{initials(friend?.username)}</div>
+                      }
+                    </button>
                     <div>
-                      <p className="text-sm font-bold" style={{ color: textPri }}>{friend?.username}</p>
+                      <button
+                        onClick={() => navigate(`/profile/${friend?.username}`)}
+                        className="text-sm font-bold hover:underline text-left transition-opacity hover:opacity-70"
+                        style={{ color: textPri }}
+                      >
+                        {friend?.username}
+                      </button>
                       <p className="text-[10px]" style={{ color: textSec }}>Lv {friend?.level} · Rating {friend?.rating} · 🔥{friend?.streak}d</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    <button
+                      className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-80"
+                      style={{ background: surfLow, color: '#6366F1', border: `1px solid rgba(99,102,241,0.3)` }}
+                      onClick={() => navigate(`/profile/${friend?.username}`)}>
+                      <span className="material-symbols-outlined text-sm align-middle mr-1">person</span>Profile
+                    </button>
                     <button
                       className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-80"
                       style={{ background: surfLow, color: textSec, border: `1px solid ${border}` }}

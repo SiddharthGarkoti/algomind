@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
@@ -127,38 +126,223 @@ function ContestTab({ isDark }) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   AI Shuffle Filter Modal
+══════════════════════════════════════════════════════════════════ */
+const TOPIC_OPTIONS = [
+  'Array','String','Dynamic Programming','Tree','Graph','Linked List',
+  'Binary Search','Stack','Hash Table','Two Pointers','Greedy',
+  'Backtracking','Heap','Sliding Window','Matrix','Math',
+  'Bit Manipulation','Sorting',
+];
+const DIFF_OPTIONS = ['easy','medium','hard'];
+
+function ShuffleFilterModal({ isDark, onClose, onShuffle }) {
+  const t = useTheme(isDark);
+  const [selTopics, setSelTopics] = useState([]);
+  const [selDiffs,  setSelDiffs]  = useState([]);
+  const [busy, setBusy] = useState(false);
+
+  const toggle = (setArr, val) =>
+    setArr(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]);
+
+  const handleShuffle = async () => {
+    setBusy(true);
+    await onShuffle(selTopics, selDiffs);
+    setBusy(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md mx-4 rounded-3xl overflow-hidden shadow-2xl"
+        style={{ background: isDark ? '#18181b' : '#fff', border: `1px solid rgba(99,102,241,0.2)` }}
+        onClick={e => e.stopPropagation()}>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="text-lg font-bold" style={{ color: t.textPri }}>AI Shuffle</h3>
+              <p className="text-xs mt-0.5" style={{ color: t.textSec }}>Filter by topic and difficulty (optional)</p>
+            </div>
+            <button onClick={onClose}><span className="material-symbols-outlined" style={{ color: t.textSec }}>close</span></button>
+          </div>
+
+          <div className="mb-4">
+            <p className="text-xs font-bold mb-2 uppercase tracking-wider" style={{ color: t.textSec }}>Topics</p>
+            <div className="flex flex-wrap gap-1.5">
+              {TOPIC_OPTIONS.map(top => (
+                <button key={top} onClick={() => toggle(setSelTopics, top)}
+                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all"
+                  style={selTopics.includes(top)
+                    ? { background: '#6366F1', color: '#fff' }
+                    : { background: t.surfLow, color: t.textSec, border: `1px solid ${t.border}` }}>
+                  {top}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <p className="text-xs font-bold mb-2 uppercase tracking-wider" style={{ color: t.textSec }}>Difficulty</p>
+            <div className="flex gap-2">
+              {DIFF_OPTIONS.map(d => {
+                const c = DIFF_COLOR[d];
+                return (
+                  <button key={d} onClick={() => toggle(setSelDiffs, d)}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold capitalize transition-all"
+                    style={selDiffs.includes(d)
+                      ? { background: c, color: '#fff' }
+                      : { background: t.surfLow, color: t.textSec, border: `1px solid ${t.border}` }}>
+                    {d}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <button onClick={handleShuffle} disabled={busy}
+            className="w-full py-3 rounded-2xl font-bold text-white disabled:opacity-60 flex items-center justify-center gap-2"
+            style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)' }}>
+            {busy
+              ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              : <span className="material-symbols-outlined text-sm">auto_awesome</span>}
+            {selTopics.length === 0 && selDiffs.length === 0 ? 'Shuffle (Any)' : 'Shuffle with Filters'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Invite Friends Modal
+══════════════════════════════════════════════════════════════════ */
+function InviteFriendsModal({ isDark, partyCode, onClose, onInvite }) {
+  const t = useTheme(isDark);
+  const [friends,  setFriends]  = useState([]);
+  const [sending,  setSending]  = useState(null);
+  const [sent,     setSent]     = useState(new Set());
+  const shareUrl = `${window.location.origin}/challenges?join=${partyCode}`;
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    api.get('/friends/list/').then(d => {
+      const list = Array.isArray(d) ? d : (d?.results ?? []);
+      setFriends(list.map(f => f.friend).filter(Boolean));
+    }).catch(() => {});
+  }, []);
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(shareUrl).catch(() => {});
+    setCopied(true); setTimeout(() => setCopied(false), 2000);
+  };
+
+  const invite = async (friendId) => {
+    setSending(friendId);
+    await onInvite(friendId);
+    setSent(prev => new Set([...prev, friendId]));
+    setSending(null);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-sm mx-4 rounded-3xl overflow-hidden shadow-2xl"
+        style={{ background: isDark ? '#18181b' : '#fff', border: `1px solid rgba(99,102,241,0.2)` }}
+        onClick={e => e.stopPropagation()}>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold" style={{ color: t.textPri }}>Invite Friends</h3>
+            <button onClick={onClose}><span className="material-symbols-outlined" style={{ color: t.textSec }}>close</span></button>
+          </div>
+
+          {/* Copy link */}
+          <button onClick={copyLink}
+            className="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-2xl mb-4 transition-all hover:opacity-90"
+            style={{ background: t.surfLow, border: `1px solid ${t.border}` }}>
+            <span className="text-xs font-mono truncate" style={{ color: t.textSec }}>{shareUrl}</span>
+            <span className="material-symbols-outlined text-sm shrink-0" style={{ color: copied ? '#22C55E' : '#6366F1' }}>
+              {copied ? 'check' : 'content_copy'}
+            </span>
+          </button>
+
+          {/* Friends list */}
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {friends.length === 0 && (
+              <p className="text-center text-xs py-6" style={{ color: t.textSec }}>No friends yet — share the link above!</p>
+            )}
+            {friends.map(f => (
+              <div key={f.id} className="flex items-center justify-between gap-3 p-3 rounded-2xl"
+                style={{ background: t.surfLow }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                    style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)' }}>
+                    {f.username[0].toUpperCase()}
+                  </div>
+                  <span className="text-sm font-semibold" style={{ color: t.textPri }}>{f.username}</span>
+                </div>
+                <button
+                  disabled={!!sending || sent.has(f.id)}
+                  onClick={() => invite(f.id)}
+                  className="px-3 py-1.5 rounded-xl text-[10px] font-bold disabled:opacity-50 transition-all"
+                  style={{ background: sent.has(f.id) ? 'rgba(34,197,94,0.15)' : '#6366F1', color: sent.has(f.id) ? '#22C55E' : '#fff' }}>
+                  {sending === f.id ? '…' : sent.has(f.id) ? '✓ Sent' : 'Invite'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
    Party Lobby — waiting for host to start
 ══════════════════════════════════════════════════════════════════ */
-function PartyLobby({ party, me, isDark, onRefresh, onStart, onShuffle, onAddQuestion, onRemoveQuestion }) {
+function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion, onRemoveQuestion, onKick, onRename, onInvite }) {
   const t = useTheme(isDark);
   const isHost   = party.host_username === me;
-  const shareUrl = `${window.location.origin}/challenges?join=${party.code}`;
 
-  const [copied,  setCopied]  = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
-  const [addForm, setAddForm] = useState({ title: '', platform: 'leetcode', url: '', slug: '', difficulty: 'medium' });
-  const [addBusy, setAddBusy] = useState(false);
-  const [shuffBusy, setShuffBusy] = useState(false);
-
-  const copy = () => {
-    navigator.clipboard.writeText(shareUrl).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const [addOpen,        setAddOpen]        = useState(false);
+  const [addMode,        setAddMode]        = useState('url');   // 'url' | 'number'
+  const [addForm,        setAddForm]        = useState({ title: '', platform: 'leetcode', url: '', slug: '', difficulty: 'medium' });
+  const [lcNumber,       setLcNumber]       = useState('');
+  const [lcLookupBusy,   setLcLookupBusy]   = useState(false);
+  const [lcLookupErr,    setLcLookupErr]    = useState('');
+  const [addBusy,        setAddBusy]        = useState(false);
+  const [showShuffle,    setShowShuffle]    = useState(false);
+  const [showInvite,     setShowInvite]     = useState(false);
+  const [renaming,       setRenaming]       = useState(false);
+  const [renameVal,      setRenameVal]      = useState(party.name);
+  const [renameBusy,     setRenameBusy]     = useState(false);
 
   const handleAdd = async (e) => {
     e.preventDefault();
     setAddBusy(true);
     await onAddQuestion(addForm);
     setAddForm({ title: '', platform: 'leetcode', url: '', slug: '', difficulty: 'medium' });
+    setLcNumber('');
     setAddOpen(false);
     setAddBusy(false);
   };
 
-  const handleShuffle = async () => {
-    setShuffBusy(true);
-    await onShuffle();
-    setShuffBusy(false);
+  const lookupLcNumber = async () => {
+    if (!lcNumber.trim()) return;
+    setLcLookupBusy(true); setLcLookupErr('');
+    try {
+      const res = await api.get(`/challenges/leetcode-problem/${lcNumber.trim()}/`);
+      setAddForm({ title: res.title, platform: 'leetcode', url: res.url, slug: res.slug, difficulty: res.difficulty });
+    } catch (e) {
+      setLcLookupErr(e?.detail ?? 'Problem not found');
+    } finally {
+      setLcLookupBusy(false);
+    }
+  };
+
+  const handleRename = async () => {
+    setRenameBusy(true);
+    await onRename(renameVal);
+    setRenaming(false);
+    setRenameBusy(false);
   };
 
   return (
@@ -172,22 +356,42 @@ function PartyLobby({ party, me, isDark, onRefresh, onStart, onShuffle, onAddQue
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
                 style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>WAITING</span>
             </div>
-            <h2 className="text-xl font-bold mb-1" style={{ color: t.textPri }}>{party.name}</h2>
+            {renaming ? (
+              <div className="flex items-center gap-2 mb-1">
+                <input value={renameVal} onChange={e => setRenameVal(e.target.value)}
+                  className="flex-1 px-3 py-1.5 rounded-xl text-sm outline-none border"
+                  style={{ background: t.surfLow, color: t.textPri, borderColor: t.border }}
+                  onKeyDown={e => e.key === 'Enter' && handleRename()} autoFocus />
+                <button onClick={handleRename} disabled={renameBusy}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold"
+                  style={{ background: '#6366F1', color: '#fff' }}>
+                  {renameBusy ? '…' : 'Save'}
+                </button>
+                <button onClick={() => setRenaming(false)} className="text-xs" style={{ color: t.textSec }}>Cancel</button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-xl font-bold" style={{ color: t.textPri }}>{party.name}</h2>
+                {isHost && (
+                  <button onClick={() => setRenaming(true)} className="opacity-40 hover:opacity-100 transition-opacity">
+                    <span className="material-symbols-outlined text-sm" style={{ color: t.textSec }}>edit</span>
+                  </button>
+                )}
+              </div>
+            )}
             <p className="text-xs" style={{ color: t.textSec }}>
               {party.duration_minutes} min · {party.max_questions} questions · hosted by {party.host_username}
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <button onClick={copy}
+            <button onClick={() => setShowInvite(true)}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90"
               style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}>
-              <span className="material-symbols-outlined text-sm">{copied ? 'check' : 'link'}</span>
-              {copied ? 'Copied!' : 'Share Link'}
+              <span className="material-symbols-outlined text-sm">person_add</span>
+              Invite
             </button>
             {isHost && (
-              <button
-                onClick={onStart}
-                disabled={party.questions.length === 0}
+              <button onClick={onStart} disabled={party.questions.length === 0}
                 className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.03] disabled:opacity-40"
                 style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff',
                   boxShadow: '0 8px 24px -6px rgba(99,102,241,0.5)' }}>
@@ -213,10 +417,17 @@ function PartyLobby({ party, me, isDark, onRefresh, onStart, onShuffle, onAddQue
                   style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff' }}>
                   {m.username[0].toUpperCase()}
                 </div>
-                <span className="text-sm font-semibold" style={{ color: t.textPri }}>{m.username}</span>
+                <span className="text-sm font-semibold flex-1" style={{ color: t.textPri }}>{m.username}</span>
                 {m.is_host && (
-                  <span className="ml-auto text-[9px] px-2 py-0.5 rounded-full font-bold"
+                  <span className="text-[9px] px-2 py-0.5 rounded-full font-bold"
                     style={{ background: 'rgba(99,102,241,0.15)', color: '#6366F1' }}>HOST</span>
+                )}
+                {isHost && !m.is_host && (
+                  <button onClick={() => onKick(m.id)}
+                    className="opacity-30 hover:opacity-100 transition-opacity ml-1"
+                    title="Kick member">
+                    <span className="material-symbols-outlined text-sm" style={{ color: '#EF4444' }}>person_remove</span>
+                  </button>
                 )}
               </div>
             ))}
@@ -231,12 +442,10 @@ function PartyLobby({ party, me, isDark, onRefresh, onStart, onShuffle, onAddQue
             </h3>
             {isHost && (
               <div className="flex gap-2">
-                <button onClick={handleShuffle} disabled={shuffBusy}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all hover:opacity-90 disabled:opacity-40"
+                <button onClick={() => setShowShuffle(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all hover:opacity-90"
                   style={{ background: 'rgba(168,85,247,0.15)', color: '#A855F7' }}>
-                  {shuffBusy
-                    ? <span className="w-3 h-3 border border-purple-400 border-t-transparent rounded-full animate-spin" />
-                    : <span className="material-symbols-outlined text-sm">shuffle</span>}
+                  <span className="material-symbols-outlined text-sm">auto_awesome</span>
                   AI Shuffle
                 </button>
                 {party.questions.length < party.max_questions && (
@@ -255,45 +464,84 @@ function PartyLobby({ party, me, isDark, onRefresh, onStart, onShuffle, onAddQue
           {addOpen && isHost && (
             <form onSubmit={handleAdd} className="mb-4 space-y-2 p-4 rounded-2xl"
               style={{ background: t.surfLow, border: `1px solid ${t.border}` }}>
-              <input required placeholder="Problem title" value={addForm.title}
-                onChange={e => setAddForm(f => ({ ...f, title: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl text-sm outline-none bg-transparent border"
-                style={{ color: t.textPri, borderColor: t.border }} />
-              <div className="grid grid-cols-2 gap-2">
-                <select value={addForm.platform} onChange={e => setAddForm(f => ({ ...f, platform: e.target.value }))}
-                  className="px-3 py-2 rounded-xl text-xs outline-none"
-                  style={{ background: t.surface, color: t.textPri, border: `1px solid ${t.border}` }}>
-                  <option value="leetcode">LeetCode</option>
-                  <option value="codeforces">Codeforces</option>
-                </select>
-                <select value={addForm.difficulty} onChange={e => setAddForm(f => ({ ...f, difficulty: e.target.value }))}
-                  className="px-3 py-2 rounded-xl text-xs outline-none"
-                  style={{ background: t.surface, color: t.textPri, border: `1px solid ${t.border}` }}>
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
+              {/* Mode toggle */}
+              <div className="flex gap-1 p-1 rounded-xl mb-1" style={{ background: t.surface }}>
+                {[['url','By URL'],['number','LC Number']].map(([mode, label]) => (
+                  <button key={mode} type="button" onClick={() => setAddMode(mode)}
+                    className="flex-1 py-1 rounded-lg text-[10px] font-bold transition-all"
+                    style={addMode === mode ? { background: '#6366F1', color: '#fff' } : { color: t.textSec }}>
+                    {label}
+                  </button>
+                ))}
               </div>
-              <input required placeholder="Problem URL" value={addForm.url} type="url"
-                onChange={e => {
-                  const url = e.target.value;
-                  // Auto-extract slug from LC URL: /problems/two-sum/
-                  const lcMatch = url.match(/leetcode\.com\/problems\/([^/]+)/);
-                  // CF: /problemset/problem/4/A → 4-A
-                  const cfMatch = url.match(/codeforces\.com\/problemset\/problem\/(\d+)\/([A-Z0-9]+)/i);
-                  let slug = addForm.slug;
-                  if (lcMatch) slug = lcMatch[1];
-                  else if (cfMatch) slug = `${cfMatch[1]}-${cfMatch[2]}`;
-                  setAddForm(f => ({ ...f, url, slug }));
-                }}
-                className="w-full px-3 py-2 rounded-xl text-sm outline-none bg-transparent border"
-                style={{ color: t.textPri, borderColor: t.border }} />
-              <input required placeholder="Problem slug (auto-filled)" value={addForm.slug}
-                onChange={e => setAddForm(f => ({ ...f, slug: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl text-sm outline-none bg-transparent border"
-                style={{ color: t.textPri, borderColor: t.border }} />
+
+              {addMode === 'number' ? (
+                <div>
+                  <div className="flex gap-2">
+                    <input placeholder="e.g. 1" value={lcNumber} type="number"
+                      onChange={e => { setLcNumber(e.target.value); setLcLookupErr(''); setAddForm(f => ({ ...f, title: '', slug: '', url: '' })); }}
+                      className="flex-1 px-3 py-2 rounded-xl text-sm outline-none bg-transparent border"
+                      style={{ color: t.textPri, borderColor: t.border }} />
+                    <button type="button" onClick={lookupLcNumber} disabled={lcLookupBusy || !lcNumber}
+                      className="px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50"
+                      style={{ background: '#6366F1', color: '#fff' }}>
+                      {lcLookupBusy ? '…' : 'Fetch'}
+                    </button>
+                  </div>
+                  {lcLookupErr && <p className="text-[10px] text-red-400 mt-1">{lcLookupErr}</p>}
+                  {addForm.title && (
+                    <div className="mt-2 p-2 rounded-xl flex items-center gap-2"
+                      style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}>
+                      <span className="material-symbols-outlined text-sm" style={{ color: '#6366F1' }}>check_circle</span>
+                      <div>
+                        <p className="text-xs font-bold" style={{ color: t.textPri }}>{addForm.title}</p>
+                        <p className="text-[10px]" style={{ color: t.textSec }}>{addForm.difficulty} · {addForm.slug}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <input required placeholder="Problem title" value={addForm.title}
+                    onChange={e => setAddForm(f => ({ ...f, title: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none bg-transparent border"
+                    style={{ color: t.textPri, borderColor: t.border }} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <select value={addForm.platform} onChange={e => setAddForm(f => ({ ...f, platform: e.target.value }))}
+                      className="px-3 py-2 rounded-xl text-xs outline-none"
+                      style={{ background: t.surface, color: t.textPri, border: `1px solid ${t.border}` }}>
+                      <option value="leetcode">LeetCode</option>
+                      <option value="codeforces">Codeforces</option>
+                    </select>
+                    <select value={addForm.difficulty} onChange={e => setAddForm(f => ({ ...f, difficulty: e.target.value }))}
+                      className="px-3 py-2 rounded-xl text-xs outline-none"
+                      style={{ background: t.surface, color: t.textPri, border: `1px solid ${t.border}` }}>
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                    </select>
+                  </div>
+                  <input required placeholder="Problem URL" value={addForm.url} type="url"
+                    onChange={e => {
+                      const url = e.target.value;
+                      const lcMatch = url.match(/leetcode\.com\/problems\/([^/]+)/);
+                      const cfMatch = url.match(/codeforces\.com\/problemset\/problem\/(\d+)\/([A-Z0-9]+)/i);
+                      let slug = addForm.slug;
+                      if (lcMatch) slug = lcMatch[1];
+                      else if (cfMatch) slug = `${cfMatch[1]}-${cfMatch[2]}`;
+                      setAddForm(f => ({ ...f, url, slug }));
+                    }}
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none bg-transparent border"
+                    style={{ color: t.textPri, borderColor: t.border }} />
+                  <input required placeholder="Problem slug (auto-filled)" value={addForm.slug}
+                    onChange={e => setAddForm(f => ({ ...f, slug: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl text-sm outline-none bg-transparent border"
+                    style={{ color: t.textPri, borderColor: t.border }} />
+                </>
+              )}
+
               <div className="flex gap-2 pt-1">
-                <button type="submit" disabled={addBusy}
+                <button type="submit" disabled={addBusy || !addForm.title}
                   className="flex-1 py-2 rounded-xl text-xs font-bold"
                   style={{ background: '#6366F1', color: '#fff' }}>
                   {addBusy ? 'Adding…' : 'Add Question'}
@@ -338,6 +586,13 @@ function PartyLobby({ party, me, isDark, onRefresh, onStart, onShuffle, onAddQue
           )}
         </GlassCard>
       </div>
+
+      {showShuffle && (
+        <ShuffleFilterModal isDark={isDark} onClose={() => setShowShuffle(false)} onShuffle={onShuffleFilter} />
+      )}
+      {showInvite && (
+        <InviteFriendsModal isDark={isDark} partyCode={party.code} onClose={() => setShowInvite(false)} onInvite={onInvite} />
+      )}
     </div>
   );
 }
@@ -345,14 +600,15 @@ function PartyLobby({ party, me, isDark, onRefresh, onStart, onShuffle, onAddQue
 /* ══════════════════════════════════════════════════════════════════
    Active Party Room
 ══════════════════════════════════════════════════════════════════ */
-function PartyRoom({ party, me, isDark, onCheckCompletion, timeLeft }) {
+function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit, timeLeft }) {
   const t = useTheme(isDark);
 
-  // Which questions I've done
+  const isHost   = party.host_username === me;
   const myMember = party.members.find(m => m.username === me);
   const myDoneIds = new Set((myMember?.completions ?? []).filter(c => c.verified).map(c => c.question_id));
+  const totalQ = party.questions.length;
 
-  // Leaderboard — sort by completed_count desc, then finished_at asc
+  // Sorted leaderboard — track prev ranks for slide animation
   const sorted = [...party.members].sort((a, b) => {
     if (b.completed_count !== a.completed_count) return b.completed_count - a.completed_count;
     if (a.finished_at && b.finished_at) return new Date(a.finished_at) - new Date(b.finished_at);
@@ -361,8 +617,26 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, timeLeft }) {
     return 0;
   });
 
+  const prevRanksRef = useRef({});
+  const [rankAnims, setRankAnims] = useState({}); // memberId → 'up'|'down'|null
+
+  useEffect(() => {
+    const newAnims = {};
+    sorted.forEach((m, i) => {
+      const prev = prevRanksRef.current[m.id];
+      if (prev !== undefined && prev !== i) {
+        newAnims[m.id] = prev > i ? 'up' : 'down';
+      }
+    });
+    setRankAnims(newAnims);
+    const ids = Object.keys(newAnims);
+    if (ids.length > 0) {
+      setTimeout(() => setRankAnims({}), 800);
+    }
+    prevRanksRef.current = Object.fromEntries(sorted.map((m, i) => [m.id, i]));
+  }, [party.members.map(m => m.completed_count).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const winner = sorted[0]?.finished_at ? sorted[0] : null;
-  const totalQ = party.questions.length;
 
   return (
     <div className="space-y-6">
@@ -377,13 +651,26 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, timeLeft }) {
             </div>
             <h2 className="text-xl font-bold" style={{ color: t.textPri }}>{party.name}</h2>
           </div>
-          <Countdown seconds={timeLeft} isDark={isDark} />
+          <div className="flex items-center gap-3">
+            <Countdown seconds={timeLeft} isDark={isDark} />
+            {isHost ? (
+              <button onClick={() => { if (window.confirm('End party for everyone?')) onEndParty(); }}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-90"
+                style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)' }}>
+                End Party
+              </button>
+            ) : (
+              <button onClick={() => { if (window.confirm('Forfeit this challenge?')) onForfeit(); }}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-90"
+                style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                Forfeit
+              </button>
+            )}
+          </div>
         </div>
-
-        {/* Timeline bar */}
         <div className="mt-4">
           <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: t.surfLow }}>
-            <div className="h-full rounded-full transition-all"
+            <div className="h-full rounded-full transition-all duration-1000"
               style={{
                 width: `${Math.max(0, (1 - timeLeft / (party.duration_minutes * 60)) * 100)}%`,
                 background: 'linear-gradient(90deg, #6366F1, #A855F7)',
@@ -399,14 +686,10 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, timeLeft }) {
           {party.questions.map((q, i) => {
             const done = myDoneIds.has(q.id);
             return (
-              <GlassCard key={q.id} isDark={isDark} className="p-5"
-                style={{ opacity: done ? 0.7 : 1 }}>
+              <GlassCard key={q.id} isDark={isDark} className="p-5" style={{ opacity: done ? 0.7 : 1 }}>
                 <div className="flex items-start gap-4">
                   <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 text-sm font-black"
-                    style={{
-                      background: done ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.12)',
-                      color: done ? '#22C55E' : '#6366F1',
-                    }}>
+                    style={{ background: done ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.12)', color: done ? '#22C55E' : '#6366F1' }}>
                     {done ? '✓' : i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -414,9 +697,7 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, timeLeft }) {
                       <span className="text-sm font-bold" style={{ color: t.textPri }}>{q.title}</span>
                       <DiffBadge diff={q.difficulty} />
                       <span className="text-[9px] px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1' }}>
-                        {q.platform}
-                      </span>
+                        style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1' }}>{q.platform}</span>
                     </div>
                     {done ? (
                       <span className="text-xs font-semibold" style={{ color: '#22C55E' }}>✓ Verified complete</span>
@@ -443,9 +724,9 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, timeLeft }) {
           })}
         </div>
 
-        {/* Leaderboard */}
+        {/* Live Leaderboard */}
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-widest mb-4 px-1" style={{ color: t.textSec }}>Leaderboard</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest mb-4 px-1" style={{ color: t.textSec }}>Live Rankings</h3>
           {winner && (
             <GlassCard isDark={isDark} className="p-4 mb-3 text-center"
               style={{ background: 'rgba(250,204,21,0.08)', borderColor: 'rgba(250,204,21,0.3)' }}>
@@ -454,36 +735,43 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, timeLeft }) {
             </GlassCard>
           )}
           <div className="space-y-2">
-            {sorted.map((m, i) => (
-              <GlassCard key={m.id} isDark={isDark} className="p-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-black w-5 text-center" style={{ color: ['#EAB308','#94A3B8','#CD7F32'][i] ?? t.textSec }}>
-                    {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
-                  </span>
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                    style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff' }}>
-                    {m.username[0].toUpperCase()}
+            {sorted.map((m, i) => {
+              const anim = rankAnims[m.id];
+              return (
+                <GlassCard key={m.id} isDark={isDark} className="p-4"
+                  style={{
+                    transition: 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+                    transform: anim === 'up' ? 'translateY(-4px) scale(1.02)' : anim === 'down' ? 'translateY(4px)' : 'none',
+                    borderColor: anim === 'up' ? 'rgba(34,197,94,0.4)' : undefined,
+                  }}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-black w-6 text-center flex items-center gap-0.5">
+                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
+                      {anim === 'up' && <span className="text-[9px] text-green-400 animate-bounce">↑</span>}
+                      {anim === 'down' && <span className="text-[9px] text-red-400">↓</span>}
+                    </span>
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                      style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff' }}>
+                      {m.username[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold truncate" style={{ color: m.username === me ? '#6366F1' : t.textPri }}>
+                        {m.username}{m.username === me ? ' (you)' : ''}
+                      </p>
+                      <p className="text-[10px]" style={{ color: t.textSec }}>{m.completed_count}/{totalQ} done</p>
+                    </div>
+                    {m.finished_at && <span className="text-[10px]" style={{ color: '#22C55E' }}>✓</span>}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold truncate" style={{ color: m.username === me ? '#6366F1' : t.textPri }}>
-                      {m.username} {m.username === me ? '(you)' : ''}
-                    </p>
-                    <p className="text-[10px]" style={{ color: t.textSec }}>
-                      {m.completed_count}/{totalQ} done
-                    </p>
+                  <div className="mt-2 h-1 rounded-full overflow-hidden" style={{ background: t.surfLow }}>
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${totalQ > 0 ? (m.completed_count / totalQ) * 100 : 0}%`,
+                        background: m.username === me ? '#6366F1' : '#A855F7',
+                      }} />
                   </div>
-                  {m.finished_at && <span className="text-[10px]" style={{ color: '#22C55E' }}>✓ Done</span>}
-                </div>
-                {/* Progress bar */}
-                <div className="mt-2 h-1 rounded-full overflow-hidden" style={{ background: t.surfLow }}>
-                  <div className="h-full rounded-full"
-                    style={{
-                      width: `${totalQ > 0 ? (m.completed_count / totalQ) * 100 : 0}%`,
-                      background: m.username === me ? '#6366F1' : '#A855F7',
-                    }} />
-                </div>
-              </GlassCard>
-            ))}
+                </GlassCard>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -494,22 +782,36 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, timeLeft }) {
 /* ══════════════════════════════════════════════════════════════════
    Friends Code Party Tab
 ══════════════════════════════════════════════════════════════════ */
+const PARTY_SESSION_KEY = 'algomind_party_session';
+
 function PartyTab({ isDark }) {
   const t = useTheme(isDark);
   const { user } = useAuth();
-  const navigate = useNavigate();
 
-  const [view,        setView]        = useState('home');   // 'home'|'lobby'|'room'|'finished'
-  const [party,       setParty]       = useState(null);
-  const [createOpen,  setCreateOpen]  = useState(false);
-  const [joinCode,    setJoinCode]    = useState('');
-  const [error,       setError]       = useState('');
-  const [busy,        setBusy]        = useState(false);
-  const [timeLeft,    setTimeLeft]    = useState(0);
-  const [checking,    setChecking]    = useState(null);  // qid being checked
+  // Restore party state from sessionStorage so page navigation doesn't kill the session
+  const [view,       setView]       = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem(PARTY_SESSION_KEY) || '{}').view ?? 'home'; } catch { return 'home'; }
+  });
+  const [party,      setParty]      = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem(PARTY_SESSION_KEY) || '{}').party ?? null; } catch { return null; }
+  });
+  const [createOpen, setCreateOpen] = useState(false);
+  const [joinCode,   setJoinCode]   = useState('');
+  const [error,      setError]      = useState('');
+  const [busy,       setBusy]       = useState(false);
+  const [timeLeft,   setTimeLeft]   = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem(PARTY_SESSION_KEY) || '{}').timeLeft ?? 0; } catch { return 0; }
+  });
 
-  // Poll party state every 5 s when in lobby/room
-  const pollRef = useRef(null);
+  // Persist view + party + timeLeft to sessionStorage whenever they change
+  useEffect(() => {
+    if (view === 'home') { sessionStorage.removeItem(PARTY_SESSION_KEY); return; }
+    try {
+      sessionStorage.setItem(PARTY_SESSION_KEY, JSON.stringify({ view, party, timeLeft }));
+    } catch { /* quota error — ignore */ }
+  }, [view, party, timeLeft]);
+
+  const pollRef  = useRef(null);
   const partyCode = party?.code;
 
   const refreshParty = useCallback(async () => {
@@ -518,39 +820,43 @@ function PartyTab({ isDark }) {
       const p = await api.get(`/challenges/party/${partyCode}/`);
       setParty(p);
       setTimeLeft(p.time_remaining ?? 0);
-      if (p.status === 'active'  && view !== 'room')     setView('room');
+      if (p.status === 'active'   && view !== 'room')     setView('room');
       if (p.status === 'finished' && view !== 'finished') setView('finished');
     } catch { /* ignore */ }
   }, [partyCode, view]);
 
+  // Poll every 5 s while in lobby or room
   useEffect(() => {
     if ((view === 'lobby' || view === 'room') && partyCode) {
+      refreshParty();
       pollRef.current = setInterval(refreshParty, 5000);
     }
     return () => clearInterval(pollRef.current);
-  }, [view, partyCode, refreshParty]);
+  }, [view, partyCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Countdown tick
+  // Local countdown tick
   useEffect(() => {
     if (view !== 'room') return;
-    const tick = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000);
+    const tick = setInterval(() => setTimeLeft(s => Math.max(0, s - 1)), 1000);
     return () => clearInterval(tick);
   }, [view]);
 
-  // Auto-join from URL param
+  // Auto-join from URL ?join=CODE
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('join');
     if (code) setJoinCode(code.toUpperCase());
   }, []);
 
+  const me = user?.username ?? '';
+
+  // ── Handlers ────────────────────────────────────────────────────
+
   const handleCreate = async (opts) => {
     setBusy(true); setError('');
     try {
       const p = await api.post('/challenges/party/create/', opts);
-      setParty(p);
-      setView('lobby');
-      setCreateOpen(false);
+      setParty(p); setView('lobby'); setCreateOpen(false);
     } catch (e) { setError(e?.detail ?? 'Failed to create party.'); }
     finally { setBusy(false); }
   };
@@ -569,15 +875,13 @@ function PartyTab({ isDark }) {
   const handleStart = async () => {
     try {
       const p = await api.post(`/challenges/party/${partyCode}/start/`, {});
-      setParty(p);
-      setTimeLeft(p.time_remaining ?? 0);
-      setView('room');
+      setParty(p); setTimeLeft(p.time_remaining ?? 0); setView('room');
     } catch (e) { setError(e?.detail ?? 'Failed to start.'); }
   };
 
-  const handleShuffle = async () => {
+  const handleShuffleFilter = async (topics, difficulties) => {
     try {
-      const p = await api.post(`/challenges/party/${partyCode}/questions/shuffle/`, {});
+      const p = await api.post(`/challenges/party/${partyCode}/questions/shuffle-filter/`, { topics, difficulties });
       setParty(p);
     } catch (e) { setError(e?.detail ?? 'Shuffle failed.'); }
   };
@@ -596,27 +900,59 @@ function PartyTab({ isDark }) {
     } catch (e) { setError(e?.detail ?? 'Failed to remove.'); }
   };
 
+  const handleKick = async (memberId) => {
+    try {
+      await api.delete(`/challenges/party/${partyCode}/kick/${memberId}/`);
+      await refreshParty();
+    } catch (e) { setError(e?.detail ?? 'Kick failed.'); }
+  };
+
+  const handleRename = async (name) => {
+    try {
+      const p = await api.patch(`/challenges/party/${partyCode}/rename/`, { name });
+      setParty(p);
+    } catch (e) { setError(e?.detail ?? 'Rename failed.'); }
+  };
+
+  const handleInvite = async (receiverId) => {
+    try { await api.post(`/challenges/party/${partyCode}/invite/`, { receiver_id: receiverId }); }
+    catch (e) { setError(e?.detail ?? 'Invite failed.'); }
+  };
+
   const handleCheckCompletion = async (qid) => {
-    setChecking(qid);
     try {
       const res = await api.post(`/challenges/party/${partyCode}/questions/${qid}/check/`, {});
-      if (res.verified) {
-        await refreshParty();
-      } else {
-        setError('Not verified yet — make sure you submitted and got Accepted on ' +
+      if (res.verified) { await refreshParty(); }
+      else {
+        setError('Not verified yet — make sure you submitted Accepted on ' +
           (party.questions.find(q => q.id === qid)?.platform ?? 'the platform') + '.');
         setTimeout(() => setError(''), 5000);
       }
     } catch (e) { setError(e?.detail ?? 'Verification failed.'); }
-    finally { setChecking(null); }
   };
 
-  const handleLeaveParty = async () => {
+  const handleEndParty = async () => {
+    try {
+      const p = await api.post(`/challenges/party/${partyCode}/end/`, {});
+      setParty(p); setView('finished');
+    } catch (e) { setError(e?.detail ?? 'Failed to end party.'); }
+  };
+
+  const handleForfeit = async () => {
+    try {
+      await api.post(`/challenges/party/${partyCode}/forfeit/`, {});
+      await refreshParty();
+    } catch (e) { setError(e?.detail ?? 'Forfeit failed.'); }
+  };
+
+  const handleLeave = async () => {
     try { await api.delete(`/challenges/party/${partyCode}/leave/`); } catch {}
-    setParty(null); setView('home');
+    setParty(null); setView('home'); sessionStorage.removeItem(PARTY_SESSION_KEY);
   };
 
-  const me = user?.username ?? '';
+  const handleDone = () => {
+    setParty(null); setView('home'); sessionStorage.removeItem(PARTY_SESSION_KEY);
+  };
 
   // ── Render ──────────────────────────────────────────────────────
 
@@ -628,12 +964,14 @@ function PartyTab({ isDark }) {
           party={party} me={me} isDark={isDark}
           onRefresh={refreshParty}
           onStart={handleStart}
-          onShuffle={handleShuffle}
+          onShuffleFilter={handleShuffleFilter}
           onAddQuestion={handleAddQuestion}
           onRemoveQuestion={handleRemoveQuestion}
+          onKick={handleKick}
+          onRename={handleRename}
+          onInvite={handleInvite}
         />
-        <button onClick={handleLeaveParty}
-          className="mt-4 text-xs hover:underline" style={{ color: t.textSec }}>
+        <button onClick={handleLeave} className="mt-4 text-xs hover:underline" style={{ color: t.textSec }}>
           Leave party
         </button>
       </div>
@@ -648,32 +986,74 @@ function PartyTab({ isDark }) {
           party={party} me={me} isDark={isDark}
           timeLeft={timeLeft}
           onCheckCompletion={handleCheckCompletion}
+          onEndParty={handleEndParty}
+          onForfeit={handleForfeit}
         />
+        <button onClick={handleLeave} className="mt-4 text-xs hover:underline" style={{ color: t.textSec }}>
+          Leave party
+        </button>
       </div>
     );
   }
 
   if (view === 'finished' && party) {
-    const sorted = [...party.members].sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+    const totalQ  = party.questions.length;
+    const sorted  = [...party.members].sort((a, b) => {
+      // Finished (non-forfeit) by rank first, then forfeit/DNF
+      const aFinished = a.completed_count >= totalQ;
+      const bFinished = b.completed_count >= totalQ;
+      if (aFinished && bFinished) return (a.rank ?? 99) - (b.rank ?? 99);
+      if (aFinished) return -1;
+      if (bFinished) return 1;
+      return b.completed_count - a.completed_count;
+    });
     const medals = ['🥇', '🥈', '🥉'];
+
+    // Time taken = finished_at - started_at
+    const startedAt = party.started_at ? new Date(party.started_at).getTime() : null;
+    const fmtTime = (isoStr) => {
+      if (!isoStr || !startedAt) return null;
+      const secs = Math.round((new Date(isoStr).getTime() - startedAt) / 1000);
+      const m = Math.floor(secs / 60), s = secs % 60;
+      return `${m}m ${s}s`;
+    };
+
     return (
-      <GlassCard isDark={isDark} className="p-10 text-center max-w-lg mx-auto">
-        <span className="text-5xl block mb-4">🏁</span>
-        <h2 className="text-2xl font-bold mb-2" style={{ color: t.textPri }}>Party Over!</h2>
-        <p className="text-sm mb-8" style={{ color: t.textSec }}>Final Results — {party.name}</p>
-        <div className="space-y-3 text-left mb-8">
-          {sorted.map((m, i) => (
-            <div key={m.id} className="flex items-center gap-3 p-4 rounded-2xl"
-              style={{ background: t.surfLow }}>
-              <span className="text-xl">{medals[i] ?? (i + 1)}</span>
-              <span className="font-bold flex-1" style={{ color: m.username === me ? '#6366F1' : t.textPri }}>
-                {m.username} {m.username === me ? '(you)' : ''}
-              </span>
-              <span className="text-xs" style={{ color: t.textSec }}>{m.completed_count}/{party.questions.length}</span>
-            </div>
-          ))}
+      <GlassCard isDark={isDark} className="p-8 max-w-lg mx-auto">
+        <div className="text-center mb-6">
+          <span className="text-5xl block mb-3">🏁</span>
+          <h2 className="text-2xl font-bold mb-1" style={{ color: t.textPri }}>Party Over!</h2>
+          <p className="text-sm" style={{ color: t.textSec }}>Final Results — {party.name}</p>
         </div>
-        <button onClick={() => { setParty(null); setView('home'); }}
+
+        <div className="space-y-3 mb-8">
+          {sorted.map((m, i) => {
+            const completed = m.completed_count >= totalQ;
+            const timeTaken = completed ? fmtTime(m.finished_at) : null;
+            return (
+              <div key={m.id} className="flex items-center gap-3 p-4 rounded-2xl"
+                style={{ background: t.surfLow, border: `1px solid ${completed ? 'rgba(34,197,94,0.2)' : t.border}` }}>
+                <span className="text-xl shrink-0">{completed ? (medals[i] ?? `#${i+1}`) : '—'}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold truncate" style={{ color: m.username === me ? '#6366F1' : t.textPri }}>
+                    {m.username}{m.username === me ? ' (you)' : ''}
+                  </p>
+                  <p className="text-[10px] mt-0.5" style={{ color: t.textSec }}>
+                    {m.completed_count}/{totalQ} solved{timeTaken ? ` · ${timeTaken}` : ''}
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold shrink-0 px-2 py-0.5 rounded-full"
+                  style={completed
+                    ? { background: 'rgba(34,197,94,0.12)', color: '#22C55E' }
+                    : { background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
+                  {completed ? 'Finished' : 'DNF'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        <button onClick={handleDone}
           className="w-full py-3 rounded-2xl font-bold text-white"
           style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)' }}>
           Back to Home

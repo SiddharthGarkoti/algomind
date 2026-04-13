@@ -1,10 +1,33 @@
 /**
  * ChatDrawer.jsx — Slide-in chat panel wired to real backend
- * GET /api/chat/<id>/ on open, POST to send, polls every 10s for new messages.
+ * GET /api/chat/<id>/ on open, POST to send, polls every 3s for new messages.
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
+
+/* Play a short notification beep via Web Audio API */
+function playNotifSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.35);
+  } catch {}
+}
+
+function isChatSoundOn() {
+  try {
+    const s = JSON.parse(localStorage.getItem('algomind_notif_settings') || '{}');
+    return s.chatSound === true;
+  } catch { return false; }
+}
 
 const EMOJIS = ['😄','😂','🔥','💡','👍','🎉','🤔','😅','💯','🙏','😎','🤩','👾','🚀','💪','✅'];
 
@@ -31,6 +54,8 @@ function ChatDrawer({ friend, onClose, isDark }) {
   const textPri  = isDark ? '#e3e2e5' : '#0F172A';
   const textSec  = isDark ? '#908fa0' : '#64748B';
 
+  const lastCountRef = useRef(0);
+
   /* Fetch messages from backend */
   const fetchMessages = useCallback(async (silent = false) => {
     if (!friend?.id) return;
@@ -38,22 +63,36 @@ function ChatDrawer({ friend, onClose, isDark }) {
     try {
       const data = await api.get(`/chat/${friend.id}/`);
       if (Array.isArray(data)) {
-        setMessages(data.map(m => ({
+        const mapped = data.map(m => ({
           id:   m.id,
           from: m.sender === user?.id ? 'me' : 'them',
           text: m.text,
           time: fmt(m.created_at),
-        })));
+        }));
+        // Play sound + fire popup event if new messages arrived from the other person
+        if (silent && mapped.length > lastCountRef.current) {
+          const newMsgs = mapped.slice(lastCountRef.current);
+          const newFromThem = newMsgs.filter(m => m.from === 'them');
+          if (newFromThem.length > 0) {
+            if (isChatSoundOn()) playNotifSound();
+            // Notify Header to show popup
+            window.dispatchEvent(new CustomEvent('algomind:chatmessage', {
+              detail: { sender: friend?.username ?? friend?.name ?? 'Friend', text: newFromThem[newFromThem.length - 1].text },
+            }));
+          }
+        }
+        lastCountRef.current = mapped.length;
+        setMessages(mapped);
       }
     } catch { /* silently ignore polling errors */ }
     finally { if (!silent) setLoading(false); }
   }, [friend?.id, user?.id]);
 
-  /* On open: fetch + start poll */
+  /* On open: fetch + start poll every 3s */
   useEffect(() => {
     fetchMessages();
     inputRef.current?.focus();
-    pollRef.current = setInterval(() => fetchMessages(true), 10000);
+    pollRef.current = setInterval(() => fetchMessages(true), 3000);
     return () => clearInterval(pollRef.current);
   }, [fetchMessages]);
 
@@ -201,9 +240,28 @@ function ChatDrawer({ friend, onClose, isDark }) {
             <span className="material-symbols-outlined">send</span>
           </button>
         </div>
-        <p className="text-[9px] mt-2 text-center" style={{ color: textSec }}>
-          📎 Image & audio sharing — <span style={{ color: '#F59E0B' }}>AlgoMind Plus</span>
-        </p>
+        {/* Attachment buttons — locked behind AlgoMind Plus */}
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            title="Send Image — AlgoMind Plus"
+            onClick={() => alert('Image sharing is available with AlgoMind Plus. Upgrade in Settings → Plans.')}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all hover:opacity-80"
+            style={{ background: isDark ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.08)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' }}>
+            <span className="material-symbols-outlined text-sm">image</span>
+            Image
+            <span className="material-symbols-outlined text-[10px]">lock</span>
+          </button>
+          <button
+            title="Send Audio — AlgoMind Plus"
+            onClick={() => alert('Audio sharing is available with AlgoMind Plus. Upgrade in Settings → Plans.')}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all hover:opacity-80"
+            style={{ background: isDark ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.08)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' }}>
+            <span className="material-symbols-outlined text-sm">mic</span>
+            Audio
+            <span className="material-symbols-outlined text-[10px]">lock</span>
+          </button>
+          <span className="text-[9px] ml-auto" style={{ color: textSec }}>AlgoMind Plus</span>
+        </div>
       </div>
     </div>
   );

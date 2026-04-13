@@ -37,7 +37,7 @@ const PLANS = [
       { text: 'Increased challenge tokens', included: true },
       { text: '2 free contest entries / month', included: true, note: 'Weekly contests only' },
       { text: 'Monthly contest entries', included: false },
-      { text: 'Mock & amplitude tests', included: false },
+      { text: 'Mock & aptitude tests', included: false },
     ],
   },
   {
@@ -51,7 +51,7 @@ const PLANS = [
       { text: 'Everything in Plus', included: true },
       { text: 'Media sharing 20+ MB', included: true, note: 'Better quality' },
       { text: 'Full advanced AI access', included: true, note: 'More tokens' },
-      { text: 'Mock & amplitude tests', included: true },
+      { text: 'Mock & aptitude tests', included: true },
       { text: 'Unlimited challenges', included: true },
       { text: 'All affiliated contest entries', included: true, note: 'Monthly cap applies' },
       { text: 'Priority support', included: true },

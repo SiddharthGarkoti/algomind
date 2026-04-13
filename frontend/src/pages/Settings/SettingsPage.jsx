@@ -69,17 +69,36 @@ function Section({ title, children, surface, surfLow, border, textSec }) {
   );
 }
 
+/* ── Notification settings helpers ── */
+const NOTIF_KEY = 'algomind_notif_settings';
+
+function loadNotifSettings() {
+  try {
+    const raw = localStorage.getItem(NOTIF_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { notifPush: true, notifEmail: false, notifChat: true, chatSound: false, notifStreak: true };
+}
+
+function saveNotifSettings(patch) {
+  try {
+    const current = loadNotifSettings();
+    localStorage.setItem(NOTIF_KEY, JSON.stringify({ ...current, ...patch }));
+  } catch {}
+}
+
 /* ── Main page ── */
 function SettingsPage({ theme, toggleTheme }) {
   const isDark   = theme === 'dark';
   const navigate = useNavigate();
 
-  // Notification settings
-  const [notifPush,   setNotifPush]   = useState(true);
-  const [notifEmail,  setNotifEmail]  = useState(false);
-  const [notifChat,   setNotifChat]   = useState(true);
-  const [chatSound,   setChatSound]   = useState(false);
-  const [notifStreak, setNotifStreak] = useState(true);
+  // Notification settings — initialised from localStorage
+  const _notif = loadNotifSettings();
+  const [notifPush,   setNotifPush]   = useState(_notif.notifPush);
+  const [notifEmail,  setNotifEmail]  = useState(_notif.notifEmail);
+  const [notifChat,   setNotifChat]   = useState(_notif.notifChat);
+  const [chatSound,   setChatSound]   = useState(_notif.chatSound);
+  const [notifStreak, setNotifStreak] = useState(_notif.notifStreak);
 
   // Platform handles
   const [lcUser,   setLcUser]   = useState('');
@@ -172,15 +191,20 @@ function SettingsPage({ theme, toggleTheme }) {
         {/* Notifications */}
         <Section title="Notifications" surface={surface} surfLow={surfLow} border={border} textSec={textSec}>
           <Toggle label="Push Notifications" desc="Alerts for streaks, challenges, and system updates"
-            value={notifPush} onChange={setNotifPush} isDark={isDark} textPri={textPri} textSec={textSec} />
+            value={notifPush} onChange={v => { setNotifPush(v); saveNotifSettings({ notifPush: v }); }}
+            isDark={isDark} textPri={textPri} textSec={textSec} />
           <Toggle label="Message Popup" desc="Show a popup when a friend sends you a message"
-            value={notifChat} onChange={setNotifChat} accentColor="#A855F7" isDark={isDark} textPri={textPri} textSec={textSec} />
+            value={notifChat} onChange={v => { setNotifChat(v); saveNotifSettings({ notifChat: v }); }}
+            accentColor="#A855F7" isDark={isDark} textPri={textPri} textSec={textSec} />
           <Toggle label="Chat Sound" desc="Play a sound on new messages"
-            value={chatSound} onChange={setChatSound} accentColor="#A855F7" isDark={isDark} textPri={textPri} textSec={textSec} />
+            value={chatSound} onChange={v => { setChatSound(v); saveNotifSettings({ chatSound: v }); }}
+            accentColor="#A855F7" isDark={isDark} textPri={textPri} textSec={textSec} />
           <Toggle label="Streak Reminder" desc="Daily reminder if you haven't solved a problem"
-            value={notifStreak} onChange={setNotifStreak} accentColor="#F59E0B" isDark={isDark} textPri={textPri} textSec={textSec} />
+            value={notifStreak} onChange={v => { setNotifStreak(v); saveNotifSettings({ notifStreak: v }); }}
+            accentColor="#F59E0B" isDark={isDark} textPri={textPri} textSec={textSec} />
           <Toggle label="Email Digest" desc="Weekly progress summary sent to your email"
-            value={notifEmail} onChange={setNotifEmail} isDark={isDark} textPri={textPri} textSec={textSec} />
+            value={notifEmail} onChange={v => { setNotifEmail(v); saveNotifSettings({ notifEmail: v }); }}
+            isDark={isDark} textPri={textPri} textSec={textSec} />
         </Section>
 
         {/* Platform Connections */}

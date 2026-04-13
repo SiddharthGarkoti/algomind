@@ -18,7 +18,8 @@ import FriendsPage    from '../pages/Friends/FriendsPage.jsx';
 import CommunityPage  from '../pages/Community/CommunityPage.jsx';
 import ChatbotPage    from '../pages/Chatbot/ChatbotPage.jsx';
 import SettingsPage   from '../pages/Settings/SettingsPage.jsx';
-import ProfilePage    from '../pages/Profile/ProfilePage.jsx';
+import ProfilePage       from '../pages/Profile/ProfilePage.jsx';
+import PublicProfilePage from '../pages/Profile/PublicProfilePage.jsx';
 import SupportPage    from '../pages/Support/SupportPage.jsx';
 import PrivacyPage    from '../pages/Privacy/PrivacyPage.jsx';
 import PlansPage      from '../pages/Plans/PlansPage.jsx';
@@ -102,7 +103,8 @@ function AppRoutes() {
 
         {/* ── Auth-only: real JWT required ─────────────────────── */}
         <Route path="/chatbot"  element={<G><ChatbotPage  {...dash} /></G>} />
-        <Route path="/profile"  element={<A><ProfilePage  {...dash} /></A>} />
+        <Route path="/profile"           element={<A><ProfilePage       {...dash} /></A>} />
+        <Route path="/profile/:username" element={<G><PublicProfilePage {...dash} /></G>} />
         <Route path="/settings" element={<A><SettingsPage {...dash} /></A>} />
       </Routes>
       <GuestConvertBanner />

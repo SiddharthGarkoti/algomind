@@ -283,3 +283,38 @@ class RefreshPlatformView(APIView):
             )
 
         return Response(PlatformProfileSerializer(profile).data)
+
+
+class VerifySolvedView(APIView):
+    """
+    POST /api/analytics/verify-solved/
+    Body: { platform: 'leetcode', slug: 'climbing-stairs' }
+    Returns { verified: true/false, detail: '...' }
+    Used by the Plan practice page to cross-check LeetCode/CF submissions.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        platform = request.data.get('platform', 'leetcode').lower()
+        slug     = request.data.get('slug', '').strip()
+
+        if not slug:
+            return Response({'verified': False, 'detail': 'Slug is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            profile = PlatformProfile.objects.get(user=request.user, platform_name=platform)
+        except PlatformProfile.DoesNotExist:
+            return Response({'verified': False, 'detail': f'{platform} not connected. Add your handle in Settings.'})
+
+        if platform == 'leetcode':
+            from challenges.views import _lc_accepted_slugs
+            accepted = _lc_accepted_slugs(profile.handle, limit=100)
+            verified = slug in accepted
+        elif platform == 'codeforces':
+            from challenges.views import _cf_accepted_slugs
+            accepted = _cf_accepted_slugs(profile.handle, limit=200)
+            verified = slug in accepted
+        else:
+            return Response({'verified': False, 'detail': 'Unsupported platform.'})
+
+        return Response({'verified': verified})

@@ -237,7 +237,10 @@ html[data-theme="light"] #root {
   border-radius: 20px 20px 4px 20px;
 }
 .chat-bubble-other {
-  border-radius: 20px 20px 20px 4px;
+  border-radius: 4px 20px 20px 20px;
+}
+.chat-bubble-bot {
+  border-radius: 4px 20px 20px 20px;
 }
 .typing-dot { animation: typingDot 1.2s ease-in-out infinite; }
 .typing-dot:nth-child(2) { animation-delay:0.2s; }
