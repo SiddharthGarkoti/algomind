@@ -25,15 +25,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model  = User
         fields = ['id', 'email', 'username', 'streak', 'level',
-                  'rating', 'bio', 'avatar', 'last_active', 'date_joined', 'is_admin']
+                  'rating', 'bio', 'avatar', 'last_active', 'date_joined', 'is_admin', 'plan_tier']
         read_only_fields = ['id', 'email', 'streak', 'level',
-                            'rating', 'date_joined', 'last_active', 'is_admin']
+                            'rating', 'date_joined', 'last_active', 'is_admin', 'plan_tier']
 
 
 class PublicUserSerializer(serializers.ModelSerializer):
     class Meta:
         model  = User
-        fields = ['id', 'username', 'streak', 'level', 'rating', 'avatar', 'is_admin']
+        fields = ['id', 'username', 'streak', 'level', 'rating', 'avatar', 'is_admin', 'plan_tier']
 
 
 class NotificationSerializer(serializers.ModelSerializer):

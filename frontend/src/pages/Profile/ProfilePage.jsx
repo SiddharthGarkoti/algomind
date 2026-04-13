@@ -207,13 +207,21 @@ function ProfilePage({ theme, toggleTheme }) {
                       </h1>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                          style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>Basic</span>
+                          style={
+                            user?.plan_tier === 'pro' 
+                              ? { background: 'rgba(167, 139, 250, 0.12)', color: '#A78BFA' }
+                              : { background: 'rgba(34,197,94,0.12)', color: '#22C55E' }
+                          }>
+                            {user?.plan_tier?.toUpperCase() || 'BASIC'}
+                          </span>
+                        {user?.plan_tier !== 'pro' && (
                         <button
                           className="text-[10px] font-bold flex items-center gap-1 px-2 py-0.5 rounded-full transition-all hover:opacity-80"
                           style={{ background: 'linear-gradient(135deg,rgba(245,158,11,0.12),rgba(239,68,68,0.08))', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.25)' }}
                           onClick={() => navigate('/plans')}>
                           ⚡ Upgrade Plan
                         </button>
+                        )}
                         <span className="text-[10px]" style={{ color: textSec }}>
                           Lv {user?.level ?? 1} · Rating {user?.rating ?? 1000}
                         </span>

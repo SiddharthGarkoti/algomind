@@ -256,13 +256,19 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
               </p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase leading-none"
-                  style={{ background: 'rgba(99,102,241,0.15)', color: '#6366F1' }}>Basic</span>
+                  style={user?.plan_tier === 'pro' 
+                    ? { background: 'rgba(167, 139, 250, 0.15)', color: '#A78BFA' } 
+                    : { background: 'rgba(99,102,241,0.15)', color: '#6366F1' }}>
+                  {user?.plan_tier === 'pro' ? 'PRO' : user?.plan_tier === 'plus' ? 'PLUS' : 'BASIC'}
+                </span>
+                {user?.plan_tier !== 'pro' && (
                 <button
                   className="text-[9px] font-bold flex items-center gap-0.5 hover:opacity-70 leading-none"
                   style={{ color: '#F59E0B' }}
                   onClick={e => { e.stopPropagation(); navigate('/plans'); }}>
                   <span>⚡</span> Upgrade
                 </button>
+                )}
               </div>
             </div>
           </button>

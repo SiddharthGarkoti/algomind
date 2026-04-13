@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 const PLANS = [
   {
@@ -95,7 +96,7 @@ function PlanCard({ plan, isDark, isHighlighted, onSelect }) {
       ref={cardRef}
       onMouseMove={(e) => { setHovered(true); handleMouseMove(e); }}
       onMouseLeave={handleMouseLeave}
-      onClick={() => !plan.current && onSelect(plan)}
+      onClick={() => !plan.is_active_tier && onSelect(plan)}
       style={{
         background: surface,
         border: isHighlighted ? `1.5px solid ${plan.accentColor}` : `1px solid ${border}`,
@@ -103,8 +104,8 @@ function PlanCard({ plan, isDark, isHighlighted, onSelect }) {
         padding: '2rem',
         position: 'relative',
         overflow: 'hidden',
-        cursor: plan.current ? 'default' : 'pointer',
-        transform: `perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) ${hovered && !plan.current ? 'translateY(-4px)' : 'translateY(0)'}`,
+        cursor: plan.is_active_tier ? 'default' : 'pointer',
+        transform: `perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) ${hovered && !plan.is_active_tier ? 'translateY(-4px)' : 'translateY(0)'}`,
         transition: hovered ? 'box-shadow 0.15s ease' : 'transform 0.5s cubic-bezier(0.23,1,0.32,1), box-shadow 0.5s ease',
         boxShadow: isHighlighted
           ? `0 0 0 1px ${plan.accentColor}22, 0 24px 48px -12px ${plan.accentColor}33`
@@ -159,8 +160,10 @@ function PlanCard({ plan, isDark, isHighlighted, onSelect }) {
             <span style={{ fontSize: '13px', color: textSec }}>{plan.label}</span>
           )}
         </div>
-        {plan.current && (
-          <span style={{ fontSize: '11px', color: textMuted, marginTop: '4px', display: 'block' }}>Your current plan</span>
+        {plan.is_active_tier ? (
+          <span style={{ fontSize: '11px', color: plan.id === 'pro' ? '#A78BFA' : textMuted, marginTop: '4px', display: 'block', fontWeight: 700 }}>★ Your Current Plan</span>
+        ) : (
+          <span style={{ fontSize: '11px', color: 'transparent', marginTop: '4px', display: 'block' }}>&nbsp;</span>
         )}
       </div>
 
@@ -198,26 +201,26 @@ function PlanCard({ plan, isDark, isHighlighted, onSelect }) {
 
       {/* CTA */}
       <button
-        disabled={plan.current}
-        onClick={(e) => { e.stopPropagation(); !plan.current && onSelect(plan); }}
+        disabled={plan.is_active_tier}
+        onClick={(e) => { e.stopPropagation(); !plan.is_active_tier && onSelect(plan); }}
         style={{
           marginTop: '2rem', width: '100%', padding: '12px',
           borderRadius: '12px', fontSize: '14px', fontWeight: 600,
-          cursor: plan.current ? 'default' : 'pointer',
+          cursor: plan.is_active_tier ? 'default' : 'pointer',
           border: 'none', outline: 'none',
-          background: plan.current
+          background: plan.is_active_tier
             ? isDark ? '#1e1e22' : '#F1F5F9'
             : plan.id === 'pro'
               ? `linear-gradient(135deg, ${plan.accentColor}, #7C3AED)`
               : plan.accentColor,
-          color: plan.current ? textMuted : '#ffffff',
+          color: plan.is_active_tier ? textMuted : '#ffffff',
           transition: 'opacity 0.2s, transform 0.1s',
-          boxShadow: plan.current ? 'none' : `0 8px 20px -6px ${plan.accentColor}55`,
+          boxShadow: plan.is_active_tier ? 'none' : `0 8px 20px -6px ${plan.accentColor}55`,
         }}
-        onMouseEnter={(e) => { if (!plan.current) e.currentTarget.style.opacity = '0.88'; }}
+        onMouseEnter={(e) => { if (!plan.is_active_tier) e.currentTarget.style.opacity = '0.88'; }}
         onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
       >
-        {plan.cta}
+        {plan.is_active_tier ? 'Current Plan' : plan.cta}
       </button>
     </div>
   );
@@ -225,6 +228,9 @@ function PlanCard({ plan, isDark, isHighlighted, onSelect }) {
 
 function PlansPage({ isDark, toggleTheme }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const currentTier = user?.plan_tier || 'basic';
   const [highlighted, setHighlighted] = useState('plus');
 
   const bg = isDark
@@ -324,7 +330,7 @@ function PlansPage({ isDark, toggleTheme }) {
           {PLANS.map((plan) => (
             <div key={plan.id} className="plan-fade-up">
               <PlanCard
-                plan={plan}
+                plan={{ ...plan, is_active_tier: currentTier === plan.id }}
                 isDark={isDark}
                 isHighlighted={highlighted === plan.id}
                 onSelect={handleSelect}

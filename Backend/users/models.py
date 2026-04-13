@@ -21,6 +21,9 @@ class User(AbstractUser):
     # OAuth fields
     oauth_provider = models.CharField(max_length=20, choices=OAUTH_PROVIDERS, default='email')
     oauth_id       = models.CharField(max_length=200, blank=True)  # provider's user id
+    
+    # Billing / Tier
+    plan_tier      = models.CharField(max_length=10, default='basic')  # basic, plus, pro
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
