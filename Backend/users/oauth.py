@@ -102,7 +102,7 @@ def _guarantee_dev_identity(user):
                 "— **Team AlgoMind**"
             )
             try:
-                CommunityPost.objects.create(author=team_user, post_type='announcement', title="We Want Your Feedback!", body=feedback_body, tags='survey,team')
+                CommunityPost.objects.create(author=team_user, post_type='update', title="We Want Your Feedback!", body=feedback_body, tags='survey,team')
             except Exception:
                 pass
 
