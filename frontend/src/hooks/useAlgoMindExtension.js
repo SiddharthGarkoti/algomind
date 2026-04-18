@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import api from '../services/api';
+import api from '../utils/api';
 
 const PING_TIMEOUT_MS   = 1500;   // Wait up to 1.5s for pong
 const PULSE_INTERVAL_MS = 5000;   // Send backend pulse every 5s
