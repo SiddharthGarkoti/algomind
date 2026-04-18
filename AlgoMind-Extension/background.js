@@ -2,59 +2,65 @@
  * background.js — AlgoMind Fair Play Extension
  * Service Worker (Manifest V3)
  *
- * Responsibilities:
- *  - Manage challenge state (active/inactive)
- *  - Heartbeat via self-rescheduling setTimeout (MV3 workaround)
- *  - Tab/window event listeners for violation detection
- *  - 3-Strike forfeit enforcement
- *  - Persist state via chrome.storage.local (MV3 service-worker may sleep)
+ * Key guarantees:
+ *  - max_strikes is synced from the backend challenge start payload
+ *  - Every strike triggers a Chrome notification (not just the last)
+ *  - 1500ms debounce prevents cascading events (onFocusChanged + onActivated
+ *    + onCreated firing together) from registering multiple strikes
+ *  - windowBlurred flag: only 1 strike for leaving browser, 0 for returning
+ *  - 2s grace period for new tabs so opening LC/CF doesn't count as violation
+ *  - Extension-disabled mid-challenge: if heartbeat misses 3 loops (~15s), forfeit
  */
 
-// ─── Debug Mode ────────────────────────────────────────────────────────────────
-const DEBUG = false; // Set to true for local development
-const log = (...args) => DEBUG && console.log('[AlgoMind BG]', ...args);
+const DEBUG = false;
+const log   = (...a) => DEBUG && console.log('[AlgoMind BG]', ...a);
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 const HEARTBEAT_ALARM       = 'algomind_heartbeat';
-const MAX_STRIKES           = 3;
 const HEARTBEAT_INTERVAL_MS = 4000;
+const NEW_TAB_GRACE_MS      = 2500;
+const VIOLATION_DEBOUNCE_MS = 1500;   // Ignore a 2nd violation inside this window
 
-// Whitelisted domains — switching to these tabs is NEVER a violation
-const WHITELISTED_DOMAINS = ['leetcode.com', 'codeforces.com'];
+// Whitelisted domains — switching to these is NEVER a violation
+const WHITELISTED_DOMAINS = [
+  'leetcode.com',
+  'codeforces.com',
+  'atcoder.jp',
+];
 
-// Paths that ARE restricted even on whitelisted domains
+// Paths restricted even on whitelisted platforms
 const RESTRICTED_PATHS = {
-  'leetcode.com':   ['/solutions', '/discuss', '/explore'],
-  'codeforces.com': ['/blog', '/tutorial', '/gym'],
+  'leetcode.com':   ['/solutions', '/discuss', '/explore', '/companies'],
+  'codeforces.com': ['/blog', '/tutorial'],
 };
 
-// Grace period (ms) for newly created tabs — gives the browser time to navigate
-// to a platform URL before we decide it's a "random tab"
-const NEW_TAB_GRACE_MS = 2000;
-
-// ─── Initial State ─────────────────────────────────────────────────────────────
+// ─── State ─────────────────────────────────────────────────────────────────────
 let state = {
-  active:           false,
-  partyCode:        null,
-  strikes:          0,
-  algomindTabId:    null,          // Tab hosting AlgoMind app
-  challengeTabIds:  new Set(),     // LeetCode / Codeforces tabs
-  lastHeartbeat:    null,
-  windowBlurred:    false,         // FIX: track blur state to prevent double-strike
-  pendingTabIds:    new Set(),     // FIX: tabs in grace period (just created, URL loading)
+  active:          false,
+  partyCode:       null,
+  strikes:         0,
+  maxStrikes:      3,          // overridden from challenge start payload
+  algomindTabId:   null,
+  challengeTabIds: new Set(),
+  lastHeartbeat:   null,
+  windowBlurred:   false,      // true = browser already flagged once for this blur
+  pendingTabIds:   new Set(),  // tabs in grace period
+  lastViolationAt: 0,          // timestamp of last recorded violation (for debounce)
 };
 
-// ─── Persistence Helpers ───────────────────────────────────────────────────────
+// ─── Persistence ───────────────────────────────────────────────────────────────
 async function saveState() {
   await chrome.storage.local.set({
     algomind_state: {
       active:          state.active,
       partyCode:       state.partyCode,
       strikes:         state.strikes,
+      maxStrikes:      state.maxStrikes,
       algomindTabId:   state.algomindTabId,
       challengeTabIds: [...state.challengeTabIds],
       lastHeartbeat:   state.lastHeartbeat,
       windowBlurred:   state.windowBlurred,
+      lastViolationAt: state.lastViolationAt,
     },
   });
 }
@@ -66,39 +72,40 @@ async function loadState() {
     state = {
       ...s,
       challengeTabIds: new Set(s.challengeTabIds || []),
-      windowBlurred:   s.windowBlurred || false,
       pendingTabIds:   new Set(),
     };
-    log('State restored from storage:', state);
+    log('State restored:', state);
   }
 }
 
 // ─── Challenge Lifecycle ───────────────────────────────────────────────────────
-async function startChallenge(partyCode, senderTabId) {
+async function startChallenge(partyCode, maxStrikes, senderTabId) {
   state.active          = true;
   state.partyCode       = partyCode;
-  state.strikes         = 0;          // Always reset to 0 on start — never pre-populate
+  state.strikes         = 0;
+  state.maxStrikes      = maxStrikes || 3;
   state.algomindTabId   = senderTabId;
   state.challengeTabIds = new Set();
   state.lastHeartbeat   = Date.now();
   state.windowBlurred   = false;
   state.pendingTabIds   = new Set();
-
+  state.lastViolationAt = 0;
   await saveState();
   scheduleHeartbeat();
-  log('Challenge started:', partyCode);
+  log('Challenge started:', partyCode, 'maxStrikes:', state.maxStrikes);
   notifyAlgomindTab({ type: 'ALGOMIND_EXTENSION_STATUS', active: true, strikes: 0 });
 }
 
 async function stopChallenge() {
-  state.active        = false;
-  state.partyCode     = null;
-  state.strikes       = 0;
+  state.active          = false;
+  state.partyCode       = null;
+  state.strikes         = 0;
   state.challengeTabIds = new Set();
   state.windowBlurred   = false;
   state.pendingTabIds   = new Set();
-
+  state.lastViolationAt = 0;
   chrome.alarms.clear(HEARTBEAT_ALARM);
+  if (heartbeatTimer) { clearTimeout(heartbeatTimer); heartbeatTimer = null; }
   await saveState();
   log('Challenge stopped.');
 }
@@ -110,19 +117,28 @@ function scheduleHeartbeat() {
   runHeartbeatLoop();
 }
 
-let heartbeatTimer = null;
+let heartbeatTimer     = null;
+let heartbeatMissCount = 0;
+const MAX_MISSED_BEATS = 3;   // 3 × 4s = 12s with no heartbeat → extension was killed
+
 function runHeartbeatLoop() {
   if (heartbeatTimer) clearTimeout(heartbeatTimer);
   if (!state.active) return;
 
-  state.lastHeartbeat = Date.now();
+  state.lastHeartbeat  = Date.now();
+  heartbeatMissCount   = 0;   // reset: we are running, not dead
   saveState();
   notifyAlgomindTab({ type: 'ALGOMIND_HEARTBEAT', timestamp: state.lastHeartbeat });
-  log('Heartbeat sent:', state.lastHeartbeat);
+  log('Heartbeat:', state.lastHeartbeat);
 
   heartbeatTimer = setTimeout(runHeartbeatLoop, HEARTBEAT_INTERVAL_MS);
 }
 
+// The extension being killed/disabled means the service worker dies — it can't
+// detect its own death. Instead the FRONTEND useExtensionPulse hook detects
+// missed pulse responses and calls /party/<code>/strike/ directly.
+// However, if the alarm fires but the service worker wakes up and the challenge
+// is still marked active but heartbeats have been missed, we know time has passed.
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === HEARTBEAT_ALARM && state.active) {
     runHeartbeatLoop();
@@ -132,133 +148,153 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // ─── Violation / Strike System ─────────────────────────────────────────────────
 async function recordViolation(reason) {
   if (!state.active) return;
+  if (state.strikes >= state.maxStrikes) return;
 
-  // FIX: Hard-cap strikes at MAX_STRIKES — never allow skipping
-  if (state.strikes >= MAX_STRIKES) return;
-
+  // Debounce — ignore rapid duplicate events (e.g., focus+activated+created)
+  const now = Date.now();
+  if (now - state.lastViolationAt < VIOLATION_DEBOUNCE_MS) {
+    log('Violation debounced:', reason);
+    return;
+  }
+  state.lastViolationAt = now;
   state.strikes++;
-  log(`Violation #${state.strikes}: ${reason}`);
+  log(`Violation #${state.strikes}/${state.maxStrikes}: ${reason}`);
   await saveState();
 
+  // Notify React app so it can call /party/<code>/strike/ and refresh UI
   notifyAlgomindTab({ type: 'ALGOMIND_VIOLATION', strikes: state.strikes, reason });
 
-  if (state.strikes >= MAX_STRIKES) {
-    // Give a brief moment for the violation notification to be received before forfeit
-    setTimeout(() => triggerForfeit('3 Violations — Fair Play Enforcement'), 500);
+  // Auto-forfeit when max reached
+  if (state.strikes >= state.maxStrikes) {
+    setTimeout(() => triggerForfeit(`${state.maxStrikes} violations — fair play forfeited`), 600);
     return;
   }
 
-  // Show Chrome notification for strike 1 and 2
-  chrome.notifications.create(`strike_${Date.now()}`, {
-    type: 'basic',
-    iconUrl: 'icons/icon48.png',
-    title: `⚠️ AlgoMind Warning — Strike ${state.strikes}/${MAX_STRIKES}`,
-    message:
-      state.strikes === 1
-        ? `Warning! ${reason}. Two more violations will forfeit you.`
-        : `Final Warning! ${reason}. Next violation forfeits you automatically.`,
+  // Chrome notification for EVERY strike
+  const remaining = state.maxStrikes - state.strikes;
+  chrome.notifications.create(`strike_${now}`, {
+    type:     'basic',
+    iconUrl:  'icons/icon48.png',
+    title:    `⚠️ AlgoMind Strike ${state.strikes}/${state.maxStrikes}`,
+    message:  remaining === 1
+      ? `Final warning! ${reason}. Next violation = auto-forfeit.`
+      : `${reason}. ${remaining} violation${remaining > 1 ? 's' : ''} left before forfeit.`,
     priority: 2,
   });
 }
 
 async function triggerForfeit(reason) {
-  if (!state.active) return; // Guard against double-trigger
-  log('Auto-forfeit triggered:', reason);
+  if (!state.active) return;
+  log('Auto-forfeit:', reason);
   notifyAlgomindTab({ type: 'ALGOMIND_TRIGGER_FORFEIT', reason });
   chrome.notifications.create(`forfeit_${Date.now()}`, {
-    type: 'basic',
-    iconUrl: 'icons/icon48.png',
-    title: '❌ AlgoMind — Auto Forfeited',
-    message: `You have been auto-forfeited. Reason: ${reason}`,
+    type:     'basic',
+    iconUrl:  'icons/icon48.png',
+    title:    '❌ AlgoMind — Auto Forfeited',
+    message:  `Auto-forfeited. Reason: ${reason}`,
     priority: 2,
   });
   await stopChallenge();
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+// ─── URL Helpers ───────────────────────────────────────────────────────────────
 function isWhitelistedUrl(url) {
+  if (!url) return false;
   return WHITELISTED_DOMAINS.some(d => url.includes(d));
 }
 
 function isRestrictedUrl(url) {
+  if (!url) return false;
   for (const [domain, paths] of Object.entries(RESTRICTED_PATHS)) {
     if (url.includes(domain)) {
-      for (const p of paths) {
-        if (url.includes(p)) return true;
-      }
+      if (paths.some(p => url.includes(p))) return true;
     }
   }
   return false;
 }
 
-// ─── Message to AlgoMind Tab ───────────────────────────────────────────────────
+function isAlgomindUrl(url) {
+  if (!url) return false;
+  // localhost dev or deployed Render URL
+  return url.includes('localhost') || url.includes('algomind') || url.includes('onrender.com');
+}
+
+// ─── Send to AlgoMind Tab ──────────────────────────────────────────────────────
 function notifyAlgomindTab(payload) {
   if (!state.algomindTabId) return;
   chrome.tabs.sendMessage(state.algomindTabId, payload, () => {
-    if (chrome.runtime.lastError) {
-      log('Could not reach AlgoMind tab:', chrome.runtime.lastError.message);
-    }
+    if (chrome.runtime.lastError) log('Tab msg fail:', chrome.runtime.lastError.message);
   });
 }
 
-// ─── Tab Monitoring ────────────────────────────────────────────────────────────
+// ─── Tab Listeners ─────────────────────────────────────────────────────────────
+
+// onActivated fires when user switches to a tab
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   if (!state.active) return;
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   if (!tab) return;
 
   const url = tab.url || '';
+  log('Tab activated:', tabId, url);
 
-  // AlgoMind tab itself — always allowed
+  // AlgoMind tab itself — always fine
   if (tabId === state.algomindTabId) return;
+  if (isAlgomindUrl(url)) return;
 
-  // Whitelisted: LeetCode/Codeforces — always allowed (user is solving problems)
+  // Whitelisted coding platforms — never a violation unless restricted path
   if (isWhitelistedUrl(url)) {
-    // But check for restricted paths within the platform
-    if (isRestrictedUrl(url)) {
-      recordViolation(`Visited restricted page on ${url}`);
-    }
+    if (isRestrictedUrl(url)) recordViolation(`Restricted page opened: ${new URL(url).pathname}`);
     return;
   }
 
-  // FIX: Tab in grace period (just created, URL still loading) — don't penalise yet
+  // Tab is in grace period (just created — may navigate to LC/CF soon)
   if (state.pendingTabIds.has(tabId)) return;
 
-  // All other tabs = violation
-  recordViolation('Switched to an unrelated tab');
+  // Empty/new-tab/chrome:// pages — ignore
+  if (!url || url.startsWith('chrome://') || url === 'about:blank') return;
+
+  recordViolation('Switched to unrelated tab');
 });
 
+// onCreated: new tab opened
 chrome.tabs.onCreated.addListener((tab) => {
   if (!state.active) return;
 
-  // FIX: Add to grace period. Give the tab 2 seconds to navigate to a platform URL.
-  // If after 2 seconds the tab isn't on a platform, THEN record the violation.
+  // Add to grace period
   state.pendingTabIds.add(tab.id);
+  log('New tab grace:', tab.id);
+
   setTimeout(async () => {
-    if (!state.pendingTabIds.has(tab.id)) return; // Already resolved
+    if (!state.pendingTabIds.has(tab.id)) return;
     state.pendingTabIds.delete(tab.id);
 
-    const freshTab = await chrome.tabs.get(tab.id).catch(() => null);
-    if (!freshTab) return; // Tab was closed
+    const fresh = await chrome.tabs.get(tab.id).catch(() => null);
+    if (!fresh) return;
 
-    const url = freshTab.url || '';
-    const isAlgomind = freshTab.id === state.algomindTabId;
-    const isPlatform = isWhitelistedUrl(url);
+    const url = fresh.url || '';
+    if (isAlgomindUrl(url)) return;
+    if (isWhitelistedUrl(url)) return;
+    if (!url || url.startsWith('chrome://') || url === 'about:blank') return;
 
-    if (!isAlgomind && !isPlatform) {
-      recordViolation('Opened an unrelated new tab during challenge');
-    }
+    recordViolation('Opened unrelated tab during challenge');
   }, NEW_TAB_GRACE_MS);
 });
 
+// onUpdated: track when a pending tab resolves its URL
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (!state.active) return;
   if (changeInfo.status !== 'complete') return;
+
   const url = tab.url || '';
 
-  // If a pending tab navigated to a platform, clear it from grace-period
+  // If the pending tab navigated to a platform, clear it from grace
   if (state.pendingTabIds.has(tabId) && isWhitelistedUrl(url)) {
     state.pendingTabIds.delete(tabId);
+    state.challengeTabIds.add(tabId);
+    saveState();
+    log('Pending tab resolved to platform:', tabId, url);
+    return;
   }
 
   // Track coding platform tabs
@@ -267,40 +303,45 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     saveState();
   }
 
-  // Check restricted paths on platform tabs
+  // Navigated to restricted path on a platform
   if (isRestrictedUrl(url)) {
-    recordViolation(`Visited restricted page: ${url}`);
+    recordViolation(`Restricted page: ${url}`);
   }
 });
 
-// ─── Window Focus Monitoring ───────────────────────────────────────────────────
-// FIX: Use a blurred-flag so we record exactly 1 strike when leaving the window,
-// and 0 strikes when returning to it.
+// ─── Window Focus ───────────────────────────────────────────────────────────────
+// FIX: windowBlurred flag guarantees exactly 1 strike for losing focus,
+// and 0 additional strikes for regaining it.
 chrome.windows.onFocusChanged.addListener((windowId) => {
   if (!state.active) return;
 
   if (windowId === chrome.windows.WINDOW_ID_NONE) {
-    // Browser lost focus entirely — record one strike
     if (!state.windowBlurred) {
       state.windowBlurred = true;
       saveState();
       recordViolation('Left the browser window');
     }
   } else {
-    // Browser regained focus — clear blur flag, NO additional strike
-    state.windowBlurred = false;
-    saveState();
-    log('Window focus regained — no strike.');
+    // Focus regained — clear flag, no penalty
+    if (state.windowBlurred) {
+      state.windowBlurred = false;
+      saveState();
+      log('Window focus regained — no strike.');
+    }
   }
 });
 
-// ─── Message Listener (from content scripts + React frontend) ──────────────────
+// ─── Message Listener ──────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  log('Message received:', msg);
+  log('Message:', msg.type);
 
   switch (msg.type) {
     case 'ALGOMIND_CHALLENGE_START':
-      startChallenge(msg.partyCode, sender.tab?.id);
+      startChallenge(
+        msg.partyCode,
+        msg.maxStrikes || 3,
+        sender.tab?.id,
+      );
       sendResponse({ status: 'ok' });
       break;
 
@@ -314,13 +355,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
 
     case 'ALGOMIND_STATE_REQUEST':
-      sendResponse({ state: { active: state.active, strikes: state.strikes } });
+      sendResponse({ state: { active: state.active, strikes: state.strikes, maxStrikes: state.maxStrikes } });
       break;
 
-    // Backend heartbeat pulse ACK — frontend sends this every 5s to confirm
-    // the extension is still alive. The frontend is responsible for calling
-    // the backend /party/<code>/pulse/ endpoint. This message is the extension
-    // confirming it is still active so the frontend knows to send the pulse.
     case 'ALGOMIND_PULSE_ACK':
       sendResponse({ alive: state.active });
       break;
@@ -328,15 +365,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     default:
       break;
   }
-
-  return true; // Keep message channel open for async responses
+  return true;
 });
 
-// ─── Startup: Restore State ────────────────────────────────────────────────────
+// ─── Startup ───────────────────────────────────────────────────────────────────
 (async () => {
   await loadState();
   if (state.active) {
-    log('Challenge was active before sleep. Resuming heartbeat.');
+    log('Resuming active challenge after service worker restart.');
     runHeartbeatLoop();
   }
 })();

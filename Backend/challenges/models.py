@@ -20,6 +20,10 @@ class Party(models.Model):
     question_mode    = models.CharField(max_length=20, choices=Q_MODE, default='shuffle')
     duration_minutes = models.IntegerField(default=60)
     max_questions    = models.IntegerField(default=4)
+    # Ranked party settings
+    is_ranked        = models.BooleanField(default=False)   # ranked = extension enforcement on
+    max_strikes      = models.IntegerField(default=3)       # host-configurable (1-5)
+    host_spectator   = models.BooleanField(default=False)   # host watches, doesn't compete
     created_at       = models.DateTimeField(auto_now_add=True)
     started_at       = models.DateTimeField(null=True, blank=True)
     ends_at          = models.DateTimeField(null=True, blank=True)
@@ -44,11 +48,13 @@ class Party(models.Model):
 
 
 class PartyMember(models.Model):
-    party       = models.ForeignKey(Party, on_delete=models.CASCADE, related_name='members')
-    user        = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='party_memberships')
-    joined_at   = models.DateTimeField(auto_now_add=True)
-    finished_at = models.DateTimeField(null=True, blank=True)
-    rank        = models.IntegerField(null=True, blank=True)
+    party        = models.ForeignKey(Party, on_delete=models.CASCADE, related_name='members')
+    user         = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='party_memberships')
+    joined_at    = models.DateTimeField(auto_now_add=True)
+    finished_at  = models.DateTimeField(null=True, blank=True)
+    rank         = models.IntegerField(null=True, blank=True)
+    strikes      = models.IntegerField(default=0)       # fair-play violation count
+    is_spectator = models.BooleanField(default=False)   # spectating host or future watchers
 
     class Meta:
         unique_together = [['party', 'user']]

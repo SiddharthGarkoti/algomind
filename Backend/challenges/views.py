@@ -108,12 +108,20 @@ class CreatePartyView(APIView):
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
         party = Party.objects.create(
-            host=request.user, name=d['name'],
+            host=request.user,
+            name=d['name'],
             duration_minutes=d['duration_minutes'],
             max_questions=d['max_questions'],
             question_mode=d['question_mode'],
+            is_ranked=d.get('is_ranked', False),
+            max_strikes=d.get('max_strikes', 3),
+            host_spectator=d.get('host_spectator', False),
         )
-        PartyMember.objects.create(party=party, user=request.user)
+        PartyMember.objects.create(
+            party=party,
+            user=request.user,
+            is_spectator=d.get('host_spectator', False),
+        )
         return Response(PartySerializer(party, context={'request': request}).data,
                         status=status.HTTP_201_CREATED)
 
@@ -161,6 +169,16 @@ class StartPartyView(APIView):
         party.started_at = now
         party.ends_at = now + timezone.timedelta(minutes=party.duration_minutes)
         party.save(update_fields=['status', 'started_at', 'ends_at'])
+        # If host chose spectator mode, mark their membership as spectator
+        # so they are excluded from leaderboard and don't need to solve problems
+        if party.host_spectator:
+            try:
+                host_member = party.members.get(user=request.user)
+                host_member.is_spectator = True
+                host_member.finished_at = now   # Exclude from ranking immediately
+                host_member.save(update_fields=['is_spectator', 'finished_at'])
+            except PartyMember.DoesNotExist:
+                pass
         return Response(PartySerializer(party, context={'request': request}).data)
 
 
@@ -482,7 +500,62 @@ class ShuffleWithFilterView(APIView):
         return Response(PartySerializer(party, context={'request': request}).data)
 
 
+class ReportStrikeView(APIView):
+    """
+    POST /challenges/party/<code>/strike/
+    Body: { "reason": "..." }
+
+    Called by the frontend when the extension reports a violation.
+    Persists the strike count to the DB so all participants can see it.
+    Auto-forfeits the user when strikes >= party.max_strikes.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, code):
+        party, err = _get_party_or_404(code)
+        if err: return err
+        if party.status != 'active':
+            return Response({'detail': 'Party is not active.'}, status=400)
+        if not party.is_ranked:
+            return Response({'detail': 'Strike reporting only for ranked parties.'}, status=400)
+
+        try:
+            member = party.members.get(user=request.user)
+        except PartyMember.DoesNotExist:
+            return Response({'detail': 'Not a member.'}, status=404)
+
+        if member.finished_at:
+            return Response({'detail': 'Already finished.'}, status=400)
+
+        reason = request.data.get('reason', 'Fair play violation')
+
+        # Increment strikes in DB — cap at max_strikes to prevent race conditions
+        member.strikes = min(member.strikes + 1, party.max_strikes)
+        member.save(update_fields=['strikes'])
+
+        # Auto-forfeit if threshold reached
+        if member.strikes >= party.max_strikes:
+            member.finished_at = timezone.now()
+            member.save(update_fields=['finished_at'])
+            _assign_ranks(party)
+            return Response({
+                'strikes': member.strikes,
+                'forfeited': True,
+                'detail': f'Auto-forfeited: {reason}',
+                'party': PartySerializer(party, context={'request': request}).data,
+            })
+
+        return Response({
+            'strikes': member.strikes,
+            'forfeited': False,
+            'max_strikes': party.max_strikes,
+            'remaining': party.max_strikes - member.strikes,
+            'party': PartySerializer(party, context={'request': request}).data,
+        })
+
+
 class ExtensionPulseView(APIView):
+
     """
     POST /challenges/party/<code>/pulse/
 
