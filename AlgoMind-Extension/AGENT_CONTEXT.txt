@@ -180,12 +180,34 @@ The frontend calls this via:
 SECTION 7 — PENDING WORK (REMAINING)
 ==============================================================================
 
-[ ] Login fixes (noted in spec, deferred):
-    - Validate email authenticity on registration
-    - Verify email ownership before dashboard
-    - Follow full login flow on email auth (currently skips to dashboard)
+[x] URGENT REWORK: CRITICAL System Crashes — FIXED (Session 3, 2026-04-18):
+    - FRONTEND CRASH FIXED: ChallengesPage.jsx was using partyCode before it was
+      defined (React hook temporal dead zone). Moved const partyCode = party?.code
+      above useAlgoMindExtension and useExtensionPulse hooks.
+    - AUTH CRASH FIXED: simplejwt TokenObtainPairView did not reliably use
+      USERNAME_FIELD='email'. Added EmailTokenObtainPairSerializer + EmailLoginView
+      with explicit email lookup. Wired to /auth/login/ in users/urls.py.
 
-[x] Real-time friend online status — DONE (Session 2, 2026-04-18):
+[x] URGENT REWORK: Extension Stability & False Alarms — FIXED (Session 3):
+    - Added 1500ms global debounce to prevent tab-switching cascade false alarms.
+    - Added 2.5s grace period for new tabs to allow LeetCode/Codeforces navigation without penalty.
+    - Added windowBlurred state flag to prevent double strikes on focus matching.
+    - Ranked challenge now blocks starting if the extension is not installed (UI guard + disabled buttons).
+    - Added backend live-sync for strikes (ReportStrikeView) locking auto-forfeit reliably.
+
+[x] URGENT REWORK: Challenge UI Redesign — FIXED (Session 3):
+    - Split into 3 distinct functional tabs: Casual Party, Ranked Party, Contests.
+    - Ranked Tab features a dedicated dark-red theme + standalone extension install banner that only renders if the extension is absent.
+
+[x] URGENT REWORK: Friends UI Green Dot — FIXED (Session 3):
+    - FriendsPage updated: applied position relative wrapper so the absolute green dot renders correctly securely over the avatar.
+    - Header.jsx updated: leaderboard widget now polls real `onlineFriends` and injects their dynamic avatars + green dots instead of hardcoded initials.
+
+[x] Login System Enhancements — FIXED (Session 3):
+    - Implement Email OTP Registration: created SendOTPView & VerifyOTPView using Django cache + send_mail.
+    - SignInModal revamped to include OTP workflow (Send code -> enter 6 digits -> API checks and creates account).
+
+[x] Real-time friend online status — PARTIALLY DONE (Session 2, 2026-04-18):
     - last_active upgraded to DateTimeField (migration 0006)
     - ProfileView always writes exact datetime on page load
     - FriendOnlineStatusView: online = active within last 5 minutes
@@ -263,6 +285,22 @@ MODIFIED (Session 2 — 2026-04-18):
   Backend/users/migrations/0006_user_last_active_datetime.py  → [NEW] migration
   frontend/src/components/Header.jsx         → Friend-online toast (30s poll, transition detection)
   frontend/src/pages/Challenges/ChallengesPage.jsx → Forfeit UI fix: Forfeited badge + locked questions
+
+MODIFIED (Session 3 — 2026-04-18):
+  frontend/src/pages/Challenges/ChallengesPage.jsx
+    - Completely split into Casual, Ranked, and Contest tabs.
+    - Ranked Tab has dedicated host/join cards + max strikes + spectator mode modal.
+  Backend/challenges/models.py & views.py & serializers.py
+    - Added is_ranked, max_strikes, host_spectator to Party. strikes, is_spectator to PartyMember.
+    - Added ReportStrikeView for realtime violation persistence.
+  AlgoMind-Extension/background.js
+    - Wrapped listeners in 1500ms debounce. Max strikes dynamically synced from backend.
+  frontend/src/pages/Friends/FriendsPage.jsx & frontend/src/components/Header.jsx
+    - Added global online green-dots.
+  Backend/users/views.py & urls.py
+    - Added SendOTPView and VerifyOTPView for email registration.
+  frontend/src/components/login/SignInModal.jsx
+    - Rewritten to support the 6-digit OTP email flow.
 
 ==============================================================================
 END OF AGENT CONTEXT FILE
