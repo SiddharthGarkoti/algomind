@@ -185,9 +185,11 @@ SECTION 7 — PENDING WORK (REMAINING)
     - Verify email ownership before dashboard
     - Follow full login flow on email auth (currently skips to dashboard)
 
-[ ] Real-time friend online status (noted in spec, deferred):
-    - Upgrade last_active field in Backend/users/models.py to DateTimeField
-    - Frontend toast when friend goes from offline → online (30s polling or WebSocket)
+[x] Real-time friend online status — DONE (Session 2, 2026-04-18):
+    - last_active upgraded to DateTimeField (migration 0006)
+    - ProfileView always writes exact datetime on page load
+    - FriendOnlineStatusView: online = active within last 5 minutes
+    - Header.jsx: polls every 30s, shows "X is online 🟢" toast on transition
 
 [ ] Chrome Web Store publishing:
     - Replace PLACEHOLDER_ID in ExtensionGuard.jsx EXTENSION_DOWNLOAD_URL
@@ -197,9 +199,8 @@ SECTION 7 — PENDING WORK (REMAINING)
     - Add webextension-polyfill npm package
     - Wrap chrome.* calls with browser.* polyfill
 
-[ ] Production hardening:
-    - Set DEBUG = false in all extension JS files
-    - Add proper icon SVGs instead of the reused PNG at all 3 sizes
+[x] Production hardening — DONE (Session 2, 2026-04-18):
+    - DEBUG = false in background.js, content/algomind.js, content/platforms.js
 
 [ ] E2E testing:
     - Load unpacked extension in Chrome → chrome://extensions → Load Unpacked
@@ -235,15 +236,15 @@ CREATED:
   AlgoMind-Extension/popup/popup.html
   AlgoMind-Extension/popup/popup.css
   AlgoMind-Extension/popup/popup.js
-  AlgoMind-Extension/icons/icon16.png (copied from generated image)
-  AlgoMind-Extension/icons/icon48.png (copied from generated image)
-  AlgoMind-Extension/icons/icon128.png (copied from generated image)
+  AlgoMind-Extension/icons/icon16.png
+  AlgoMind-Extension/icons/icon48.png
+  AlgoMind-Extension/icons/icon128.png
   AlgoMind-Extension/AGENT_CONTEXT.txt  ← this file
   frontend/src/hooks/useAlgoMindExtension.js
   frontend/src/components/ExtensionGuard/ExtensionGuard.jsx
   frontend/src/components/ExtensionGuard/ExtensionGuard.module.css
 
-MODIFIED:
+MODIFIED (Session 1):
   frontend/src/pages/Challenges/ChallengesPage.jsx
     - Added imports: dispatchChallengeStart, dispatchChallengeEnd, listenToExtension, ExtensionGuard
     - handleStart: calls dispatchChallengeStart(partyCode) after party starts
@@ -252,6 +253,16 @@ MODIFIED:
     - handleLeave: calls dispatchChallengeEnd()
     - Added useEffect with listenToExtension → auto-calls handleForfeit on ALGOMIND_TRIGGER_FORFEIT
     - Added "Ranked Code Party" UI section wrapped in <ExtensionGuard>
+
+MODIFIED (Session 2 — 2026-04-18):
+  AlgoMind-Extension/background.js           → DEBUG = false
+  AlgoMind-Extension/content/algomind.js     → DEBUG = false
+  AlgoMind-Extension/content/platforms.js    → DEBUG = false
+  Backend/users/models.py                    → last_active: DateField → DateTimeField
+  Backend/users/views.py                     → ProfileView, FriendOnlineStatusView, NotificationListView
+  Backend/users/migrations/0006_user_last_active_datetime.py  → [NEW] migration
+  frontend/src/components/Header.jsx         → Friend-online toast (30s poll, transition detection)
+  frontend/src/pages/Challenges/ChallengesPage.jsx → Forfeit UI fix: Forfeited badge + locked questions
 
 ==============================================================================
 END OF AGENT CONTEXT FILE
