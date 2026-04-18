@@ -294,22 +294,7 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                 )}
               </div>
 
-              {/* Friends online strip */}
-              {onlineFriends.length > 0 && (
-                <div className="px-4 py-2 flex items-center gap-2 flex-wrap"
-                  style={{ borderBottom: `1px solid ${border}`, background: isDark ? 'rgba(34,197,94,0.04)' : 'rgba(34,197,94,0.03)' }}>
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: '#22C55E' }} />
-                  <p className="text-[10px] font-semibold" style={{ color: '#22C55E' }}>
-                    Online now:
-                  </p>
-                  {onlineFriends.slice(0, 4).map(f => (
-                    <span key={f.id} className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                      style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>
-                      {f.username}
-                    </span>
-                  ))}
-                </div>
-              )}
+
 
               <div className="max-h-72 overflow-y-auto custom-scrollbar">
                 {loadingNotifs ? (
@@ -345,7 +330,33 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                           <div className="flex-grow min-w-0 pr-8">
                             <p className="text-xs font-semibold" style={{ color: textPri }}>{notif.title}</p>
                             <p className="text-[11px] leading-tight mt-0.5" style={{ color: textSec }}>{notif.body}</p>
-                            <p className="text-[9px] mt-0.5" style={{ color: textSec }}>{timeAgo(notif.created_at)}</p>
+                            <p className="text-[9px] mt-0.5 mb-1.5" style={{ color: textSec }}>{timeAgo(notif.created_at)}</p>
+                            {/* Action Buttons */}
+                            {notif.notif_type === 'friend_request' && (
+                              <div className="flex gap-2 mb-1">
+                                <button onClick={(e) => { e.stopPropagation(); navigate('/friends?tab=requests'); markRead(notif.id); }}
+                                        className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
+                                        style={{ background: '#6366F1', color: '#fff' }}>Accept</button>
+                                <button onClick={(e) => { e.stopPropagation(); markRead(notif.id); }}
+                                        className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
+                                        style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', color: textPri }}>Dismiss</button>
+                              </div>
+                            )}
+                            {notif.notif_type === 'system' && notif.body.includes('code: ') && (
+                              <div className="flex gap-2 mb-1">
+                                <button onClick={(e) => {
+                                          e.stopPropagation();
+                                          const code = notif.body.split('code: ')[1]?.trim();
+                                          if(code) navigate('/challenges?join=' + code);
+                                          markRead(notif.id);
+                                        }}
+                                        className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
+                                        style={{ background: '#A855F7', color: '#fff' }}>Accept Challenge</button>
+                                <button onClick={(e) => { e.stopPropagation(); markRead(notif.id); }}
+                                        className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
+                                        style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', color: textPri }}>Decline</button>
+                              </div>
+                            )}
                           </div>
                           
                           {/* UI actions (Read & Delete) */}

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlgoMind Fair Play</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="popup-header">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <span class="logo-text">AlgoMind</span>
+      </div>
+      <div id="status-badge" class="badge badge--inactive">Inactive</div>
+    </div>
+
+    <!-- Challenge Info -->
+    <div id="challenge-section" class="challenge-section hidden">
+      <div class="info-row">
+        <span class="label">Party Code</span>
+        <span id="party-code" class="value mono">—</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Strikes</span>
+        <div id="strikes-display" class="strikes">
+          <span class="strike" data-index="0"></span>
+          <span class="strike" data-index="1"></span>
+          <span class="strike" data-index="2"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Idle Message -->
+    <div id="idle-section" class="idle-section">
+      <p class="idle-text">No active challenge.<br/>Start a Friends Code Party on AlgoMind to begin monitoring.</p>
+    </div>
+
+    <!-- Footer -->
+    <div class="popup-footer">
+      <span class="footer-version">v1.0.0</span>
+      <a href="https://algomind.app" target="_blank" class="footer-link">algomind.app</a>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

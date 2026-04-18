@@ -234,9 +234,19 @@ function FriendsPage({ theme, toggleTheme }) {
                     >
                       {friend?.avatar
                         ? <img src={friend.avatar} className="w-10 h-10 rounded-full object-cover" alt="" />
-                        : <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white"
-                            style={{ background: colourFor(friend?.id) }}>{initials(friend?.username)}</div>
+                        : <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white relative"
+                            style={{ background: colourFor(friend?.id) }}>
+                            {initials(friend?.username)}
+                          </div>
                       }
+                      <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2"
+                        style={{ 
+                          background: friend?.is_online ? '#22C55E' : 'rgba(100,116,139,0.3)', 
+                          borderColor: surface,
+                          boxShadow: friend?.is_online ? '0 0 0 1px rgba(34,197,94,0.3)' : 'none'
+                        }} 
+                        title={friend?.is_online ? "Online" : "Offline"}
+                      />
                     </button>
                     <div>
                       <button

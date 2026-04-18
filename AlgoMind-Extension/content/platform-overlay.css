@@ -1,0 +1,72 @@
+/* content/platform-overlay.css — AlgoMind in-page overlay styles */
+
+#algomind-violation-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  animation: algomind-fade-in 0.3s ease;
+}
+
+@keyframes algomind-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.algomind-overlay-inner {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid #e63946;
+  border-radius: 16px;
+  padding: 40px 48px;
+  text-align: center;
+  max-width: 480px;
+  box-shadow: 0 0 60px rgba(230, 57, 70, 0.4);
+}
+
+.algomind-logo {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #e63946;
+  margin-bottom: 16px;
+  letter-spacing: 0.5px;
+}
+
+.algomind-message {
+  font-size: 1rem;
+  color: #f1faee;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.algomind-sub {
+  font-size: 0.85rem;
+  color: #a8dadc;
+  margin-top: 8px;
+}
+
+/* Strike banner (bottom of screen) */
+.algomind-strike-banner {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  background: linear-gradient(90deg, #e63946, #c1121f);
+  color: #fff;
+  padding: 12px 28px;
+  border-radius: 32px;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 8px 32px rgba(230, 57, 70, 0.45);
+  animation: algomind-slide-up 0.3s ease;
+}
+
+@keyframes algomind-slide-up {
+  from { transform: translateX(-50%) translateY(30px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+}

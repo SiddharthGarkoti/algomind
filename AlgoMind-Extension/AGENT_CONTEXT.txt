@@ -1,0 +1,258 @@
+# AlgoMind Extension — Agent Context File
+# ==========================================
+# READ THIS FILE IN ONE GO BEFORE MAKING ANY CHANGES.
+# This file is the single source of truth for the AlgoMind Fair Play
+# browser extension. It documents every file, its purpose, key decisions,
+# and the current implementation status so any AI model can pick up exactly
+# where work left off without reading every source file individually.
+#
+# Last updated: 2026-04-18 (Session be8ed2cc-7e80-424e-8860-7b0aea0dc10f)
+
+==============================================================================
+SECTION 1 — PROJECT OVERVIEW
+==============================================================================
+
+App Name   : AlgoMind
+Type       : Browser Extension (Chrome / Edge / Brave, MV3) + React Integration
+Purpose    : Enforce fair play during "Friends Code Party" live coding challenges
+             conducted on LeetCode and Codeforces via the AlgoMind platform.
+Tech Stack : Manifest V3, Vanilla JS content scripts, React (Vite) frontend,
+             Django REST Framework backend
+
+Repository : c:\Users\Siddharth\OneDrive\Desktop\project-dsa-mentor
+Extension  : c:\Users\Siddharth\OneDrive\Desktop\project-dsa-mentor\AlgoMind-Extension\
+
+==============================================================================
+SECTION 2 — FULL FOLDER STRUCTURE (with status)
+==============================================================================
+
+AlgoMind-Extension/
+├── manifest.json              [DONE] MV3 manifest — permissions, host_permissions, content scripts
+├── background.js              [DONE] Service worker — state, tab/window listeners, 3-strike, heartbeat
+├── content/
+│   ├── algomind.js            [DONE] Bridge: React app ↔ BG service worker via postMessage + chrome.runtime
+│   ├── platforms.js           [DONE] LeetCode/Codeforces monitor — restricted path detection, overlays
+│   └── platform-overlay.css  [DONE] Dark-themed in-page overlay and strike banner CSS
+├── popup/
+│   ├── popup.html             [DONE] Extension popup — shows active status, party code, strikes
+│   ├── popup.css              [DONE] Premium dark UI matching AlgoMind brand
+│   └── popup.js              [DONE] Reads chrome.storage.local, updates UI every 3s
+├── icons/
+│   ├── icon16.png             [DONE] AlgoMind lightning bolt icon (16x16)
+│   ├── icon48.png             [DONE] AlgoMind lightning bolt icon (48x48)
+│   └── icon128.png            [DONE] AlgoMind lightning bolt icon (128x128)
+└── AGENT_CONTEXT.txt          [DONE] This file — machine-readable context
+
+frontend/src/hooks/
+└── useAlgoMindExtension.js    [DONE] React hook — detects extension, dispatches events, listens for BG msgs
+
+frontend/src/components/ExtensionGuard/
+├── ExtensionGuard.jsx         [DONE] Component — blocks Ranked Party join if extension not installed
+└── ExtensionGuard.module.css  [DONE] CSS module — error state, install CTA button
+
+frontend/src/pages/Challenges/ChallengesPage.jsx
+                               [DONE] Extension fully wired:
+                                      - handleStart → dispatchChallengeStart(partyCode)
+                                      - handleEndParty → dispatchChallengeEnd()
+                                      - handleForfeit → dispatchChallengeEnd()
+                                      - handleLeave → dispatchChallengeEnd()
+                                      - useEffect listenToExtension → auto-forfeit on ALGOMIND_TRIGGER_FORFEIT
+                                      - Ranked Code Party section with <ExtensionGuard> wrapping
+
+Backend/challenges/
+├── views.py                   [DONE] ForfeitPartyView exists at line 314 — fully implemented
+└── urls.py                    [DONE] Routes: party/<code>/forfeit/ → ForfeitPartyView
+
+==============================================================================
+SECTION 3 — KEY ARCHITECTURE DECISIONS
+==============================================================================
+
+1. COMMUNICATION FLOW
+   React App (window.postMessage)
+       ↓
+   content/algomind.js (chrome.runtime.sendMessage)
+       ↓
+   background.js (state machine + API)
+       ↑
+   background.js (chrome.tabs.sendMessage → content/algomind.js → window.postMessage)
+       ↑
+   React App (window.addEventListener 'message')
+
+2. EXTENSION DETECTION (two-method fallback)
+   a) DOM Sentinel: content script injects <div id="__algomind_extension_installed__">
+      React checks via document.getElementById() — instant, zero latency
+   b) postMessage Ping/Pong: React sends ALGOMIND_PING, script replies ALGOMIND_PONG
+   Timeout: 1500ms → if no response, extensionInstalled = false
+
+3. HEARTBEAT (MV3 constraint workaround)
+   - chrome.alarms minimum is 1 minute in production MV3
+   - Self-rescheduling setTimeout loop (4s) inside the service worker
+   - chromes.alarms fires once/min as a wakeup in case service worker sleeps
+
+4. STATE PERSISTENCE
+   - All state in chrome.storage.local under key 'algomind_state'
+   - On service worker startup, state restored and heartbeat resumes if challenge active
+
+5. VIOLATION SYSTEM (3-Strike Rule)
+   Triggers:
+     - Tab switch to non-AlgoMind / non-platform tab
+     - New tab created during challenge
+     - Window focus lost (chrome.windows.onFocusChanged → WINDOW_ID_NONE)
+     - Navigation to restricted paths (LeetCode /solutions, /discuss; CF /blog, /tutorial, /gym)
+   Strike 1 → Warning notification
+   Strike 2 → Final warning notification
+   Strike 3 → ALGOMIND_TRIGGER_FORFEIT postMessage → React auto-calls backend forfeit API
+
+6. RANKED PARTY UI
+   - ChallengesPage home view has a "Ranked Code Party" section below casual party
+   - The entire section (Host Ranked Party + Join buttons) is wrapped in <ExtensionGuard>
+   - If extension absent: shows shield icon + "Install Extension" CTA (no buttons visible)
+   - If extension present: shows Host Ranked Party and Join input/button
+
+==============================================================================
+SECTION 4 — MESSAGE TYPES (complete reference)
+==============================================================================
+
+React App → Extension (window.postMessage):
+  ALGOMIND_CHALLENGE_START  { type, partyCode: string }
+  ALGOMIND_CHALLENGE_END    { type }
+  ALGOMIND_PING             { type }
+
+Extension → React App (window.postMessage via algomind.js relay):
+  ALGOMIND_PONG             { type, installed: true }
+  ALGOMIND_HEARTBEAT        { type, timestamp: number }
+  ALGOMIND_VIOLATION        { type, strikes: number, reason: string }
+  ALGOMIND_TRIGGER_FORFEIT  { type, reason: string }
+  ALGOMIND_EXTENSION_STATUS { type, active: boolean, strikes: number }
+
+Internal (BG ↔ content scripts via chrome.runtime.sendMessage):
+  ALGOMIND_CHALLENGE_START       → background starts monitoring
+  ALGOMIND_CHALLENGE_END         → background stops monitoring
+  ALGOMIND_PING                  → background responds with PONG
+  ALGOMIND_STATE_REQUEST         → background returns { state: {...} }
+  ALGOMIND_PLATFORM_VIOLATION    → platforms.js → background (violation from platform tab)
+
+==============================================================================
+SECTION 5 — REACT INTEGRATION (how to use)
+==============================================================================
+
+A) Extension detection + Ranked Party guard:
+   import ExtensionGuard from './components/ExtensionGuard/ExtensionGuard';
+
+   <ExtensionGuard>
+     <button onClick={joinRankedParty}>Join Ranked Party</button>
+   </ExtensionGuard>
+
+B) Hook into challenge lifecycle (already done in ChallengesPage.jsx):
+   import { dispatchChallengeStart, dispatchChallengeEnd, listenToExtension }
+     from './hooks/useAlgoMindExtension';
+
+   // When host clicks "Start Party":
+   dispatchChallengeStart(partyCode);
+
+   // When challenge ends / forfeit / leave:
+   dispatchChallengeEnd();
+
+C) Auto-forfeit listener (already wired in ChallengesPage.jsx):
+   useEffect(() => {
+     if (view !== 'room' || !partyCode) return;
+     return listenToExtension((msg) => {
+       if (msg.type === 'ALGOMIND_TRIGGER_FORFEIT') {
+         handleForfeit(msg.reason); // calls backend /party/<code>/forfeit/
+       }
+     });
+   }, [view, partyCode]);
+
+==============================================================================
+SECTION 6 — BACKEND FORFEIT API
+==============================================================================
+
+Endpoint : POST /challenges/party/<code>/forfeit/
+Auth     : IsAuthenticated (bearer token)
+Logic    : Sets member.finished_at = now, calls _assign_ranks(party)
+File     : Backend/challenges/views.py — class ForfeitPartyView (line 314)
+URL      : Backend/challenges/urls.py — path('party/<str:code>/forfeit/', ...)
+
+The frontend calls this via:
+  api.post(`/challenges/party/${partyCode}/forfeit/`, { reason })
+
+==============================================================================
+SECTION 7 — PENDING WORK (REMAINING)
+==============================================================================
+
+[ ] Login fixes (noted in spec, deferred):
+    - Validate email authenticity on registration
+    - Verify email ownership before dashboard
+    - Follow full login flow on email auth (currently skips to dashboard)
+
+[ ] Real-time friend online status (noted in spec, deferred):
+    - Upgrade last_active field in Backend/users/models.py to DateTimeField
+    - Frontend toast when friend goes from offline → online (30s polling or WebSocket)
+
+[ ] Chrome Web Store publishing:
+    - Replace PLACEHOLDER_ID in ExtensionGuard.jsx EXTENSION_DOWNLOAD_URL
+    - Pack extension and submit to Chrome Web Store
+
+[ ] Firefox compatibility:
+    - Add webextension-polyfill npm package
+    - Wrap chrome.* calls with browser.* polyfill
+
+[ ] Production hardening:
+    - Set DEBUG = false in all extension JS files
+    - Add proper icon SVGs instead of the reused PNG at all 3 sizes
+
+[ ] E2E testing:
+    - Load unpacked extension in Chrome → chrome://extensions → Load Unpacked
+    - Run: challenge start → tab switch → violation → 3 strikes → auto-forfeit flow
+    - Verify party shows "DNF" on forfeit page
+
+==============================================================================
+SECTION 8 — HOW TO LOAD THE EXTENSION (development)
+==============================================================================
+
+1. Open Chrome → chrome://extensions
+2. Enable "Developer Mode" (top-right toggle)
+3. Click "Load unpacked"
+4. Select: c:\Users\Siddharth\OneDrive\Desktop\project-dsa-mentor\AlgoMind-Extension\
+5. Extension appears as "AlgoMind Fair Play"
+6. Open AlgoMind localhost (npm run dev in frontend/)
+7. Open DevTools console — look for "[AlgoMind CS]" logs to confirm content script
+8. Open a LeetCode tab — look for "[AlgoMind Platform]" logs
+9. Navigate to Challenges page → scroll down to see "Ranked Code Party" section
+   - Without extension: shows install prompt
+   - With extension: shows Host/Join buttons
+
+==============================================================================
+SECTION 9 — FILES CHANGED THIS SESSION (2026-04-18)
+==============================================================================
+
+CREATED:
+  AlgoMind-Extension/manifest.json
+  AlgoMind-Extension/background.js
+  AlgoMind-Extension/content/algomind.js
+  AlgoMind-Extension/content/platforms.js
+  AlgoMind-Extension/content/platform-overlay.css
+  AlgoMind-Extension/popup/popup.html
+  AlgoMind-Extension/popup/popup.css
+  AlgoMind-Extension/popup/popup.js
+  AlgoMind-Extension/icons/icon16.png (copied from generated image)
+  AlgoMind-Extension/icons/icon48.png (copied from generated image)
+  AlgoMind-Extension/icons/icon128.png (copied from generated image)
+  AlgoMind-Extension/AGENT_CONTEXT.txt  ← this file
+  frontend/src/hooks/useAlgoMindExtension.js
+  frontend/src/components/ExtensionGuard/ExtensionGuard.jsx
+  frontend/src/components/ExtensionGuard/ExtensionGuard.module.css
+
+MODIFIED:
+  frontend/src/pages/Challenges/ChallengesPage.jsx
+    - Added imports: dispatchChallengeStart, dispatchChallengeEnd, listenToExtension, ExtensionGuard
+    - handleStart: calls dispatchChallengeStart(partyCode) after party starts
+    - handleEndParty: calls dispatchChallengeEnd() before setting finished view
+    - handleForfeit: now accepts reason param; calls dispatchChallengeEnd()
+    - handleLeave: calls dispatchChallengeEnd()
+    - Added useEffect with listenToExtension → auto-calls handleForfeit on ALGOMIND_TRIGGER_FORFEIT
+    - Added "Ranked Code Party" UI section wrapped in <ExtensionGuard>
+
+==============================================================================
+END OF AGENT CONTEXT FILE
+==============================================================================

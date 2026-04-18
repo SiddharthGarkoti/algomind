@@ -2,17 +2,23 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
+import {
+  dispatchChallengeStart,
+  dispatchChallengeEnd,
+  listenToExtension,
+} from '../../hooks/useAlgoMindExtension.js';
+import ExtensionGuard from '../../components/ExtensionGuard/ExtensionGuard.jsx';
 
 /* ── Shared theme tokens ─────────────────────────────────────────── */
 function useTheme(isDark) {
   return {
-    bg:       isDark ? '#0A0A0B' : '#F0EDFF',
-    surface:  isDark ? '#18181b' : '#FFFFFF',
-    surfLow:  isDark ? '#222326' : '#F4F4F8',
-    glass:    isDark ? 'rgba(99,102,241,0.07)' : 'rgba(99,102,241,0.05)',
-    border:   isDark ? 'rgba(99,102,241,0.18)' : 'rgba(99,102,241,0.15)',
-    textPri:  isDark ? '#e3e2e5' : '#0F172A',
-    textSec:  isDark ? '#908fa0' : '#64748B',
+    bg: isDark ? '#0A0A0B' : '#F0EDFF',
+    surface: isDark ? '#18181b' : '#FFFFFF',
+    surfLow: isDark ? '#222326' : '#F4F4F8',
+    glass: isDark ? 'rgba(99,102,241,0.07)' : 'rgba(99,102,241,0.05)',
+    border: isDark ? 'rgba(99,102,241,0.18)' : 'rgba(99,102,241,0.15)',
+    textPri: isDark ? '#e3e2e5' : '#0F172A',
+    textSec: isDark ? '#908fa0' : '#64748B',
   };
 }
 
@@ -53,10 +59,10 @@ function DiffBadge({ diff }) {
 
 /* ── Countdown timer ─────────────────────────────────────────────── */
 function Countdown({ seconds, isDark }) {
-  const t  = useTheme(isDark);
-  const h  = Math.floor(seconds / 3600);
-  const m  = Math.floor((seconds % 3600) / 60);
-  const s  = seconds % 60;
+  const t = useTheme(isDark);
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
   const fmt = (n) => String(n).padStart(2, '0');
   const urgent = seconds < 300;
   return (
@@ -129,17 +135,17 @@ function ContestTab({ isDark }) {
    AI Shuffle Filter Modal
 ══════════════════════════════════════════════════════════════════ */
 const TOPIC_OPTIONS = [
-  'Array','String','Dynamic Programming','Tree','Graph','Linked List',
-  'Binary Search','Stack','Hash Table','Two Pointers','Greedy',
-  'Backtracking','Heap','Sliding Window','Matrix','Math',
-  'Bit Manipulation','Sorting',
+  'Array', 'String', 'Dynamic Programming', 'Tree', 'Graph', 'Linked List',
+  'Binary Search', 'Stack', 'Hash Table', 'Two Pointers', 'Greedy',
+  'Backtracking', 'Heap', 'Sliding Window', 'Matrix', 'Math',
+  'Bit Manipulation', 'Sorting',
 ];
-const DIFF_OPTIONS = ['easy','medium','hard'];
+const DIFF_OPTIONS = ['easy', 'medium', 'hard'];
 
 function ShuffleFilterModal({ isDark, onClose, onShuffle }) {
   const t = useTheme(isDark);
   const [selTopics, setSelTopics] = useState([]);
-  const [selDiffs,  setSelDiffs]  = useState([]);
+  const [selDiffs, setSelDiffs] = useState([]);
   const [busy, setBusy] = useState(false);
 
   const toggle = (setArr, val) =>
@@ -218,9 +224,9 @@ function ShuffleFilterModal({ isDark, onClose, onShuffle }) {
 ══════════════════════════════════════════════════════════════════ */
 function InviteFriendsModal({ isDark, partyCode, onClose, onInvite }) {
   const t = useTheme(isDark);
-  const [friends,  setFriends]  = useState([]);
-  const [sending,  setSending]  = useState(null);
-  const [sent,     setSent]     = useState(new Set());
+  const [friends, setFriends] = useState([]);
+  const [sending, setSending] = useState(null);
+  const [sent, setSent] = useState(new Set());
   const shareUrl = `${window.location.origin}/challenges?join=${partyCode}`;
   const [copied, setCopied] = useState(false);
 
@@ -228,11 +234,11 @@ function InviteFriendsModal({ isDark, partyCode, onClose, onInvite }) {
     api.get('/friends/list/').then(d => {
       const list = Array.isArray(d) ? d : (d?.results ?? []);
       setFriends(list.map(f => f.friend).filter(Boolean));
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const copyLink = () => {
-    navigator.clipboard.writeText(shareUrl).catch(() => {});
+    navigator.clipboard.writeText(shareUrl).catch(() => { });
     setCopied(true); setTimeout(() => setCopied(false), 2000);
   };
 
@@ -300,20 +306,20 @@ function InviteFriendsModal({ isDark, partyCode, onClose, onInvite }) {
 ══════════════════════════════════════════════════════════════════ */
 function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion, onRemoveQuestion, onKick, onRename, onInvite }) {
   const t = useTheme(isDark);
-  const isHost   = party.host_username === me;
+  const isHost = party.host_username === me;
 
-  const [addOpen,        setAddOpen]        = useState(false);
-  const [addMode,        setAddMode]        = useState('url');   // 'url' | 'number'
-  const [addForm,        setAddForm]        = useState({ title: '', platform: 'leetcode', url: '', slug: '', difficulty: 'medium' });
-  const [lcNumber,       setLcNumber]       = useState('');
-  const [lcLookupBusy,   setLcLookupBusy]   = useState(false);
-  const [lcLookupErr,    setLcLookupErr]    = useState('');
-  const [addBusy,        setAddBusy]        = useState(false);
-  const [showShuffle,    setShowShuffle]    = useState(false);
-  const [showInvite,     setShowInvite]     = useState(false);
-  const [renaming,       setRenaming]       = useState(false);
-  const [renameVal,      setRenameVal]      = useState(party.name);
-  const [renameBusy,     setRenameBusy]     = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [addMode, setAddMode] = useState('url');   // 'url' | 'number'
+  const [addForm, setAddForm] = useState({ title: '', platform: 'leetcode', url: '', slug: '', difficulty: 'medium' });
+  const [lcNumber, setLcNumber] = useState('');
+  const [lcLookupBusy, setLcLookupBusy] = useState(false);
+  const [lcLookupErr, setLcLookupErr] = useState('');
+  const [addBusy, setAddBusy] = useState(false);
+  const [showShuffle, setShowShuffle] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameVal, setRenameVal] = useState(party.name);
+  const [renameBusy, setRenameBusy] = useState(false);
 
   const handleAdd = async (e) => {
     e.preventDefault();
@@ -393,8 +399,10 @@ function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion
             {isHost && (
               <button onClick={onStart} disabled={party.questions.length === 0}
                 className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.03] disabled:opacity-40"
-                style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff',
-                  boxShadow: '0 8px 24px -6px rgba(99,102,241,0.5)' }}>
+                style={{
+                  background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff',
+                  boxShadow: '0 8px 24px -6px rgba(99,102,241,0.5)'
+                }}>
                 <span className="material-symbols-outlined text-sm">play_arrow</span>
                 Start Party
               </button>
@@ -466,7 +474,7 @@ function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion
               style={{ background: t.surfLow, border: `1px solid ${t.border}` }}>
               {/* Mode toggle */}
               <div className="flex gap-1 p-1 rounded-xl mb-1" style={{ background: t.surface }}>
-                {[['url','By URL'],['number','LC Number']].map(([mode, label]) => (
+                {[['url', 'By URL'], ['number', 'LC Number']].map(([mode, label]) => (
                   <button key={mode} type="button" onClick={() => setAddMode(mode)}
                     className="flex-1 py-1 rounded-lg text-[10px] font-bold transition-all"
                     style={addMode === mode ? { background: '#6366F1', color: '#fff' } : { color: t.textSec }}>
@@ -603,7 +611,7 @@ function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion
 function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit, timeLeft }) {
   const t = useTheme(isDark);
 
-  const isHost   = party.host_username === me;
+  const isHost = party.host_username === me;
   const myMember = party.members.find(m => m.username === me);
   const myDoneIds = new Set((myMember?.completions ?? []).filter(c => c.verified).map(c => c.question_id));
   const totalQ = party.questions.length;
@@ -659,12 +667,16 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
                 style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)' }}>
                 End Party
               </button>
-            ) : (
+            ) : !myMember?.finished_at ? (
               <button onClick={() => { if (window.confirm('Forfeit this challenge?')) onForfeit(); }}
                 className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-90"
                 style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}>
                 Forfeit
               </button>
+            ) : (
+              <span className="px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
+                <span className="material-symbols-outlined text-sm">cancel</span> Forfeited
+              </span>
             )}
           </div>
         </div>
@@ -701,6 +713,8 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
                     </div>
                     {done ? (
                       <span className="text-xs font-semibold" style={{ color: '#22C55E' }}>✓ Verified complete</span>
+                    ) : myMember?.finished_at ? (
+                      <span className="text-xs font-semibold" style={{ color: '#EF4444' }}>Locked (Finished/Forfeited)</span>
                     ) : (
                       <div className="flex items-center gap-2 mt-2">
                         <a href={q.url} target="_blank" rel="noopener noreferrer"
@@ -789,17 +803,17 @@ function PartyTab({ isDark }) {
   const { user } = useAuth();
 
   // Restore party state from sessionStorage so page navigation doesn't kill the session
-  const [view,       setView]       = useState(() => {
+  const [view, setView] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem(PARTY_SESSION_KEY) || '{}').view ?? 'home'; } catch { return 'home'; }
   });
-  const [party,      setParty]      = useState(() => {
+  const [party, setParty] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem(PARTY_SESSION_KEY) || '{}').party ?? null; } catch { return null; }
   });
   const [createOpen, setCreateOpen] = useState(false);
-  const [joinCode,   setJoinCode]   = useState('');
-  const [error,      setError]      = useState('');
-  const [busy,       setBusy]       = useState(false);
-  const [timeLeft,   setTimeLeft]   = useState(() => {
+  const [joinCode, setJoinCode] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem(PARTY_SESSION_KEY) || '{}').timeLeft ?? 0; } catch { return 0; }
   });
 
@@ -811,7 +825,7 @@ function PartyTab({ isDark }) {
     } catch { /* quota error — ignore */ }
   }, [view, party, timeLeft]);
 
-  const pollRef  = useRef(null);
+  const pollRef = useRef(null);
   const partyCode = party?.code;
 
   const refreshParty = useCallback(async () => {
@@ -820,7 +834,7 @@ function PartyTab({ isDark }) {
       const p = await api.get(`/challenges/party/${partyCode}/`);
       setParty(p);
       setTimeLeft(p.time_remaining ?? 0);
-      if (p.status === 'active'   && view !== 'room')     setView('room');
+      if (p.status === 'active' && view !== 'room') setView('room');
       if (p.status === 'finished' && view !== 'finished') setView('finished');
     } catch { /* ignore */ }
   }, [partyCode, view]);
@@ -876,6 +890,8 @@ function PartyTab({ isDark }) {
     try {
       const p = await api.post(`/challenges/party/${partyCode}/start/`, {});
       setParty(p); setTimeLeft(p.time_remaining ?? 0); setView('room');
+      // Notify extension to start monitoring
+      dispatchChallengeStart(partyCode);
     } catch (e) { setError(e?.detail ?? 'Failed to start.'); }
   };
 
@@ -934,19 +950,38 @@ function PartyTab({ isDark }) {
   const handleEndParty = async () => {
     try {
       const p = await api.post(`/challenges/party/${partyCode}/end/`, {});
+      dispatchChallengeEnd(); // Stop extension monitoring
       setParty(p); setView('finished');
     } catch (e) { setError(e?.detail ?? 'Failed to end party.'); }
   };
 
-  const handleForfeit = async () => {
+  const handleForfeit = async (reason = 'Manual forfeit') => {
     try {
-      await api.post(`/challenges/party/${partyCode}/forfeit/`, {});
+      await api.post(`/challenges/party/${partyCode}/forfeit/`, { reason });
+      dispatchChallengeEnd(); // Stop extension monitoring
       await refreshParty();
     } catch (e) { setError(e?.detail ?? 'Forfeit failed.'); }
   };
 
+  // ── Extension auto-forfeit listener ─────────────────────────────────
+  // When the extension sends ALGOMIND_TRIGGER_FORFEIT (3 strikes reached),
+  // automatically call the backend forfeit API without user confirmation.
+  useEffect(() => {
+    if (view !== 'room' || !partyCode) return;
+    const cleanup = listenToExtension((msg) => {
+      if (msg.type === 'ALGOMIND_TRIGGER_FORFEIT') {
+        console.warn('[AlgoMind] Auto-forfeited by extension:', msg.reason);
+        // Show reason in UI before forfeiting
+        setError(`⚠️ Auto-forfeited: ${msg.reason}`);
+        handleForfeit(msg.reason);
+      }
+    });
+    return cleanup;
+  }, [view, partyCode]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleLeave = async () => {
-    try { await api.delete(`/challenges/party/${partyCode}/leave/`); } catch {}
+    try { await api.delete(`/challenges/party/${partyCode}/leave/`); } catch { }
+    dispatchChallengeEnd(); // Stop extension monitoring on leave
     setParty(null); setView('home'); sessionStorage.removeItem(PARTY_SESSION_KEY);
   };
 
@@ -997,8 +1032,8 @@ function PartyTab({ isDark }) {
   }
 
   if (view === 'finished' && party) {
-    const totalQ  = party.questions.length;
-    const sorted  = [...party.members].sort((a, b) => {
+    const totalQ = party.questions.length;
+    const sorted = [...party.members].sort((a, b) => {
       // Finished (non-forfeit) by rank first, then forfeit/DNF
       const aFinished = a.completed_count >= totalQ;
       const bFinished = b.completed_count >= totalQ;
@@ -1033,7 +1068,7 @@ function PartyTab({ isDark }) {
             return (
               <div key={m.id} className="flex items-center gap-3 p-4 rounded-2xl"
                 style={{ background: t.surfLow, border: `1px solid ${completed ? 'rgba(34,197,94,0.2)' : t.border}` }}>
-                <span className="text-xl shrink-0">{completed ? (medals[i] ?? `#${i+1}`) : '—'}</span>
+                <span className="text-xl shrink-0">{completed ? (medals[i] ?? `#${i + 1}`) : '—'}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold truncate" style={{ color: m.username === me ? '#6366F1' : t.textPri }}>
                     {m.username}{m.username === me ? ' (you)' : ''}
@@ -1079,9 +1114,11 @@ function PartyTab({ isDark }) {
         }} />
         <div className="relative z-10">
           <div className="w-20 h-20 rounded-3xl mx-auto mb-6 flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.2),rgba(168,85,247,0.2))',
+            style={{
+              background: 'linear-gradient(135deg,rgba(99,102,241,0.2),rgba(168,85,247,0.2))',
               border: '1px solid rgba(99,102,241,0.3)',
-              boxShadow: '0 0 40px rgba(99,102,241,0.3)' }}>
+              boxShadow: '0 0 40px rgba(99,102,241,0.3)'
+            }}>
             <span className="material-symbols-outlined text-4xl" style={{ color: '#6366F1' }}>groups</span>
           </div>
           <h2 className="text-3xl font-black mb-3" style={{ color: t.textPri }}>Friends Code Party</h2>
@@ -1092,8 +1129,10 @@ function PartyTab({ isDark }) {
           <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-sm mx-auto">
             <button onClick={() => setCreateOpen(true)}
               className="flex-1 py-3 px-6 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.03]"
-              style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff',
-                boxShadow: '0 12px 32px -8px rgba(99,102,241,0.5)' }}>
+              style={{
+                background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff',
+                boxShadow: '0 12px 32px -8px rgba(99,102,241,0.5)'
+              }}>
               <span className="material-symbols-outlined text-lg">add_circle</span>
               Host a Party
             </button>
@@ -1127,7 +1166,7 @@ function PartyTab({ isDark }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { icon: 'add_circle', color: '#6366F1', title: 'Host Creates', desc: 'Set duration, question count, and mode (manual or AI shuffle).' },
-          { icon: 'groups',     color: '#A855F7', title: 'Friends Join',  desc: 'Share the party code or link. Everyone joins the lobby.' },
+          { icon: 'groups', color: '#A855F7', title: 'Friends Join', desc: 'Share the party code or link. Everyone joins the lobby.' },
           { icon: 'emoji_events', color: '#22C55E', title: 'First Wins!', desc: 'Solve problems on LeetCode/CF. Click "I solved it" to verify. First to clear all wins.' },
         ].map(({ icon, color, title, desc }) => (
           <GlassCard key={title} isDark={isDark} className="p-6 text-center">
@@ -1140,6 +1179,60 @@ function PartyTab({ isDark }) {
           </GlassCard>
         ))}
       </div>
+
+      {/* ⚡ Ranked Code Party — requires extension */}
+      <GlassCard isDark={isDark} className="p-7"
+        style={{ borderColor: 'rgba(230,57,70,0.3)', background: isDark ? 'rgba(230,57,70,0.04)' : 'rgba(230,57,70,0.03)' }}>
+        <div className="flex items-start gap-4 mb-5">
+          <div className="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center"
+            style={{ background: 'rgba(230,57,70,0.12)', border: '1px solid rgba(230,57,70,0.25)' }}>
+            <span className="text-xl">🛡️</span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-base font-bold" style={{ color: t.textPri }}>Ranked Code Party</h3>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
+                style={{ background: 'rgba(230,57,70,0.12)', color: '#e63946' }}>Fair Play Required</span>
+            </div>
+            <p className="text-xs leading-relaxed" style={{ color: t.textSec }}>
+              Ranked parties enforce strict fair play via the AlgoMind browser extension.
+              Tab switching, new tabs, restricted pages, and focus loss are all monitored.
+              Three violations = auto-forfeit.
+            </p>
+          </div>
+        </div>
+        <ExtensionGuard>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              id="ranked-host-btn"
+              onClick={() => setCreateOpen(true)}
+              className="flex-1 py-3 px-5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+              style={{ background: 'linear-gradient(135deg,#e63946,#c1121f)', color: '#fff', boxShadow: '0 8px 24px -6px rgba(230,57,70,0.4)' }}>
+              <span className="material-symbols-outlined text-lg">shield</span>
+              Host Ranked Party
+            </button>
+            <div className="flex gap-2 flex-1">
+              <input
+                value={joinCode}
+                onChange={e => setJoinCode(e.target.value.toUpperCase())}
+                placeholder="PARTY CODE"
+                maxLength={6}
+                className="flex-1 px-4 py-3 rounded-2xl text-center font-mono font-bold tracking-widest outline-none"
+                style={{ background: t.surfLow, color: '#e63946', border: '1px solid rgba(230,57,70,0.3)' }}
+                onKeyDown={e => e.key === 'Enter' && handleJoin()}
+              />
+              <button
+                id="ranked-join-btn"
+                onClick={handleJoin}
+                disabled={busy || joinCode.length < 6}
+                className="px-5 py-3 rounded-2xl font-bold text-sm disabled:opacity-40 transition-all hover:scale-[1.02]"
+                style={{ background: 'rgba(230,57,70,0.12)', color: '#e63946', border: '1px solid rgba(230,57,70,0.3)' }}>
+                {busy ? <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block" /> : 'Join'}
+              </button>
+            </div>
+          </div>
+        </ExtensionGuard>
+      </GlassCard>
 
       {/* Create Modal */}
       {createOpen && <CreateModal isDark={isDark} onClose={() => setCreateOpen(false)} onCreate={handleCreate} busy={busy} />}
@@ -1230,12 +1323,12 @@ function CreateModal({ isDark, onClose, onCreate, busy }) {
 ══════════════════════════════════════════════════════════════════ */
 function ChallengesPage({ theme, toggleTheme }) {
   const isDark = theme === 'dark';
-  const t      = useTheme(isDark);
-  const [tab,  setTab] = useState('party');
+  const t = useTheme(isDark);
+  const [tab, setTab] = useState('party');
 
   const TABS = [
-    { id: 'party',   label: 'Friends Code Party', icon: 'groups' },
-    { id: 'contest', label: 'Contests',            icon: 'emoji_events' },
+    { id: 'party', label: 'Friends Code Party', icon: 'groups' },
+    { id: 'contest', label: 'Contests', icon: 'emoji_events' },
   ];
 
   return (
@@ -1256,8 +1349,10 @@ function ChallengesPage({ theme, toggleTheme }) {
               onClick={() => setTab(tab_.id)}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all"
               style={tab === tab_.id
-                ? { background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff',
-                    boxShadow: '0 4px 16px -4px rgba(99,102,241,0.5)' }
+                ? {
+                  background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff',
+                  boxShadow: '0 4px 16px -4px rgba(99,102,241,0.5)'
+                }
                 : { color: t.textSec }}>
               <span className="material-symbols-outlined text-sm">{tab_.icon}</span>
               {tab_.label}
@@ -1266,7 +1361,7 @@ function ChallengesPage({ theme, toggleTheme }) {
         </div>
 
         {/* Tab content */}
-        {tab === 'party'   && <PartyTab isDark={isDark} />}
+        {tab === 'party' && <PartyTab isDark={isDark} />}
         {tab === 'contest' && <ContestTab isDark={isDark} />}
       </div>
     </DashboardLayout>
