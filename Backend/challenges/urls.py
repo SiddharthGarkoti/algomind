@@ -5,7 +5,7 @@ from .views import (
     CheckCompletionView, LeavePartyView, MyPartiesView,
     EndPartyView, ForfeitPartyView, KickMemberView, RenamePartyView,
     InviteFriendView, LeetCodeProblemLookupView, ShuffleWithFilterView,
-    TopicListView,
+    TopicListView, ExtensionPulseView,
 )
 
 urlpatterns = [
@@ -17,6 +17,7 @@ urlpatterns = [
     path('party/<str:code>/leave/',                        LeavePartyView.as_view(),            name='party_leave'),
     path('party/<str:code>/end/',                          EndPartyView.as_view(),              name='party_end'),
     path('party/<str:code>/forfeit/',                      ForfeitPartyView.as_view(),          name='party_forfeit'),
+    path('party/<str:code>/pulse/',                        ExtensionPulseView.as_view(),        name='party_pulse'),
     path('party/<str:code>/rename/',                       RenamePartyView.as_view(),           name='party_rename'),
     path('party/<str:code>/invite/',                       InviteFriendView.as_view(),          name='party_invite'),
     path('party/<str:code>/kick/<int:member_id>/',         KickMemberView.as_view(),            name='party_kick'),

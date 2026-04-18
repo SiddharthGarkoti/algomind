@@ -4,7 +4,7 @@
  *
  * Responsibilities:
  *  - Manage challenge state (active/inactive)
- *  - Heartbeat via chrome.alarms (every 4 seconds)
+ *  - Heartbeat via self-rescheduling setTimeout (MV3 workaround)
  *  - Tab/window event listeners for violation detection
  *  - 3-Strike forfeit enforcement
  *  - Persist state via chrome.storage.local (MV3 service-worker may sleep)
@@ -15,36 +15,46 @@ const DEBUG = false; // Set to true for local development
 const log = (...args) => DEBUG && console.log('[AlgoMind BG]', ...args);
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
-const HEARTBEAT_ALARM   = 'algomind_heartbeat';
-const HEARTBEAT_PERIOD  = 0.067;   // ~4 seconds in minutes (MV3 minimum is ~1min but alarms fire more often with periodInMinutes < 1 only in dev; use workaround below)
-const MAX_STRIKES       = 3;
+const HEARTBEAT_ALARM       = 'algomind_heartbeat';
+const MAX_STRIKES           = 3;
 const HEARTBEAT_INTERVAL_MS = 4000;
 
+// Whitelisted domains — switching to these tabs is NEVER a violation
+const WHITELISTED_DOMAINS = ['leetcode.com', 'codeforces.com'];
+
+// Paths that ARE restricted even on whitelisted domains
 const RESTRICTED_PATHS = {
-  'leetcode.com': ['/solutions', '/discuss', '/explore'],
+  'leetcode.com':   ['/solutions', '/discuss', '/explore'],
   'codeforces.com': ['/blog', '/tutorial', '/gym'],
 };
 
+// Grace period (ms) for newly created tabs — gives the browser time to navigate
+// to a platform URL before we decide it's a "random tab"
+const NEW_TAB_GRACE_MS = 2000;
+
 // ─── Initial State ─────────────────────────────────────────────────────────────
 let state = {
-  active: false,
-  partyCode: null,
-  strikes: 0,
-  algomindTabId: null,         // Tab hosting AlgoMind app
-  challengeTabIds: new Set(),  // LeetCode / Codeforces tabs
-  lastHeartbeat: null,
+  active:           false,
+  partyCode:        null,
+  strikes:          0,
+  algomindTabId:    null,          // Tab hosting AlgoMind app
+  challengeTabIds:  new Set(),     // LeetCode / Codeforces tabs
+  lastHeartbeat:    null,
+  windowBlurred:    false,         // FIX: track blur state to prevent double-strike
+  pendingTabIds:    new Set(),     // FIX: tabs in grace period (just created, URL loading)
 };
 
 // ─── Persistence Helpers ───────────────────────────────────────────────────────
 async function saveState() {
   await chrome.storage.local.set({
     algomind_state: {
-      active: state.active,
-      partyCode: state.partyCode,
-      strikes: state.strikes,
-      algomindTabId: state.algomindTabId,
+      active:          state.active,
+      partyCode:       state.partyCode,
+      strikes:         state.strikes,
+      algomindTabId:   state.algomindTabId,
       challengeTabIds: [...state.challengeTabIds],
-      lastHeartbeat: state.lastHeartbeat,
+      lastHeartbeat:   state.lastHeartbeat,
+      windowBlurred:   state.windowBlurred,
     },
   });
 }
@@ -56,6 +66,8 @@ async function loadState() {
     state = {
       ...s,
       challengeTabIds: new Set(s.challengeTabIds || []),
+      windowBlurred:   s.windowBlurred || false,
+      pendingTabIds:   new Set(),
     };
     log('State restored from storage:', state);
   }
@@ -63,12 +75,14 @@ async function loadState() {
 
 // ─── Challenge Lifecycle ───────────────────────────────────────────────────────
 async function startChallenge(partyCode, senderTabId) {
-  state.active = true;
-  state.partyCode = partyCode;
-  state.strikes = 0;
-  state.algomindTabId = senderTabId;
+  state.active          = true;
+  state.partyCode       = partyCode;
+  state.strikes         = 0;          // Always reset to 0 on start — never pre-populate
+  state.algomindTabId   = senderTabId;
   state.challengeTabIds = new Set();
-  state.lastHeartbeat = Date.now();
+  state.lastHeartbeat   = Date.now();
+  state.windowBlurred   = false;
+  state.pendingTabIds   = new Set();
 
   await saveState();
   scheduleHeartbeat();
@@ -77,10 +91,12 @@ async function startChallenge(partyCode, senderTabId) {
 }
 
 async function stopChallenge() {
-  state.active = false;
-  state.partyCode = null;
-  state.strikes = 0;
+  state.active        = false;
+  state.partyCode     = null;
+  state.strikes       = 0;
   state.challengeTabIds = new Set();
+  state.windowBlurred   = false;
+  state.pendingTabIds   = new Set();
 
   chrome.alarms.clear(HEARTBEAT_ALARM);
   await saveState();
@@ -90,9 +106,7 @@ async function stopChallenge() {
 // ─── Heartbeat ─────────────────────────────────────────────────────────────────
 function scheduleHeartbeat() {
   chrome.alarms.clear(HEARTBEAT_ALARM);
-  // MV3 minimum is 1 minute for persistent alarms; use storage polling as fallback
   chrome.alarms.create(HEARTBEAT_ALARM, { periodInMinutes: 1 });
-  // Also use a synthetic interval via repeated alarms workaround:
   runHeartbeatLoop();
 }
 
@@ -118,6 +132,10 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // ─── Violation / Strike System ─────────────────────────────────────────────────
 async function recordViolation(reason) {
   if (!state.active) return;
+
+  // FIX: Hard-cap strikes at MAX_STRIKES — never allow skipping
+  if (state.strikes >= MAX_STRIKES) return;
+
   state.strikes++;
   log(`Violation #${state.strikes}: ${reason}`);
   await saveState();
@@ -125,11 +143,12 @@ async function recordViolation(reason) {
   notifyAlgomindTab({ type: 'ALGOMIND_VIOLATION', strikes: state.strikes, reason });
 
   if (state.strikes >= MAX_STRIKES) {
-    triggerForfeit('3 Violations');
+    // Give a brief moment for the violation notification to be received before forfeit
+    setTimeout(() => triggerForfeit('3 Violations — Fair Play Enforcement'), 500);
     return;
   }
 
-  // Show Chrome notification
+  // Show Chrome notification for strike 1 and 2
   chrome.notifications.create(`strike_${Date.now()}`, {
     type: 'basic',
     iconUrl: 'icons/icon48.png',
@@ -143,6 +162,7 @@ async function recordViolation(reason) {
 }
 
 async function triggerForfeit(reason) {
+  if (!state.active) return; // Guard against double-trigger
   log('Auto-forfeit triggered:', reason);
   notifyAlgomindTab({ type: 'ALGOMIND_TRIGGER_FORFEIT', reason });
   chrome.notifications.create(`forfeit_${Date.now()}`, {
@@ -155,10 +175,26 @@ async function triggerForfeit(reason) {
   await stopChallenge();
 }
 
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+function isWhitelistedUrl(url) {
+  return WHITELISTED_DOMAINS.some(d => url.includes(d));
+}
+
+function isRestrictedUrl(url) {
+  for (const [domain, paths] of Object.entries(RESTRICTED_PATHS)) {
+    if (url.includes(domain)) {
+      for (const p of paths) {
+        if (url.includes(p)) return true;
+      }
+    }
+  }
+  return false;
+}
+
 // ─── Message to AlgoMind Tab ───────────────────────────────────────────────────
 function notifyAlgomindTab(payload) {
   if (!state.algomindTabId) return;
-  chrome.tabs.sendMessage(state.algomindTabId, payload, (resp) => {
+  chrome.tabs.sendMessage(state.algomindTabId, payload, () => {
     if (chrome.runtime.lastError) {
       log('Could not reach AlgoMind tab:', chrome.runtime.lastError.message);
     }
@@ -173,19 +209,46 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
 
   const url = tab.url || '';
 
-  // Allowed tabs: AlgoMind app tab or coding platform tabs
-  const isAlgomind = tabId === state.algomindTabId;
-  const isChallengePlatform = url.includes('leetcode.com') || url.includes('codeforces.com');
+  // AlgoMind tab itself — always allowed
+  if (tabId === state.algomindTabId) return;
 
-  if (!isAlgomind && !isChallengePlatform) {
-    recordViolation('Switched to an unrelated tab');
+  // Whitelisted: LeetCode/Codeforces — always allowed (user is solving problems)
+  if (isWhitelistedUrl(url)) {
+    // But check for restricted paths within the platform
+    if (isRestrictedUrl(url)) {
+      recordViolation(`Visited restricted page on ${url}`);
+    }
+    return;
   }
+
+  // FIX: Tab in grace period (just created, URL still loading) — don't penalise yet
+  if (state.pendingTabIds.has(tabId)) return;
+
+  // All other tabs = violation
+  recordViolation('Switched to an unrelated tab');
 });
 
 chrome.tabs.onCreated.addListener((tab) => {
   if (!state.active) return;
-  // New blank tab or tab created mid-challenge = violation
-  recordViolation('Opened a new tab during challenge');
+
+  // FIX: Add to grace period. Give the tab 2 seconds to navigate to a platform URL.
+  // If after 2 seconds the tab isn't on a platform, THEN record the violation.
+  state.pendingTabIds.add(tab.id);
+  setTimeout(async () => {
+    if (!state.pendingTabIds.has(tab.id)) return; // Already resolved
+    state.pendingTabIds.delete(tab.id);
+
+    const freshTab = await chrome.tabs.get(tab.id).catch(() => null);
+    if (!freshTab) return; // Tab was closed
+
+    const url = freshTab.url || '';
+    const isAlgomind = freshTab.id === state.algomindTabId;
+    const isPlatform = isWhitelistedUrl(url);
+
+    if (!isAlgomind && !isPlatform) {
+      recordViolation('Opened an unrelated new tab during challenge');
+    }
+  }, NEW_TAB_GRACE_MS);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -193,34 +256,45 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status !== 'complete') return;
   const url = tab.url || '';
 
+  // If a pending tab navigated to a platform, clear it from grace-period
+  if (state.pendingTabIds.has(tabId) && isWhitelistedUrl(url)) {
+    state.pendingTabIds.delete(tabId);
+  }
+
   // Track coding platform tabs
-  if (url.includes('leetcode.com') || url.includes('codeforces.com')) {
+  if (isWhitelistedUrl(url)) {
     state.challengeTabIds.add(tabId);
     saveState();
   }
 
-  // Check restricted paths
-  for (const [domain, paths] of Object.entries(RESTRICTED_PATHS)) {
-    if (url.includes(domain)) {
-      for (const p of paths) {
-        if (url.includes(p)) {
-          recordViolation(`Visited restricted page: ${url}`);
-          return;
-        }
-      }
-    }
+  // Check restricted paths on platform tabs
+  if (isRestrictedUrl(url)) {
+    recordViolation(`Visited restricted page: ${url}`);
   }
 });
 
 // ─── Window Focus Monitoring ───────────────────────────────────────────────────
+// FIX: Use a blurred-flag so we record exactly 1 strike when leaving the window,
+// and 0 strikes when returning to it.
 chrome.windows.onFocusChanged.addListener((windowId) => {
   if (!state.active) return;
+
   if (windowId === chrome.windows.WINDOW_ID_NONE) {
-    recordViolation('Left the browser window');
+    // Browser lost focus entirely — record one strike
+    if (!state.windowBlurred) {
+      state.windowBlurred = true;
+      saveState();
+      recordViolation('Left the browser window');
+    }
+  } else {
+    // Browser regained focus — clear blur flag, NO additional strike
+    state.windowBlurred = false;
+    saveState();
+    log('Window focus regained — no strike.');
   }
 });
 
-// ─── Message Listener (from content scripts) ───────────────────────────────────
+// ─── Message Listener (from content scripts + React frontend) ──────────────────
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   log('Message received:', msg);
 
@@ -236,12 +310,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
 
     case 'ALGOMIND_PING':
-      // Extension-installed ping response
       sendResponse({ type: 'ALGOMIND_PONG', installed: true });
       break;
 
     case 'ALGOMIND_STATE_REQUEST':
       sendResponse({ state: { active: state.active, strikes: state.strikes } });
+      break;
+
+    // Backend heartbeat pulse ACK — frontend sends this every 5s to confirm
+    // the extension is still alive. The frontend is responsible for calling
+    // the backend /party/<code>/pulse/ endpoint. This message is the extension
+    // confirming it is still active so the frontend knows to send the pulse.
+    case 'ALGOMIND_PULSE_ACK':
+      sendResponse({ alive: state.active });
       break;
 
     default:

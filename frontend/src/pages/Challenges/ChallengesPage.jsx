@@ -6,7 +6,9 @@ import {
   dispatchChallengeStart,
   dispatchChallengeEnd,
   listenToExtension,
+  useExtensionPulse,
 } from '../../hooks/useAlgoMindExtension.js';
+import { useAlgoMindExtension } from '../../hooks/useAlgoMindExtension.js';
 import ExtensionGuard from '../../components/ExtensionGuard/ExtensionGuard.jsx';
 
 /* ── Shared theme tokens ─────────────────────────────────────────── */
@@ -816,6 +818,20 @@ function PartyTab({ isDark }) {
   const [timeLeft, setTimeLeft] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem(PARTY_SESSION_KEY) || '{}').timeLeft ?? 0; } catch { return 0; }
   });
+  // Track whether the current active party is a ranked party (extension required)
+  const [isRanked, setIsRanked] = useState(false);
+  // Tracks if the NEXT party to be created is a ranked party
+  const [isRankedFlow, setIsRankedFlow] = useState(false);
+
+  // Extension detection — used to guard ranked start
+  const { extensionInstalled } = useAlgoMindExtension();
+
+  // Backend pulse — send every 5s during a ranked room; auto-forfeit on miss
+  useExtensionPulse(
+    partyCode,
+    isRanked && view === 'room',
+    (reason) => handleForfeit(reason), // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   // Persist view + party + timeLeft to sessionStorage whenever they change
   useEffect(() => {
@@ -871,6 +887,8 @@ function PartyTab({ isDark }) {
     try {
       const p = await api.post('/challenges/party/create/', opts);
       setParty(p); setView('lobby'); setCreateOpen(false);
+      // If user clicked "Host Ranked Party", mark the session as ranked
+      if (isRankedFlow) setIsRanked(true);
     } catch (e) { setError(e?.detail ?? 'Failed to create party.'); }
     finally { setBusy(false); }
   };
@@ -886,12 +904,19 @@ function PartyTab({ isDark }) {
     finally { setBusy(false); }
   };
 
-  const handleStart = async () => {
+  const handleStart = async (ranked = false) => {
+    // FIX: Hard block — ranked challenge MUST have extension installed
+    if (ranked && !extensionInstalled) {
+      setError('⛔ Install the AlgoMind Fair Play extension before starting a Ranked Party.');
+      return;
+    }
     try {
       const p = await api.post(`/challenges/party/${partyCode}/start/`, {});
       setParty(p); setTimeLeft(p.time_remaining ?? 0); setView('room');
-      // Notify extension to start monitoring
-      dispatchChallengeStart(partyCode);
+      if (ranked) {
+        setIsRanked(true);
+        dispatchChallengeStart(partyCode);
+      }
     } catch (e) { setError(e?.detail ?? 'Failed to start.'); }
   };
 
@@ -998,13 +1023,14 @@ function PartyTab({ isDark }) {
         <PartyLobby
           party={party} me={me} isDark={isDark}
           onRefresh={refreshParty}
-          onStart={handleStart}
+          onStart={() => handleStart(isRanked)}
           onShuffleFilter={handleShuffleFilter}
           onAddQuestion={handleAddQuestion}
           onRemoveQuestion={handleRemoveQuestion}
           onKick={handleKick}
           onRename={handleRename}
           onInvite={handleInvite}
+          isRanked={isRanked}
         />
         <button onClick={handleLeave} className="mt-4 text-xs hover:underline" style={{ color: t.textSec }}>
           Leave party
@@ -1201,11 +1227,12 @@ function PartyTab({ isDark }) {
             </p>
           </div>
         </div>
-        <ExtensionGuard>
+        {/* Ranked Party Buttons — show blended install prompt if extension absent */}
+        {extensionInstalled ? (
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               id="ranked-host-btn"
-              onClick={() => setCreateOpen(true)}
+              onClick={() => { setIsRankedFlow(true); setCreateOpen(true); }}
               className="flex-1 py-3 px-5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
               style={{ background: 'linear-gradient(135deg,#e63946,#c1121f)', color: '#fff', boxShadow: '0 8px 24px -6px rgba(230,57,70,0.4)' }}>
               <span className="material-symbols-outlined text-lg">shield</span>
@@ -1231,7 +1258,24 @@ function PartyTab({ isDark }) {
               </button>
             </div>
           </div>
-        </ExtensionGuard>
+        ) : (
+          /* Blended install prompt — not a blocking card, just a subtle row */
+          <div className="flex items-center gap-3 py-2">
+            <span className="material-symbols-outlined text-base" style={{ color: '#e63946', opacity: 0.7 }}>extension_off</span>
+            <span className="text-xs" style={{ color: t.textSec }}>
+              AlgoMind Fair Play extension required.
+            </span>
+            <a
+              id="algomind-extension-install-btn"
+              href="https://chrome.google.com/webstore/detail/algomind-fair-play/PLACEHOLDER_ID"
+              target="_blank" rel="noreferrer"
+              className="text-xs font-semibold underline underline-offset-2 transition-opacity hover:opacity-80"
+              style={{ color: '#e63946' }}
+            >
+              Install →
+            </a>
+          </div>
+        )}
       </GlassCard>
 
       {/* Create Modal */}

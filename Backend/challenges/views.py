@@ -480,3 +480,73 @@ class ShuffleWithFilterView(APIView):
                 platform=platform, url=url, difficulty=diff, order=i,
             )
         return Response(PartySerializer(party, context={'request': request}).data)
+
+
+class ExtensionPulseView(APIView):
+    """
+    POST /challenges/party/<code>/pulse/
+
+    Called by the React frontend every 5 seconds when a ranked challenge
+    is active and the AlgoMind extension is running.  Marks the member's
+    last_pulse timestamp in memory (stored on PartyMember via cache-key).
+
+    If the backend does NOT receive a pulse for > 15 seconds it means the
+    extension was disabled mid-challenge → register a violation strike.
+
+    Response:
+      { "alive": true }       — pulse accepted, challenge still active
+      { "alive": false }      — challenge ended or member already finished
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    PULSE_TTL_SECONDS = 15   # If no pulse in 15 s → extension is off
+
+    def post(self, request, code):
+        from django.core.cache import cache
+
+        party, err = _get_party_or_404(code)
+        if err: return err
+
+        if party.status != 'active':
+            return Response({'alive': False})
+
+        try:
+            member = party.members.get(user=request.user)
+        except PartyMember.DoesNotExist:
+            return Response({'detail': 'Not a member.'}, status=404)
+
+        if member.finished_at:
+            return Response({'alive': False})
+
+        cache_key = f'algomind_pulse_{party.code}_{request.user.id}'
+        cache.set(cache_key, timezone.now().isoformat(), timeout=self.PULSE_TTL_SECONDS)
+
+        return Response({'alive': True})
+
+    def get(self, request, code):
+        """
+        GET /challenges/party/<code>/pulse/
+        Called by background monitoring to check if a member's extension
+        has gone silent.  Returns is_alive per member.
+        Host-only.  Used for server-side enforcement in the future.
+        """
+        from django.core.cache import cache
+
+        party, err = _get_party_or_404(code)
+        if err: return err
+
+        if party.host != request.user:
+            return Response({'detail': 'Forbidden'}, status=403)
+
+        results = []
+        for member in party.members.filter(finished_at__isnull=True):
+            cache_key = f'algomind_pulse_{party.code}_{member.user_id}'
+            last = cache.get(cache_key)
+            results.append({
+                'username': member.user.username,
+                'is_alive': last is not None,
+                'last_pulse': last,
+            })
+
+        return Response({'members': results})
+

@@ -11,9 +11,11 @@
  *   const { extensionInstalled, checking } = useAlgoMindExtension();
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import api from '../services/api';
 
-const PING_TIMEOUT_MS = 1500; // Wait up to 1.5s for pong
+const PING_TIMEOUT_MS   = 1500;   // Wait up to 1.5s for pong
+const PULSE_INTERVAL_MS = 5000;   // Send backend pulse every 5s
 
 export function useAlgoMindExtension() {
   const [extensionInstalled, setExtensionInstalled] = useState(false);
@@ -92,4 +94,49 @@ export function listenToExtension(callback) {
   }
   window.addEventListener('message', handler);
   return () => window.removeEventListener('message', handler);
+}
+
+/**
+ * useExtensionPulse — sends a heartbeat POST to the backend every 5 seconds
+ * during an active ranked challenge to confirm the extension is alive.
+ *
+ * If the pulse response returns { alive: false } (extension off / challenge ended),
+ * calls onExtensionOff() so the caller can auto-forfeit.
+ *
+ * Usage:
+ *   useExtensionPulse(partyCode, isRanked && view === 'room', handleForfeit);
+ */
+export function useExtensionPulse(partyCode, enabled, onExtensionOff) {
+  const intervalRef = useRef(null);
+  const missedRef   = useRef(0);       // consecutive missed pulses
+  const MAX_MISSED  = 3;               // 3 × 5s = 15s without pulse → forfeit
+
+  useEffect(() => {
+    if (!enabled || !partyCode) return;
+
+    async function sendPulse() {
+      try {
+        const res = await api.post(`/challenges/party/${partyCode}/pulse/`, {});
+        if (res.alive === false) {
+          // Challenge already ended server-side
+          clearInterval(intervalRef.current);
+          return;
+        }
+        missedRef.current = 0; // Reset on successful pulse
+      } catch {
+        // Network error or 4xx — count as missed
+        missedRef.current++;
+        if (missedRef.current >= MAX_MISSED && onExtensionOff) {
+          clearInterval(intervalRef.current);
+          onExtensionOff('Extension disconnected — pulse timeout');
+        }
+      }
+    }
+
+    // Send immediately, then on interval
+    sendPulse();
+    intervalRef.current = setInterval(sendPulse, PULSE_INTERVAL_MS);
+
+    return () => clearInterval(intervalRef.current);
+  }, [enabled, partyCode]); // eslint-disable-line react-hooks/exhaustive-deps
 }
