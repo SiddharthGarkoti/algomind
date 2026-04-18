@@ -6,7 +6,7 @@
  * Also injects a hidden DOM sentinel so the React app can detect extension presence.
  */
 
-const DEBUG = true;
+const DEBUG = false; // Set to true for local development
 const log = (...args) => DEBUG && console.log('[AlgoMind CS]', ...args);
 
 // ─── 1. Inject Extension Sentinel (for React detection) ────────────────────────

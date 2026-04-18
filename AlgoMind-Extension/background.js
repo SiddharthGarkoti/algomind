@@ -11,7 +11,7 @@
  */
 
 // ─── Debug Mode ────────────────────────────────────────────────────────────────
-const DEBUG = true;
+const DEBUG = false; // Set to true for local development
 const log = (...args) => DEBUG && console.log('[AlgoMind BG]', ...args);
 
 // ─── Constants ─────────────────────────────────────────────────────────────────

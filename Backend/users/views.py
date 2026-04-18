@@ -46,12 +46,16 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         user  = self.request.user
-        today = timezone.now().date()
-        if user.last_active != today:
-            yesterday    = today - timezone.timedelta(days=1)
-            user.streak  = (user.streak + 1) if user.last_active == yesterday else 1
-            user.last_active = today
-            user.save(update_fields=['streak', 'last_active'])
+        now   = timezone.now()
+        today = now.date()
+        # Use .date() comparison so streak works with the new DateTimeField
+        last_date = user.last_active.date() if user.last_active else None
+        if last_date != today:
+            yesterday   = today - timezone.timedelta(days=1)
+            user.streak = (user.streak + 1) if last_date == yesterday else 1
+        # Always write exact datetime so online-presence polling works
+        user.last_active = now
+        user.save(update_fields=['streak', 'last_active'])
         return user
 
 
@@ -152,7 +156,7 @@ class NotificationListView(generics.ListAPIView):
         streak_at_risk = (
             user.streak > 0 and
             user.last_active is not None and
-            user.last_active < today
+            user.last_active.date() < today  # .date() because last_active is now DateTimeField
         )
 
         return Response({
@@ -208,7 +212,8 @@ class FriendOnlineStatusView(APIView):
 
     def get(self, request):
         from friends.models import Friendship
-        today = timezone.now().date()
+        now           = timezone.now()
+        five_mins_ago = now - timezone.timedelta(minutes=5)
 
         # Get all friendships
         friendships = Friendship.objects.filter(
@@ -217,8 +222,12 @@ class FriendOnlineStatusView(APIView):
 
         online_friends = []
         for fs in friendships:
-            friend = fs.user2 if fs.user1_id == request.user.id else fs.user1
-            is_online = (friend.last_active == today)
+            friend    = fs.user2 if fs.user1_id == request.user.id else fs.user1
+            # "Online" = visited AlgoMind in the last 5 minutes
+            is_online = (
+                friend.last_active is not None and
+                friend.last_active >= five_mins_ago
+            )
             online_friends.append({
                 'id':        friend.id,
                 'username':  friend.username,

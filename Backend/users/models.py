@@ -12,7 +12,7 @@ OAUTH_PROVIDERS = [
 class User(AbstractUser):
     email         = models.EmailField(unique=True)
     streak        = models.PositiveIntegerField(default=0)
-    last_active   = models.DateField(null=True, blank=True)
+    last_active   = models.DateTimeField(null=True, blank=True)  # Upgraded from DateField — enables 5-min online presence
     level         = models.PositiveIntegerField(default=1)
     rating        = models.PositiveIntegerField(default=1000)
     bio           = models.TextField(blank=True)

@@ -54,6 +54,9 @@ function Header({ theme, toggleTheme, onOpenChat }) {
   const [loadingNotifs,   setLoadingNotifs]   = useState(false);
   const [onlineFriends,   setOnlineFriends]   = useState([]);
   const [aiInsights,      setAiInsights]      = useState(['Loading insights...']);
+  const [friendToast,     setFriendToast]     = useState(null); // { username } — friend just came online
+  const prevOnlineIds = useRef(new Set());  // track who was online last poll
+  const friendToastTimer = useRef(null);
 
   // banner rotation
   const [notifIndex, setNotifIndex] = useState(0);
@@ -77,12 +80,25 @@ function Header({ theme, toggleTheme, onOpenChat }) {
     }
   }, [isAuthenticated]);
 
-  // ── fetch friend online statuses (every 2 min) ────────────────────
+  // ── fetch friend online statuses (every 30 s) ─────────────────────
   const fetchOnlineFriends = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
       const data = await api.get('/auth/friends/online/');
-      setOnlineFriends((data.friends ?? []).filter(f => f.is_online));
+      const nowOnline = (data.friends ?? []).filter(f => f.is_online);
+      setOnlineFriends(nowOnline);
+
+      // Detect new transitions: friends who are online now but weren't before
+      const nowOnlineIds = new Set(nowOnline.map(f => f.id));
+      const newlyOnline = nowOnline.filter(f => !prevOnlineIds.current.has(f.id));
+      // Only show toast if there was a previous poll (set not empty means we've polled before)
+      if (prevOnlineIds.current.size > 0 && newlyOnline.length > 0) {
+        const first = newlyOnline[0];
+        clearTimeout(friendToastTimer.current);
+        setFriendToast({ username: first.username });
+        friendToastTimer.current = setTimeout(() => setFriendToast(null), 4000);
+      }
+      prevOnlineIds.current = nowOnlineIds;
     } catch { /* non-critical */ }
   }, [isAuthenticated]);
 
@@ -102,10 +118,15 @@ function Header({ theme, toggleTheme, onOpenChat }) {
     fetchNotifications();
     fetchOnlineFriends();
     fetchAiInsight();
-    const notifId   = setInterval(fetchNotifications,   60_000);
-    const onlineId  = setInterval(fetchOnlineFriends,  120_000);
-    const insightId = setInterval(fetchAiInsight,      600_000);
-    return () => { clearInterval(notifId); clearInterval(onlineId); clearInterval(insightId); };
+    const notifId   = setInterval(fetchNotifications,    60_000);
+    const onlineId  = setInterval(fetchOnlineFriends,    30_000); // 30 s for real-time feel
+    const insightId = setInterval(fetchAiInsight,       600_000);
+    return () => {
+      clearInterval(notifId);
+      clearInterval(onlineId);
+      clearInterval(insightId);
+      clearTimeout(friendToastTimer.current);
+    };
   }, [fetchNotifications, fetchOnlineFriends, fetchAiInsight]);
 
   // Show streak +1 pop if user just got a new streak day
@@ -201,6 +222,33 @@ function Header({ theme, toggleTheme, onOpenChat }) {
 
   return (
     <>
+    {/* Friend went online toast */}
+    {friendToast && (
+      <div
+        className="fixed bottom-6 left-6 z-[400] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl"
+        style={{
+          background: isDark ? '#1F2022' : '#FFFFFF',
+          border: '1px solid rgba(34,197,94,0.3)',
+          boxShadow: '0 8px 32px -8px rgba(34,197,94,0.3)',
+          maxWidth: '260px',
+          animation: 'notification-slide-in 0.3s ease',
+        }}
+      >
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+          style={{ background: 'linear-gradient(135deg,#22C55E,#16A34A)' }}>
+          {friendToast.username.slice(0, 2).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
+            {friendToast.username} is online 🟢
+          </p>
+          <p className="text-[11px]" style={{ color: isDark ? '#908fa0' : '#64748B' }}>Just joined AlgoMind</p>
+        </div>
+        <button onClick={() => setFriendToast(null)} className="shrink-0 opacity-50 hover:opacity-100" style={{ color: isDark ? '#908fa0' : '#64748B' }}>
+          <span className="material-symbols-outlined text-sm">close</span>
+        </button>
+      </div>
+    )}
     {/* Chat message popup toast */}
     {chatPopup && (
       <div

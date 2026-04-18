@@ -8,7 +8,7 @@
  *  - Relay violation details to the background service worker.
  */
 
-const DEBUG = true;
+const DEBUG = false; // Set to true for local development
 const log = (...args) => DEBUG && console.log('[AlgoMind Platform]', ...args);
 
 // ─── Restricted Path Definitions ───────────────────────────────────────────────
