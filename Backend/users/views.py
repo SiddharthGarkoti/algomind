@@ -4,6 +4,9 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework import serializers as drf_serializers
 
 from .models import User, Notification
 from .serializers import (
@@ -12,7 +15,51 @@ from .serializers import (
 )
 
 
+
+# ── Email-based JWT login (fixes simplejwt USERNAME_FIELD='email' quirk) ──────
+class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Override simplejwt to explicitly use email for authentication.
+    By default simplejwt uses USERNAME_FIELD but may fall back to 'username'
+    in some versions — this ensures email+password always works.
+    """
+    username_field = 'email'
+
+    def validate(self, attrs):
+        email    = attrs.get('email', '')
+        password = attrs.get('password', '')
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            raise drf_serializers.ValidationError(
+                {'detail': 'No account found with this email address.'}
+            )
+
+        if not user.check_password(password):
+            raise drf_serializers.ValidationError(
+                {'detail': 'Incorrect password. Please try again.'}
+            )
+
+        if not user.is_active:
+            raise drf_serializers.ValidationError(
+                {'detail': 'This account has been disabled.'}
+            )
+
+        refresh = RefreshToken.for_user(user)
+        return {
+            'access':  str(refresh.access_token),
+            'refresh': str(refresh),
+        }
+
+
+class EmailLoginView(TokenObtainPairView):
+    """POST /auth/login/ — accepts { email, password }"""
+    serializer_class = EmailTokenObtainPairSerializer
+
+
 class RegisterView(generics.CreateAPIView):
+
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]

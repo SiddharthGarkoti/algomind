@@ -823,6 +823,10 @@ function PartyTab({ isDark }) {
   // Tracks if the NEXT party to be created is a ranked party
   const [isRankedFlow, setIsRankedFlow] = useState(false);
 
+  // partyCode MUST be derived before any hooks that use it
+  const partyCode = party?.code;
+  const pollRef = useRef(null);
+
   // Extension detection — used to guard ranked start
   const { extensionInstalled } = useAlgoMindExtension();
 
@@ -840,9 +844,6 @@ function PartyTab({ isDark }) {
       sessionStorage.setItem(PARTY_SESSION_KEY, JSON.stringify({ view, party, timeLeft }));
     } catch { /* quota error — ignore */ }
   }, [view, party, timeLeft]);
-
-  const pollRef = useRef(null);
-  const partyCode = party?.code;
 
   const refreshParty = useCallback(async () => {
     if (!partyCode) return;
