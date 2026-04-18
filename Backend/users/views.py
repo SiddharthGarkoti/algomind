@@ -58,6 +58,86 @@ class EmailLoginView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer
 
 
+
+# ── OTP Email Verification ─────────────────────────────────────────────────────
+import random
+import string
+from django.core.cache import cache
+from django.core.mail import send_mail
+from django.conf import settings as django_settings
+
+
+def _otp_cache_key(email):
+    return f'algomind_reg_otp_{email.lower().strip()}'
+
+
+class SendOTPView(APIView):
+    """
+    POST /auth/send-otp/
+    Body: { "email": "user@example.com" }
+
+    Generates a 6-digit OTP, stores it in cache for 10 minutes, and
+    sends it to the given email. Rate-limited to 1 request per 60s per email.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip().lower()
+        if not email or '@' not in email:
+            return Response({'detail': 'A valid email address is required.'}, status=400)
+
+        # Check if user already registered
+        if User.objects.filter(email__iexact=email).exists():
+            return Response({'detail': 'An account with this email already exists.'}, status=400)
+
+        # Rate-limit: don't resend if a code was issued in the last 60 seconds
+        rate_key = f'algomind_otp_rate_{email}'
+        if cache.get(rate_key):
+            return Response({'detail': 'Please wait 60 seconds before requesting another code.'}, status=429)
+
+        # Generate 6-digit OTP
+        otp = ''.join(random.choices(string.digits, k=6))
+        cache.set(_otp_cache_key(email), otp, timeout=600)     # valid 10 minutes
+        cache.set(rate_key, True, timeout=60)                   # rate-limit window
+
+        # Send email
+        try:
+            send_mail(
+                subject='AlgoMind — Your Verification Code',
+                message=(
+                    f'Your AlgoMind verification code is: {otp}\n\n'
+                    f'This code expires in 10 minutes. Do not share it with anyone.\n\n'
+                    f'If you did not request this, please ignore this email.'
+                ),
+                from_email=getattr(django_settings, 'DEFAULT_FROM_EMAIL', 'noreply@algomind.io'),
+                recipient_list=[email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            cache.delete(_otp_cache_key(email))
+            return Response({'detail': f'Failed to send email: {e}'}, status=500)
+
+        return Response({'detail': 'Verification code sent. Check your inbox (and spam folder).'})
+
+
+class VerifyOTPView(APIView):
+    """
+    POST /auth/verify-otp/
+    Body: { "email": "...", "otp": "123456" }
+    Returns 200 if valid, 400 if invalid/expired.
+    Does NOT consume the OTP — consumption happens at register time.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip().lower()
+        otp   = (request.data.get('otp')   or '').strip()
+        stored = cache.get(_otp_cache_key(email))
+        if not stored or stored != otp:
+            return Response({'detail': 'Invalid or expired code. Please request a new one.'}, status=400)
+        return Response({'detail': 'Code verified.'})
+
+
 class RegisterView(generics.CreateAPIView):
 
     queryset = User.objects.all()
@@ -65,9 +145,21 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
+        email = (request.data.get('email') or '').strip().lower()
+        otp   = (request.data.get('otp')   or '').strip()
+
+        # Require OTP verification before account creation
+        stored = cache.get(_otp_cache_key(email))
+        if not stored or stored != otp:
+            return Response(
+                {'detail': 'Please verify your email with the OTP before registering.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user    = serializer.save()
+        cache.delete(_otp_cache_key(email))      # consume the OTP
         refresh = RefreshToken.for_user(user)
         return Response({
             'user':    UserProfileSerializer(user).data,

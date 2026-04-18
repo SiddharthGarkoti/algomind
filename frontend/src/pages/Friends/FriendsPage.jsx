@@ -233,20 +233,35 @@ function FriendsPage({ theme, toggleTheme }) {
                       className="shrink-0 transition-transform hover:scale-105"
                     >
                       {friend?.avatar
-                        ? <img src={friend.avatar} className="w-10 h-10 rounded-full object-cover" alt="" />
-                        : <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white relative"
-                            style={{ background: colourFor(friend?.id) }}>
-                            {initials(friend?.username)}
+                        ? (
+                          <div className="relative w-10 h-10 shrink-0">
+                            <img src={friend.avatar} className="w-10 h-10 rounded-full object-cover" alt="" />
+                            <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2"
+                              style={{ 
+                                background: friend?.is_online ? '#22C55E' : 'rgba(100,116,139,0.3)', 
+                                borderColor: surface,
+                                boxShadow: friend?.is_online ? '0 0 0 2px rgba(34,197,94,0.25)' : 'none'
+                              }} 
+                              title={friend?.is_online ? 'Online' : 'Offline'}
+                            />
                           </div>
+                        ) : (
+                          <div className="relative w-10 h-10 shrink-0">
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white"
+                              style={{ background: colourFor(friend?.id) }}>
+                              {initials(friend?.username)}
+                            </div>
+                            <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2"
+                              style={{ 
+                                background: friend?.is_online ? '#22C55E' : 'rgba(100,116,139,0.3)', 
+                                borderColor: surface,
+                                boxShadow: friend?.is_online ? '0 0 0 2px rgba(34,197,94,0.25)' : 'none'
+                              }} 
+                              title={friend?.is_online ? 'Online' : 'Offline'}
+                            />
+                          </div>
+                        )
                       }
-                      <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2"
-                        style={{ 
-                          background: friend?.is_online ? '#22C55E' : 'rgba(100,116,139,0.3)', 
-                          borderColor: surface,
-                          boxShadow: friend?.is_online ? '0 0 0 1px rgba(34,197,94,0.3)' : 'none'
-                        }} 
-                        title={friend?.is_online ? "Online" : "Offline"}
-                      />
                     </button>
                     <div>
                       <button
@@ -256,7 +271,12 @@ function FriendsPage({ theme, toggleTheme }) {
                       >
                         {friend?.username}
                       </button>
-                      <p className="text-[10px]" style={{ color: textSec }}>Lv {friend?.level} · Rating {friend?.rating} · 🔥{friend?.streak}d</p>
+                      <p className="text-[10px]" style={{ color: textSec }}>
+                        {friend?.is_online
+                          ? <span style={{ color: '#22C55E' }}>● Online</span>
+                          : `Lv ${friend?.level} · Rating ${friend?.rating} · 🔥${friend?.streak}d`
+                        }
+                      </p>
                     </div>
                   </div>
                   <div className="flex gap-2">

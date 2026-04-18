@@ -5,12 +5,15 @@ from .views import (
     PublicProfileView, LeaderboardView, UserSearchView,
     NotificationListView, MarkNotificationReadView, MarkAllNotificationsReadView, DeleteNotificationView,
     FriendOnlineStatusView, AIInsightNotificationView, MentorAnalysisView,
+    SendOTPView, VerifyOTPView,
 )
 from .oauth import GitHubBeginView, GitHubCallbackView, GoogleBeginView, GoogleCallbackView
 
 urlpatterns = [
     # ... snip OAuth/Auth
     path('register/',                RegisterView.as_view(),               name='register'),
+    path('send-otp/',                SendOTPView.as_view(),                name='send_otp'),
+    path('verify-otp/',              VerifyOTPView.as_view(),              name='verify_otp'),
     path('login/',                   EmailLoginView.as_view(),             name='login'),
     path('token/refresh/',           TokenRefreshView.as_view(),           name='token_refresh'),
     path('logout/',                  LogoutView.as_view(),                 name='logout'),

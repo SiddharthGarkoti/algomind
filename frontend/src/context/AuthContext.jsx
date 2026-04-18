@@ -67,8 +67,9 @@ export function AuthProvider({ children }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── register ─────────────────────────────────────────────────────
-  const register = useCallback(async (username, email, password, password2) => {
-    const data = await api.post('/auth/register/', { username, email, password, password2 });
+  // otp is required — user must verify email before account creation
+  const register = useCallback(async (username, email, password, password2, otp = '') => {
+    const data = await api.post('/auth/register/', { username, email, password, password2, otp });
     api.setTokens(data.access, data.refresh);
     setUser(data.user);
     _clearGuest();

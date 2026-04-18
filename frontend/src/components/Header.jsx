@@ -281,22 +281,39 @@ function Header({ theme, toggleTheme, onOpenChat }) {
     <header className="w-full px-6 pt-6 pb-2 flex justify-end items-center shrink-0">
       <div className="flex items-center gap-3">
 
-        {/* Leaderboard Widget */}
         <button
           className="p-2.5 rounded-xl flex items-center gap-3 cursor-pointer transition-all hover:scale-[1.02]"
           style={{ background: surface, border: `1px solid ${border}` }}
           onClick={() => navigate('/friends')}
         >
           <div className="flex -space-x-2">
-            {['#2f3aa3','#62259b'].map((bg, i) => (
-              <div key={i} className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-[8px] font-bold"
-                style={{ borderColor: isDark ? '#121315' : '#fff', background: bg, color: '#fff' }}>
-                {['JD','SK'][i]}
-              </div>
-            ))}
+            {onlineFriends.length > 0
+              ? onlineFriends.slice(0, 3).map((f, i) => (
+                <div key={f.id ?? i} className="relative">
+                  {f.avatar
+                    ? <img src={f.avatar} className="w-6 h-6 rounded-full object-cover border-2"
+                        style={{ borderColor: isDark ? '#121315' : '#fff' }} alt="" />
+                    : <div className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-[8px] font-bold text-white"
+                        style={{ borderColor: isDark ? '#121315' : '#fff', background: ['#2f3aa3','#62259b','#22C55E'][i % 3] }}>
+                        {(f.username ?? '?').slice(0,2).toUpperCase()}
+                      </div>
+                  }
+                  <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full border border-white"
+                    style={{ background: '#22C55E', borderColor: isDark ? '#121315' : '#fff' }} />
+                </div>
+              ))
+              : ['#2f3aa3','#62259b'].map((bg, i) => (
+                <div key={i} className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-[8px] font-bold"
+                  style={{ borderColor: isDark ? '#121315' : '#fff', background: bg, color: '#fff' }}>
+                  {['JD','SK'][i]}
+                </div>
+              ))
+            }
           </div>
           <div>
-            <p className="text-[9px] uppercase font-label leading-none mb-0.5" style={{ color: textSec }}>Leaderboard</p>
+            <p className="text-[9px] uppercase font-label leading-none mb-0.5" style={{ color: textSec }}>
+              {onlineFriends.length > 0 ? `${onlineFriends.length} Online` : 'Leaderboard'}
+            </p>
             <p className="text-[11px] font-bold" style={{ color: textPri }}>Friends</p>
           </div>
         </button>

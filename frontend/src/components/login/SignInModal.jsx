@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { API_BASE_URL } from '../../config.js';
+import api from '../../utils/api.js';
+
 /**
  * SignInModal
  *
@@ -9,6 +11,11 @@ import { API_BASE_URL } from '../../config.js';
  *  isOpen     – boolean – controls visibility
  *  onClose    – fn      – called when the user dismisses the modal
  *  onSuccess  – fn(user) – optional callback after successful auth
+ *
+ * Registration flow:
+ *  1. User fills form → clicks "Send Verification Code"
+ *  2. OTP sent to email → user enters code
+ *  3. Verified → account created
  */
 function SignInModal({ isOpen, onClose, onSuccess }) {
   const navigate = useNavigate();
@@ -16,12 +23,22 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
 
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [emailMode,     setEmailMode]     = useState('login');  // 'login' | 'register'
-  const [email,         setEmail]         = useState('');
-  const [username,      setUsername]      = useState('');
-  const [password,      setPassword]      = useState('');
-  const [password2,     setPassword2]     = useState('');
-  const [error,         setError]         = useState('');
-  const [busy,          setBusy]          = useState(false);
+
+  // Common fields
+  const [email,    setEmail]    = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [password2,setPassword2]= useState('');
+
+  // OTP sub-flow (register only)
+  const [otpStep,  setOtpStep]  = useState('form');  // 'form' → 'otp' → done
+  const [otp,      setOtp]      = useState('');
+  const [otpSent,  setOtpSent]  = useState(false);
+  const [otpTimer, setOtpTimer] = useState(0);        // countdown for resend
+
+  const [error, setError] = useState('');
+  const [info,  setInfo]  = useState('');
+  const [busy,  setBusy]  = useState(false);
 
   /* Lock/unlock body scroll */
   useEffect(() => {
@@ -34,26 +51,29 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
     if (!isOpen) {
       setShowEmailForm(false);
       setEmailMode('login');
-      setEmail('');
-      setUsername('');
-      setPassword('');
-      setPassword2('');
-      setError('');
+      setEmail(''); setUsername(''); setPassword(''); setPassword2('');
+      setOtpStep('form'); setOtp(''); setOtpSent(false); setOtpTimer(0);
+      setError(''); setInfo('');
     }
   }, [isOpen]);
 
+  /* OTP resend countdown timer */
+  useEffect(() => {
+    if (otpTimer <= 0) return;
+    const id = setTimeout(() => setOtpTimer(t => t - 1), 1000);
+    return () => clearTimeout(id);
+  }, [otpTimer]);
+
   if (!isOpen) return null;
 
-  // ── error extraction ──────────────────────────────────────────────
+  // ── error extraction ───────────────────────────────────────────────
   function extractError(err) {
     if (!err) return 'Something went wrong. Is the backend running?';
-    if (err instanceof TypeError) return 'Cannot reach server. Make sure the backend is running on port 8000.';
-    // Plain Error objects (e.g. session-expiry from api.js)
+    if (err instanceof TypeError) return 'Cannot reach server. Make sure the backend is running.';
     if (err instanceof Error) return err.message;
     if (typeof err === 'string') return err;
-    // DRF returns field-level arrays: { email: ['msg'], detail: 'msg', password2: ['msg'] }
     return (
-      err.detail        ??
+      err.detail ??
       err.non_field_errors?.[0] ??
       err.email?.[0]    ??
       err.username?.[0] ??
@@ -63,14 +83,52 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
     );
   }
 
-  // ── submit ────────────────────────────────────────────────────────
+  // ── Send OTP ────────────────────────────────────────────────────────
+  const handleSendOTP = async () => {
+    setError(''); setInfo('');
+    if (!email || !email.includes('@')) { setError('Enter a valid email first.'); return; }
+    if (!username.trim()) { setError('Enter your username first.'); return; }
+    if (!password || password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (password !== password2) { setError('Passwords do not match.'); return; }
+
+    setBusy(true);
+    try {
+      const res = await api.post('/auth/send-otp/', { email }, { skipAuth: true });
+      setOtpSent(true);
+      setOtpStep('otp');
+      setOtpTimer(60);
+      setInfo(res.detail ?? 'Verification code sent! Check your inbox.');
+    } catch (err) {
+      setError(extractError(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ── Resend OTP ─────────────────────────────────────────────────────
+  const handleResendOTP = async () => {
+    if (otpTimer > 0) return;
+    setBusy(true);
+    try {
+      await api.post('/auth/send-otp/', { email }, { skipAuth: true });
+      setOtpTimer(60);
+      setInfo('New code sent!'); setError('');
+    } catch (err) {
+      setError(extractError(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ── Submit (login or final register with OTP) ──────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (emailMode === 'register' && password !== password2) {
-      setError('Passwords do not match.');
-      return;
+    if (emailMode === 'register') {
+      // Must have sent OTP first
+      if (otpStep !== 'otp') { setError('Please request and enter a verification code first.'); return; }
+      if (!otp.trim() || otp.length !== 6) { setError('Enter the 6-digit code sent to your email.'); return; }
     }
 
     setBusy(true);
@@ -79,14 +137,11 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
       if (emailMode === 'login') {
         user = await login(email, password);
       } else {
-        user = await register(username, email, password, password2);
+        // register() must be updated in AuthContext to pass otp
+        user = await register(username, email, password, password2, otp);
       }
       onClose();
-      if (onSuccess) {
-        onSuccess(user);
-      } else {
-        navigate('/dashboard');
-      }
+      if (onSuccess) { onSuccess(user); } else { navigate('/dashboard'); }
     } catch (err) {
       setError(extractError(err));
     } finally {
@@ -94,14 +149,12 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
     }
   };
 
+  const inputCls = 'w-full px-4 py-3 bg-gray-50 dark:bg-surface-container-low border border-gray-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 dark:text-white text-sm';
+
   return (
     <div className="fixed inset-0 z-[100]" id="signin-modal">
-
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
 
       {/* Modal Panel */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-4">
@@ -130,7 +183,7 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
             {/* Auth Options */}
             <div className="space-y-3">
 
-              {/* GitHub — live OAuth redirect */}
+              {/* GitHub */}
               <button
                 id="github-oauth-btn"
                 onClick={() => { window.location.href = `${API_BASE_URL}/api/auth/oauth/github/`; }}
@@ -142,7 +195,7 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
                 Continue with GitHub
               </button>
 
-              {/* Google — live OAuth redirect */}
+              {/* Google */}
               <button
                 id="google-oauth-btn"
                 onClick={() => { window.location.href = `${API_BASE_URL}/api/auth/oauth/google/`; }}
@@ -176,7 +229,7 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
                 Continue with Email
               </button>
 
-              {/* Email form — conditionally rendered */}
+              {/* Email form */}
               {showEmailForm && (
                 <div className="pt-2 space-y-3" id="email-form">
 
@@ -186,11 +239,9 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
                       <button
                         key={m}
                         type="button"
-                        onClick={() => { setEmailMode(m); setError(''); }}
+                        onClick={() => { setEmailMode(m); setError(''); setInfo(''); setOtpStep('form'); setOtp(''); setOtpSent(false); setOtpTimer(0); }}
                         className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                        style={emailMode === m
-                          ? { background: '#6366F1', color: '#fff' }
-                          : { color: '#64748B' }}
+                        style={emailMode === m ? { background: '#6366F1', color: '#fff' } : { color: '#64748B' }}
                       >
                         {m === 'login' ? 'Sign In' : 'Register'}
                       </button>
@@ -198,60 +249,80 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-3">
+                    {/* Register fields */}
                     {emailMode === 'register' && (
-                      <input
-                        type="text"
-                        placeholder="Username"
-                        required
-                        value={username}
-                        onChange={e => setUsername(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-surface-container-low border border-gray-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 dark:text-white"
-                      />
+                      <input type="text" placeholder="Username" required
+                        value={username} onChange={e => setUsername(e.target.value)}
+                        className={inputCls} disabled={otpStep === 'otp'} />
                     )}
 
-                    <input
-                      type="email"
-                      placeholder="Enter your email"
-                      required
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-surface-container-low border border-gray-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 dark:text-white"
-                    />
+                    <input type="email" placeholder="Enter your email" required
+                      value={email} onChange={e => setEmail(e.target.value)}
+                      className={inputCls} disabled={otpStep === 'otp'} />
 
-                    <input
-                      type="password"
-                      placeholder="Password"
-                      required
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-surface-container-low border border-gray-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 dark:text-white"
-                    />
+                    <input type="password" placeholder="Password" required
+                      value={password} onChange={e => setPassword(e.target.value)}
+                      className={inputCls} disabled={otpStep === 'otp'} />
 
                     {emailMode === 'register' && (
-                      <input
-                        type="password"
-                        placeholder="Confirm password"
-                        required
-                        value={password2}
-                        onChange={e => setPassword2(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-surface-container-low border border-gray-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 dark:text-white"
-                      />
+                      <input type="password" placeholder="Confirm password" required
+                        value={password2} onChange={e => setPassword2(e.target.value)}
+                        className={inputCls} disabled={otpStep === 'otp'} />
                     )}
 
-                    {error && (
-                      <p className="text-xs text-red-500 text-center">{error}</p>
+                    {/* OTP step for registration */}
+                    {emailMode === 'register' && (
+                      <>
+                        {otpStep === 'form' ? (
+                          <button type="button" onClick={handleSendOTP} disabled={busy}
+                            className="w-full py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                            style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff' }}>
+                            {busy && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                            Send Verification Code
+                          </button>
+                        ) : (
+                          <div className="space-y-2">
+                            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                              Enter the 6-digit code sent to {email}
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]{6}"
+                                maxLength={6}
+                                placeholder="• • • • • •"
+                                value={otp}
+                                onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                className="flex-1 px-4 py-3 bg-gray-50 dark:bg-surface-container-low border border-indigo-300 dark:border-indigo-500/40 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 dark:text-white text-center font-mono text-lg tracking-widest"
+                                autoFocus
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleResendOTP}
+                              disabled={otpTimer > 0 || busy}
+                              className="text-xs text-indigo-500 hover:underline disabled:opacity-40 disabled:no-underline"
+                            >
+                              {otpTimer > 0 ? `Resend in ${otpTimer}s` : 'Resend code'}
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
 
-                    <button
-                      type="submit"
-                      disabled={busy}
-                      className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-                    >
-                      {busy && (
-                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      )}
-                      {emailMode === 'login' ? 'Sign In' : 'Create Account'}
-                    </button>
+                    {/* Feedback */}
+                    {info  && <p className="text-xs text-green-600 text-center">{info}</p>}
+                    {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+
+                    {/* Submit — only shown when OTP step is complete (register) or always (login) */}
+                    {(emailMode === 'login' || otpStep === 'otp') && (
+                      <button type="submit" disabled={busy || (emailMode === 'register' && otp.length < 6)}
+                        className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+                        {busy && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                        {emailMode === 'login' ? 'Sign In' : 'Create Account'}
+                      </button>
+                    )}
                   </form>
                 </div>
               )}
