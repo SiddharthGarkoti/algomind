@@ -1056,7 +1056,7 @@ function PlanViewPage({ theme, toggleTheme }) {
     if (!isAuthenticated) { setToast({ msg: 'Sign in to verify with LeetCode', ok: false }); return; }
     setVerifying(problem.id);
     try {
-      const res = await api.post('/analytics/verify-solved/', { platform: 'leetcode', slug: problem.slug });
+      const res = await api.post('/analytics/verify-solved/', { platform: 'leetcode', slug: problem.slug, difficulty: problem.difficulty });
       if (res.verified) {
         setVerified(prev => new Set([...prev, problem.id]));
         setDone(prev => new Set([...prev, problem.id]));

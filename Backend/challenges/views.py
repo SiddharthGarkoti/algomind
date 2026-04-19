@@ -286,7 +286,8 @@ class CheckCompletionView(APIView):
             QuestionCompletion.objects.get_or_create(member=member, question=question,
                                                      defaults={'verified': True})
             # ── Award rating points for solving the question ─────────────────────────────
-            request.user.award_question_rating(question.difficulty)
+            pts = {'easy': 10, 'medium': 25, 'hard': 50}.get(question.difficulty.lower(), 10)
+            request.user.award_rating(pts)
             # ────────────────────────────────────────────────────────────
             done = member.completions.filter(verified=True).count()
             if done >= party.questions.count() and not member.finished_at:

@@ -334,4 +334,9 @@ class VerifySolvedView(APIView):
         else:
             return Response({'verified': False, 'detail': 'Unsupported platform.'})
 
+        if verified:
+            difficulty = request.data.get('difficulty', '')
+            if difficulty:
+                request.user.award_question_rating(difficulty)
+
         return Response({'verified': verified})
