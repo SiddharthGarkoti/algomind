@@ -128,12 +128,7 @@ function AnalyzeCard({ lcUsername, cfUsername, lcError, cfError, generalError, l
             )}
           </button>
 
-          {/* Demo link */}
-          <div className="pt-2 text-center">
-            <p className="text-gray-500 dark:text-gray-500 text-xs">
-              Not on LeetCode/CF yet? <button type="button" className="text-purple-500 hover:underline" onClick={() => {}}>Continue as guest →</button>
-            </p>
-          </div>
+
 
         </form>
 

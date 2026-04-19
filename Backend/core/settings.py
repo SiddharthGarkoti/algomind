@@ -141,3 +141,12 @@ GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET', default='')
 GEMINI_API_KEY = env('GEMINI_API_KEY', default='')
 GROQ_API_KEY   = env('GROQ_API_KEY',   default='')
 OPENAI_API_KEY = env('OPENAI_API_KEY', default='')
+
+# ── Email Settings (For OTP) ──────────────────────────────────────────
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
