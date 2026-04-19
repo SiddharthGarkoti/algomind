@@ -180,38 +180,7 @@ The frontend calls this via:
 SECTION 7 — PENDING WORK (REMAINING)
 ==============================================================================
 
-[x] URGENT REWORK: CRITICAL System Crashes — FIXED (Session 3, 2026-04-18):
-    - FRONTEND CRASH FIXED: ChallengesPage.jsx was using partyCode before it was
-      defined (React hook temporal dead zone). Moved const partyCode = party?.code
-      above useAlgoMindExtension and useExtensionPulse hooks.
-    - AUTH CRASH FIXED: simplejwt TokenObtainPairView did not reliably use
-      USERNAME_FIELD='email'. Added EmailTokenObtainPairSerializer + EmailLoginView
-      with explicit email lookup. Wired to /auth/login/ in users/urls.py.
 
-[x] URGENT REWORK: Extension Stability & False Alarms — FIXED (Session 3):
-    - Added 1500ms global debounce to prevent tab-switching cascade false alarms.
-    - Added 2.5s grace period for new tabs to allow LeetCode/Codeforces navigation without penalty.
-    - Added windowBlurred state flag to prevent double strikes on focus matching.
-    - Ranked challenge now blocks starting if the extension is not installed (UI guard + disabled buttons).
-    - Added backend live-sync for strikes (ReportStrikeView) locking auto-forfeit reliably.
-
-[x] URGENT REWORK: Challenge UI Redesign — FIXED (Session 3):
-    - Split into 3 distinct functional tabs: Casual Party, Ranked Party, Contests.
-    - Ranked Tab features a dedicated dark-red theme + standalone extension install banner that only renders if the extension is absent.
-
-[x] URGENT REWORK: Friends UI Green Dot — FIXED (Session 3):
-    - FriendsPage updated: applied position relative wrapper so the absolute green dot renders correctly securely over the avatar.
-    - Header.jsx updated: leaderboard widget now polls real `onlineFriends` and injects their dynamic avatars + green dots instead of hardcoded initials.
-
-[x] Login System Enhancements — FIXED (Session 3):
-    - Implement Email OTP Registration: created SendOTPView & VerifyOTPView using Django cache + send_mail.
-    - SignInModal revamped to include OTP workflow (Send code -> enter 6 digits -> API checks and creates account).
-
-[x] Real-time friend online status — PARTIALLY DONE (Session 2, 2026-04-18):
-    - last_active upgraded to DateTimeField (migration 0006)
-    - ProfileView always writes exact datetime on page load
-    - FriendOnlineStatusView: online = active within last 5 minutes
-    - Header.jsx: polls every 30s, shows "X is online 🟢" toast on transition
 
 [ ] Chrome Web Store publishing:
     - Replace PLACEHOLDER_ID in ExtensionGuard.jsx EXTENSION_DOWNLOAD_URL
@@ -221,46 +190,26 @@ SECTION 7 — PENDING WORK (REMAINING)
     - Add webextension-polyfill npm package
     - Wrap chrome.* calls with browser.* polyfill
 
-[x] Production hardening — DONE (Session 2, 2026-04-18):
-    - DEBUG = false in background.js, content/algomind.js, content/platforms.js
+[x] Fix Extension "No Active Challenge" Glitch — FIXED (Session 5, 2026-04-19):
+    - content/algomind.js: wrapped all chrome.runtime.sendMessage calls in safeSendToBackground()
+      which catches both thrown errors and chrome.runtime.lastError from invalidated contexts.
+      On detection, fires ALGOMIND_EXTENSION_INVALIDATED postMessage to the React app.
+    - useAlgoMindExtension.js: added second useEffect watching for ALGOMIND_EXTENSION_INVALIDATED;
+      sets extensionInvalidated=true and extensionInstalled=false.
+    - ChallengesPage.jsx: added amber "Extension Disconnected — Reload Required" banner with a
+      "Reload Page" button when extensionInvalidated is true. Hides the install banner while invalidated.
+
+[x] Fix Email OTP Login Integration — FIXED (Session 5, 2026-04-19):
+    - Root cause: api.js used `body` on line 65 BEFORE it was declared on line 82 — a ReferenceError
+      that crashed the 401 handler for unauthenticated register/send-otp calls.
+    - Fixed: read the response body immediately before throwing on the no-refresh-token 401 path.
+    - AuthContext.register() already correctly stores access+refresh tokens returned by
+      Backend RegisterView — the fix above unblocks the full OTP → register → login flow.
 
 [ ] E2E testing:
     - Load unpacked extension in Chrome → chrome://extensions → Load Unpacked
     - Run: challenge start → tab switch → violation → 3 strikes → auto-forfeit flow
     - Verify party shows "DNF" on forfeit page
-
-[x] Fix Friend Message Notifications — FIXED (Session 4, 2026-04-19):
-    - chat/views.py: ConversationView POST now creates a Notification DB record for the
-      receiver with notif_type='message', title, body preview, and avatar_text.
-    - Deduplication: will not create a new notification if an unread one from the same
-      sender already exists (avoids spam).
-    - Header.jsx: Added 'message' type to TYPE_META with cyan color and 💬 icon.
-
-[x] Fix Code Party Invite Notifications — FIXED (Session 4, 2026-04-19):
-    - Header.jsx: Notification bell now shows a "🎮 Join Party" + "Decline" button for
-      both party_invite type and legacy system notifications with 'code: ' in the body.
-    - Clicking "Join Party" closes the dropdown, marks notification read, and navigates
-      to /challenges?join=<CODE> so the code is pre-filled in the join input.
-    - Added 'party_invite' to TYPE_META with red color.
-
-[x] Redesign Rating System — DONE (Session 4, 2026-04-19):
-    - Users model: added award_question_rating(difficulty) → Easy=10, Medium=25, Hard=50 pts.
-    - Users model: added award_plan_completion() → +200 rating.
-    - Users model: added award_contest_win(rank, total) → Rank1=100+10×N, Rank2=60, Rank3=30, others=10.
-    - CheckCompletionView: calls user.award_question_rating(difficulty) on each verified solve.
-    - _assign_ranks(): calls user.award_contest_win() for all finishers in ranked parties.
-
-[x] Fix Extension Ranked Mode Failure — FIXED (Session 4, 2026-04-19):
-    - ChallengesPage: handleJoin now reads party.is_ranked and sets isRanked+isRankedFlow.
-    - Extension is blocked if user tries to join a ranked party without it installed.
-    - Added useEffect syncing isRanked from party.is_ranked when entering room view —
-      this also handles the page-refresh case where the extension needs to be restarted.
-
-[x] Fix Extension Heartbeat/Pulse Disconnect — FIXED (Session 4, 2026-04-19):
-    - useAlgoMindExtension.js: useExtensionPulse now has a dual-watchdog mechanism:
-      1. Backend pulse POST every 5s (existing) — 3 misses = forfeit.
-      2. ALGOMIND_HEARTBEAT message listener: if no heartbeat received for 15s → forfeit.
-    - Both timers are properly cleaned up on unmount.
 
 ==============================================================================
 SECTION 8 — HOW TO LOAD THE EXTENSION (development)

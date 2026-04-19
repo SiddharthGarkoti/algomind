@@ -60,9 +60,10 @@ async function request(path, options = {}, retry = true) {
   if (res.status === 401 && retry) {
     // Only try refresh if we actually have a refresh token stored.
     // Without one this is a genuine credential error (wrong password, etc.)
-    // — throw the response body directly so callers get the real message.
+    // — read body first so callers get the real server message.
     if (!getRefreshToken()) {
-      throw body ?? { detail: `HTTP ${res.status}` };
+      const errBody = await res.json().catch(() => null);
+      throw errBody ?? { detail: `HTTP ${res.status}` };
     }
     try {
       const newToken = await refreshAccessToken();

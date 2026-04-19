@@ -843,7 +843,7 @@ function PartyTab({ isDark, isRankedView = false }) {
   const pollRef = useRef(null);
 
   // Extension detection — used to guard ranked start
-  const { extensionInstalled } = useAlgoMindExtension();
+  const { extensionInstalled, extensionInvalidated } = useAlgoMindExtension();
 
   // Backend pulse — send every 5s during a ranked room; auto-forfeit on miss
   useExtensionPulse(
@@ -1186,8 +1186,27 @@ function PartyTab({ isDark, isRankedView = false }) {
       {isRankedView ? (
         /* RANKED PARTY HOME */
         <>
+          {/* Invalidated context banner — shown when extension was toggled OFF/ON */}
+          {extensionInvalidated && (
+            <div className="p-5 rounded-2xl flex items-center gap-4"
+              style={{ background: 'linear-gradient(135deg,rgba(245,158,11,0.12),rgba(217,119,6,0.08))', border: '1px solid rgba(245,158,11,0.4)' }}>
+              <div className="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center"
+                style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
+                <span className="material-symbols-outlined text-2xl" style={{ color: '#F59E0B' }}>sync_problem</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold mb-0.5" style={{ color: '#F59E0B' }}>Extension Disconnected — Reload Required</p>
+                <p className="text-xs mb-2" style={{ color: t.textSec }}>The AlgoMind extension was toggled off/on. The page must reload to reconnect.</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="text-xs font-bold px-4 py-1.5 rounded-lg"
+                  style={{ background: '#F59E0B', color: '#000' }}
+                >Reload Page</button>
+              </div>
+            </div>
+          )}
           {/* Prominent extension install banner */}
-          {!extensionInstalled && (
+          {!extensionInstalled && !extensionInvalidated && (
             <div className="p-5 rounded-2xl flex items-center gap-4"
               style={{ background: 'linear-gradient(135deg,rgba(230,57,70,0.12),rgba(193,18,31,0.08))', border: '1px solid rgba(230,57,70,0.35)' }}>
               <div className="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center"

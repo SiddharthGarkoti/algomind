@@ -13,8 +13,9 @@ const PULSE_INTERVAL_MS = 5000;
 
 // ── Extension detection ───────────────────────────────────────────────────────
 export function useAlgoMindExtension() {
-  const [extensionInstalled, setExtensionInstalled] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const [extensionInstalled,   setExtensionInstalled]   = useState(false);
+  const [checking,             setChecking]             = useState(true);
+  const [extensionInvalidated, setExtensionInvalidated] = useState(false);
 
   useEffect(() => {
     let resolved = false;
@@ -51,7 +52,21 @@ export function useAlgoMindExtension() {
     };
   }, []);
 
-  return { extensionInstalled, checking };
+  // Detect when the extension context is invalidated (toggled OFF then ON mid-session)
+  // The content script fires ALGOMIND_EXTENSION_INVALIDATED when sendMessage fails.
+  useEffect(() => {
+    function onInvalidated(event) {
+      if (event.source !== window) return;
+      if (event.data?.type === 'ALGOMIND_EXTENSION_INVALIDATED') {
+        setExtensionInvalidated(true);
+        setExtensionInstalled(false); // treat as gone until page is reloaded
+      }
+    }
+    window.addEventListener('message', onInvalidated);
+    return () => window.removeEventListener('message', onInvalidated);
+  }, []);
+
+  return { extensionInstalled, checking, extensionInvalidated };
 }
 
 // ── Lifecycle dispatchers ──────────────────────────────────────────────────────
