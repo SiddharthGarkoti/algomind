@@ -1077,6 +1077,11 @@ function PlanViewPage({ theme, toggleTheme }) {
     const newCompleted = new Set([...completedSet, topicId]);
     setCompletedSet(newCompleted);
 
+    // Call backend to award 200 rating
+    if (isAuthenticated) {
+      api.post('/auth/award-plan-completion/', { topic_id: topicId }).catch(() => {});
+    }
+
     // Extend queue if running low
     let newQueue = [...topicQueue];
     if (currentIdx >= newQueue.length - 2) {

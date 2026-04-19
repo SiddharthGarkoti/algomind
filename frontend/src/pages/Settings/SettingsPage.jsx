@@ -161,6 +161,21 @@ function SettingsPage({ theme, toggleTheme }) {
   const handleLcSave = useCallback(() => savePlatform('leetcode',   lcUser, setLcSaving, setLcStatus, setLcWarn), [savePlatform, lcUser]);
   const handleCfSave = useCallback(() => savePlatform('codeforces', cfUser, setCfSaving, setCfStatus, setCfWarn), [savePlatform, cfUser]);
 
+  const handleDeleteAccount = async () => {
+    if (window.confirm("Are you sure you want to completely delete your account? This action is permanent and cannot be undone.")) {
+      if (window.confirm("Double confirmation: This will delete all your stats, friends, and data forever. Proceed?")) {
+        try {
+          await api.delete('/auth/delete-account/');
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          window.location.href = '/login';
+        } catch (e) {
+          alert('Failed to delete account.');
+        }
+      }
+    }
+  };
+
   const sharedProps = { surfLow, border, textPri, textSec };
 
   return (
@@ -250,10 +265,12 @@ function SettingsPage({ theme, toggleTheme }) {
           </div>
         </Section>
 
-        {/* Account */}
         <Section title="Account" surface={surface} surfLow={surfLow} border={border} textSec={textSec}>
           <div className="px-6 py-4">
-            <button className="text-sm font-semibold text-red-500 hover:opacity-70 transition-opacity">
+            <button
+              onClick={handleDeleteAccount}
+              className="text-sm font-semibold text-red-500 hover:opacity-70 transition-opacity"
+            >
               Delete Account
             </button>
             <p className="text-[11px] mt-1" style={{ color: textSec }}>This action is permanent and cannot be undone</p>

@@ -38,7 +38,7 @@ class User(AbstractUser):
         self.save(update_fields=['rating', 'level'])
 
     # ── Dynamic rating helpers ────────────────────────────────────
-    DIFFICULTY_POINTS = {'easy': 10, 'medium': 25, 'hard': 50}
+    DIFFICULTY_POINTS = {'easy': 20, 'medium': 40, 'hard': 50}
 
     def award_question_rating(self, difficulty: str):
         """Call when a user verifies a solved question in a party."""

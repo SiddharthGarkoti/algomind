@@ -563,3 +563,26 @@ class MentorAnalysisView(APIView):
                 }
 
         return Response(data)
+
+class AwardPlanCompletionView(APIView):
+    """
+    POST /auth/award-plan-completion/
+    Gives user exactly 200 rating points once per topic completed.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        topic_id = request.data.get('topic_id')
+        request.user.award_plan_completion()
+        return Response({'detail': 'Plan part completed, 200 rating awarded!', 'new_rating': request.user.rating})
+
+class DeleteAccountView(APIView):
+    """
+    DELETE /auth/delete-account/
+    Completely deletes the authenticated user.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        request.user.delete()
+        return Response({'detail': 'Account deleted successfully.'}, status=status.HTTP_204_NO_CONTENT)

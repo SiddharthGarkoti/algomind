@@ -98,10 +98,27 @@ class ConnectPlatformView(APIView):
             # strip topic_stats before saving to PlatformStats
             topic_stats_raw = raw.pop('topic_stats', [])
 
-            PlatformStats.objects.update_or_create(
+            stats, created_stats = PlatformStats.objects.update_or_create(
                 profile=profile,
                 defaults=raw,
             )
+
+            # Apply baseline rating logic on first platform connection
+            # Only apply if user is at default 1000 rating
+            if request.user.rating == 1000:
+                total_solved = raw.get('problems_solved', 0)
+                base = 1000
+                if total_solved >= 300:
+                    base = 2000
+                elif total_solved >= 150:
+                    base = 1800
+                elif total_solved >= 50:
+                    base = 1500
+                    
+                if base > 1000:
+                    request.user.rating = base
+                    request.user.level = max(1, base // 500)
+                    request.user.save(update_fields=['rating', 'level'])
 
             # --- save topic stats ---
             for ts in topic_stats_raw:
