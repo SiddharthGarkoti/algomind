@@ -77,15 +77,20 @@ export function listenToExtension(callback) {
 
 // ── Backend pulse (extension alive check) ─────────────────────────────────────
 // Sends POST /party/<code>/pulse/ every 5s while in ranked room.
-// After 3 consecutive failures → calls onExtensionOff (auto-forfeit).
+// ALSO listens for ALGOMIND_HEARTBEAT from the extension — if it goes silent
+// for more than 15 seconds, extension was killed → call onExtensionOff.
 export function useExtensionPulse(partyCode, enabled, onExtensionOff) {
-  const intervalRef = useRef(null);
-  const missedRef   = useRef(0);
-  const MAX_MISSED  = 3;
+  const intervalRef      = useRef(null);
+  const missedRef        = useRef(0);
+  const lastHeartbeatRef = useRef(Date.now());
+  const heartbeatWatcher = useRef(null);
+  const MAX_MISSED       = 3;          // 3 × 5s = 15s backend
+  const HEARTBEAT_TIMEOUT_MS = 15000; // 15s without extension heartbeat = dead
 
   useEffect(() => {
     if (!enabled || !partyCode) return;
 
+    // 1. Backend pulse — POST every 5s
     async function sendPulse() {
       try {
         const res = await api.post(`/challenges/party/${partyCode}/pulse/`, {});
@@ -95,14 +100,42 @@ export function useExtensionPulse(partyCode, enabled, onExtensionOff) {
         missedRef.current++;
         if (missedRef.current >= MAX_MISSED && onExtensionOff) {
           clearInterval(intervalRef.current);
+          clearInterval(heartbeatWatcher.current);
           onExtensionOff('Extension disconnected — pulse timeout');
         }
       }
     }
 
     sendPulse();
-    intervalRef.current = setInterval(sendPulse, PULSE_INTERVAL_MS);
-    return () => clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(sendPulse, 5000);
+
+    // 2. Extension heartbeat watcher — checks every 5s if we got a heartbeat
+    //    within the last 15s. If not, extension was killed mid-game.
+    lastHeartbeatRef.current = Date.now(); // assume alive at start
+
+    function onHeartbeat(event) {
+      if (event.source !== window) return;
+      if (event.data?.type === 'ALGOMIND_HEARTBEAT') {
+        lastHeartbeatRef.current = Date.now();
+      }
+    }
+    window.addEventListener('message', onHeartbeat);
+
+    heartbeatWatcher.current = setInterval(() => {
+      const elapsed = Date.now() - lastHeartbeatRef.current;
+      if (elapsed > HEARTBEAT_TIMEOUT_MS && onExtensionOff) {
+        clearInterval(intervalRef.current);
+        clearInterval(heartbeatWatcher.current);
+        window.removeEventListener('message', onHeartbeat);
+        onExtensionOff('Extension closed mid-game — heartbeat lost');
+      }
+    }, 5000);
+
+    return () => {
+      clearInterval(intervalRef.current);
+      clearInterval(heartbeatWatcher.current);
+      window.removeEventListener('message', onHeartbeat);
+    };
   }, [enabled, partyCode]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 

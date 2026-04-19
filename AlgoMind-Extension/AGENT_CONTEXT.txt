@@ -6,7 +6,7 @@
 # and the current implementation status so any AI model can pick up exactly
 # where work left off without reading every source file individually.
 #
-# Last updated: 2026-04-18 (Session be8ed2cc-7e80-424e-8860-7b0aea0dc10f)
+# Last updated: 2026-04-19 (Session 5ccf039c-29d3-4397-a821-1605fb9df149)
 
 ==============================================================================
 SECTION 1 — PROJECT OVERVIEW
@@ -229,6 +229,39 @@ SECTION 7 — PENDING WORK (REMAINING)
     - Run: challenge start → tab switch → violation → 3 strikes → auto-forfeit flow
     - Verify party shows "DNF" on forfeit page
 
+[x] Fix Friend Message Notifications — FIXED (Session 4, 2026-04-19):
+    - chat/views.py: ConversationView POST now creates a Notification DB record for the
+      receiver with notif_type='message', title, body preview, and avatar_text.
+    - Deduplication: will not create a new notification if an unread one from the same
+      sender already exists (avoids spam).
+    - Header.jsx: Added 'message' type to TYPE_META with cyan color and 💬 icon.
+
+[x] Fix Code Party Invite Notifications — FIXED (Session 4, 2026-04-19):
+    - Header.jsx: Notification bell now shows a "🎮 Join Party" + "Decline" button for
+      both party_invite type and legacy system notifications with 'code: ' in the body.
+    - Clicking "Join Party" closes the dropdown, marks notification read, and navigates
+      to /challenges?join=<CODE> so the code is pre-filled in the join input.
+    - Added 'party_invite' to TYPE_META with red color.
+
+[x] Redesign Rating System — DONE (Session 4, 2026-04-19):
+    - Users model: added award_question_rating(difficulty) → Easy=10, Medium=25, Hard=50 pts.
+    - Users model: added award_plan_completion() → +200 rating.
+    - Users model: added award_contest_win(rank, total) → Rank1=100+10×N, Rank2=60, Rank3=30, others=10.
+    - CheckCompletionView: calls user.award_question_rating(difficulty) on each verified solve.
+    - _assign_ranks(): calls user.award_contest_win() for all finishers in ranked parties.
+
+[x] Fix Extension Ranked Mode Failure — FIXED (Session 4, 2026-04-19):
+    - ChallengesPage: handleJoin now reads party.is_ranked and sets isRanked+isRankedFlow.
+    - Extension is blocked if user tries to join a ranked party without it installed.
+    - Added useEffect syncing isRanked from party.is_ranked when entering room view —
+      this also handles the page-refresh case where the extension needs to be restarted.
+
+[x] Fix Extension Heartbeat/Pulse Disconnect — FIXED (Session 4, 2026-04-19):
+    - useAlgoMindExtension.js: useExtensionPulse now has a dual-watchdog mechanism:
+      1. Backend pulse POST every 5s (existing) — 3 misses = forfeit.
+      2. ALGOMIND_HEARTBEAT message listener: if no heartbeat received for 15s → forfeit.
+    - Both timers are properly cleaned up on unmount.
+
 ==============================================================================
 SECTION 8 — HOW TO LOAD THE EXTENSION (development)
 ==============================================================================
@@ -301,6 +334,34 @@ MODIFIED (Session 3 — 2026-04-18):
     - Added SendOTPView and VerifyOTPView for email registration.
   frontend/src/components/login/SignInModal.jsx
     - Rewritten to support the 6-digit OTP email flow.
+
+==============================================================================
+SECTION 10 — FILES CHANGED (Session 4 — 2026-04-19)
+==============================================================================
+
+MODIFIED:
+  frontend/src/pages/Challenges/ChallengesPage.jsx
+    - handleJoin: now reads party.is_ranked and sets isRanked/isRankedFlow; blocks if extension absent.
+    - handleStart: added useEffect that re-syncs isRanked from party when entering room (page refresh fix).
+  frontend/src/hooks/useAlgoMindExtension.js
+    - useExtensionPulse: added dual watchdog — backend pulse + ALGOMIND_HEARTBEAT 15s timeout.
+  backend/chat/views.py
+    - ConversationView POST: creates Notification DB record for receiver on message send.
+  Backend/users/models.py
+    - NOTIF_TYPES: added 'message' and 'party_invite' types.
+    - User.award_rating: caps at 0, recalculates level.
+    - User.award_question_rating: Easy=10, Medium=25, Hard=50.
+    - User.award_plan_completion: +200 rating.
+    - User.award_contest_win: rank-based points (100+10N, 60, 30, 10).
+  backend/challenges/views.py
+    - _assign_ranks: calls user.award_contest_win() for ranked party finishers.
+    - CheckCompletionView: calls user.award_question_rating() on verified solve.
+  frontend/src/components/Header.jsx
+    - TYPE_META: added 'message' (cyan) and 'party_invite' (red) types.
+    - Notification bell: party invites show "🎮 Join Party" + "Decline" buttons.
+    - Clicking "Join Party" pre-fills party code and navigates to /challenges.
+  frontend/src/pages/Friends/FriendsPage.jsx
+    - Added loadOnline() fetch on mount; green dot uses real online status from /auth/friends/online/.
 
 ==============================================================================
 END OF AGENT CONTEXT FILE

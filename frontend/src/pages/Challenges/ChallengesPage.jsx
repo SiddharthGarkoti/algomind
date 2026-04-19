@@ -915,6 +915,17 @@ function PartyTab({ isDark, isRankedView = false }) {
     try {
       const p = await api.post(`/challenges/party/${joinCode.trim().toUpperCase()}/join/`, {});
       setParty(p);
+      // FIX: if joining a ranked party, set isRanked so extension monitoring activates
+      if (p.is_ranked) {
+        setIsRanked(true);
+        setIsRankedFlow(true);
+        // Block join if extension not installed
+        if (!extensionInstalled) {
+          setError('⛔ This is a Ranked Party. Install the AlgoMind Fair Play extension to join.');
+          setBusy(false);
+          return;
+        }
+      }
       setView(p.status === 'active' ? 'room' : 'lobby');
     } catch (e) { setError(e?.detail ?? 'Party not found.'); }
     finally { setBusy(false); }
@@ -936,6 +947,17 @@ function PartyTab({ isDark, isRankedView = false }) {
       }
     } catch (e) { setError(e?.detail ?? 'Failed to start.'); }
   };
+
+  // FIX: When entering the room view, sync isRanked from the party data
+  useEffect(() => {
+    if (view === 'room' && party?.is_ranked) {
+      setIsRanked(true);
+      // If extension is installed and party is ranked, start monitoring (handles page refresh case)
+      if (extensionInstalled) {
+        dispatchChallengeStart(partyCode, party.max_strikes ?? 3);
+      }
+    }
+  }, [view, party?.is_ranked]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleShuffleFilter = async (topics, difficulties) => {
     try {

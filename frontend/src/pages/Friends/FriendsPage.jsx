@@ -19,6 +19,7 @@ function FriendsPage({ theme, toggleTheme }) {
   const [friendsLb,      setFriendsLb]      = useState([]);
   const [friends,        setFriends]        = useState([]);
   const [requests,       setRequests]       = useState([]);
+  const [onlineIds,      setOnlineIds]      = useState(new Set());
   const [searchQ,        setSearchQ]        = useState('');
   const [searchRes,      setSearchRes]      = useState([]);
   const [searching,      setSearching]      = useState(false);
@@ -48,10 +49,15 @@ function FriendsPage({ theme, toggleTheme }) {
   const loadRequests = useCallback(() =>
     api.get('/friends/requests/').then(d => setRequests(Array.isArray(d) ? d : (d?.results ?? []))).catch(() => {}), []);
 
+  const loadOnline = useCallback(() =>
+    api.get('/auth/friends/online/').then(d => {
+      setOnlineIds(new Set((d.friends ?? []).filter(f => f.is_online).map(f => f.id)));
+    }).catch(() => {}), []);
+
   useEffect(() => {
     setLoading(true);
-    Promise.all([loadLeaderboard(), loadFriends(), loadRequests()]).finally(() => setLoading(false));
-  }, [loadLeaderboard, loadFriends, loadRequests]);
+    Promise.all([loadLeaderboard(), loadFriends(), loadRequests(), loadOnline()]).finally(() => setLoading(false));
+  }, [loadLeaderboard, loadFriends, loadRequests, loadOnline]);
 
   /* Debounced user search */
   useEffect(() => {
@@ -223,6 +229,7 @@ function FriendsPage({ theme, toggleTheme }) {
             )}
             {friends.map(f => {
               const friend = f.friend;
+              const isOnline = onlineIds.has(friend?.id);
               return (
                 <div key={f.id}
                   className="friend-card rounded-2xl p-4 flex items-center justify-between"
@@ -238,11 +245,11 @@ function FriendsPage({ theme, toggleTheme }) {
                             <img src={friend.avatar} className="w-10 h-10 rounded-full object-cover" alt="" />
                             <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2"
                               style={{ 
-                                background: friend?.is_online ? '#22C55E' : 'rgba(100,116,139,0.3)', 
+                                background: isOnline ? '#22C55E' : 'rgba(100,116,139,0.3)', 
                                 borderColor: surface,
-                                boxShadow: friend?.is_online ? '0 0 0 2px rgba(34,197,94,0.25)' : 'none'
+                                boxShadow: isOnline ? '0 0 0 2px rgba(34,197,94,0.25)' : 'none'
                               }} 
-                              title={friend?.is_online ? 'Online' : 'Offline'}
+                              title={isOnline ? 'Online' : 'Offline'}
                             />
                           </div>
                         ) : (
@@ -253,11 +260,11 @@ function FriendsPage({ theme, toggleTheme }) {
                             </div>
                             <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2"
                               style={{ 
-                                background: friend?.is_online ? '#22C55E' : 'rgba(100,116,139,0.3)', 
+                                background: isOnline ? '#22C55E' : 'rgba(100,116,139,0.3)', 
                                 borderColor: surface,
-                                boxShadow: friend?.is_online ? '0 0 0 2px rgba(34,197,94,0.25)' : 'none'
+                                boxShadow: isOnline ? '0 0 0 2px rgba(34,197,94,0.25)' : 'none'
                               }} 
-                              title={friend?.is_online ? 'Online' : 'Offline'}
+                              title={isOnline ? 'Online' : 'Offline'}
                             />
                           </div>
                         )
@@ -272,7 +279,7 @@ function FriendsPage({ theme, toggleTheme }) {
                         {friend?.username}
                       </button>
                       <p className="text-[10px]" style={{ color: textSec }}>
-                        {friend?.is_online
+                        {isOnline
                           ? <span style={{ color: '#22C55E' }}>● Online</span>
                           : `Lv ${friend?.level} · Rating ${friend?.rating} · 🔥${friend?.streak}d`
                         }

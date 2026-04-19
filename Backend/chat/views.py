@@ -44,6 +44,27 @@ class ConversationView(APIView):
             return Response({'detail': 'Message cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
 
         msg = ChatMessage.objects.create(sender=request.user, receiver=receiver, text=text)
+
+        # Create a bell notification for the receiver so they see it in the notification dropdown
+        # Only create if there isn't already an unread one from this sender (avoid spam)
+        from users.models import Notification
+        already_notified = Notification.objects.filter(
+            recipient=receiver,
+            notif_type='message',
+            read=False,
+            avatar_text=request.user.username[:2].upper(),
+        ).exists()
+        if not already_notified:
+            preview = text if len(text) <= 60 else text[:57] + '...'
+            Notification.objects.create(
+                recipient=receiver,
+                notif_type='message',
+                title=f'New message from {request.user.username}',
+                body=preview,
+                avatar_text=request.user.username[:2].upper(),
+                color='#6366F1',
+            )
+
         return Response(ChatMessageSerializer(msg).data, status=status.HTTP_201_CREATED)
 
 

@@ -32,17 +32,47 @@ class User(AbstractUser):
         return self.email
 
     def award_rating(self, points: int):
-        self.rating += points
-        # level up every 500 rating points
+        self.rating = max(0, self.rating + points)
+        # level up every 500 rating points above the 1000 base
         self.level = max(1, self.rating // 500)
         self.save(update_fields=['rating', 'level'])
 
+    # ── Dynamic rating helpers ────────────────────────────────────
+    DIFFICULTY_POINTS = {'easy': 10, 'medium': 25, 'hard': 50}
+
+    def award_question_rating(self, difficulty: str):
+        """Call when a user verifies a solved question in a party."""
+        pts = self.DIFFICULTY_POINTS.get(difficulty.lower(), 10)
+        self.award_rating(pts)
+
+    def award_plan_completion(self):
+        """Call when a user completes a full algorithm/goal plan."""
+        self.award_rating(200)
+
+    def award_contest_win(self, rank: int, total_participants: int):
+        """
+        Call when a ranked challenge finishes.
+        Rank 1 gets most points, scaled by participant count.
+        rank=1 → 100 + 10×participants, rank=2 → 60, rank=3 → 30, others → 10.
+        """
+        if rank == 1:
+            pts = 100 + 10 * max(0, total_participants - 1)
+        elif rank == 2:
+            pts = 60
+        elif rank == 3:
+            pts = 30
+        else:
+            pts = 10
+        self.award_rating(pts)
+
 
 NOTIF_TYPES = [
-    ('friend_request', 'Friend Request'),
+    ('friend_request',  'Friend Request'),
     ('friend_accepted', 'Friend Accepted'),
-    ('system',         'System'),
-    ('achievement',    'Achievement'),
+    ('system',          'System'),
+    ('achievement',     'Achievement'),
+    ('message',         'Direct Message'),
+    ('party_invite',    'Party Invite'),
 ]
 
 

@@ -13,12 +13,12 @@
  */
 
 const DEBUG = false;
-const log   = (...a) => DEBUG && console.log('[AlgoMind BG]', ...a);
+const log = (...a) => DEBUG && console.log('[AlgoMind BG]', ...a);
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
-const HEARTBEAT_ALARM       = 'algomind_heartbeat';
+const HEARTBEAT_ALARM = 'algomind_heartbeat';
 const HEARTBEAT_INTERVAL_MS = 4000;
-const NEW_TAB_GRACE_MS      = 2500;
+const NEW_TAB_GRACE_MS = 2500;
 const VIOLATION_DEBOUNCE_MS = 1500;   // Ignore a 2nd violation inside this window
 
 // Whitelisted domains — switching to these is NEVER a violation
@@ -30,21 +30,21 @@ const WHITELISTED_DOMAINS = [
 
 // Paths restricted even on whitelisted platforms
 const RESTRICTED_PATHS = {
-  'leetcode.com':   ['/solutions', '/discuss', '/explore', '/companies'],
+  'leetcode.com': ['/solutions', '/discuss', '/explore', '/companies'],
   'codeforces.com': ['/blog', '/tutorial'],
 };
 
 // ─── State ─────────────────────────────────────────────────────────────────────
 let state = {
-  active:          false,
-  partyCode:       null,
-  strikes:         0,
-  maxStrikes:      3,          // overridden from challenge start payload
-  algomindTabId:   null,
+  active: false,
+  partyCode: null,
+  strikes: 0,
+  maxStrikes: 3,          // overridden from challenge start payload
+  algomindTabId: null,
   challengeTabIds: new Set(),
-  lastHeartbeat:   null,
-  windowBlurred:   false,      // true = browser already flagged once for this blur
-  pendingTabIds:   new Set(),  // tabs in grace period
+  lastHeartbeat: null,
+  windowBlurred: false,      // true = browser already flagged once for this blur
+  pendingTabIds: new Set(),  // tabs in grace period
   lastViolationAt: 0,          // timestamp of last recorded violation (for debounce)
 };
 
@@ -52,14 +52,14 @@ let state = {
 async function saveState() {
   await chrome.storage.local.set({
     algomind_state: {
-      active:          state.active,
-      partyCode:       state.partyCode,
-      strikes:         state.strikes,
-      maxStrikes:      state.maxStrikes,
-      algomindTabId:   state.algomindTabId,
+      active: state.active,
+      partyCode: state.partyCode,
+      strikes: state.strikes,
+      maxStrikes: state.maxStrikes,
+      algomindTabId: state.algomindTabId,
       challengeTabIds: [...state.challengeTabIds],
-      lastHeartbeat:   state.lastHeartbeat,
-      windowBlurred:   state.windowBlurred,
+      lastHeartbeat: state.lastHeartbeat,
+      windowBlurred: state.windowBlurred,
       lastViolationAt: state.lastViolationAt,
     },
   });
@@ -72,7 +72,7 @@ async function loadState() {
     state = {
       ...s,
       challengeTabIds: new Set(s.challengeTabIds || []),
-      pendingTabIds:   new Set(),
+      pendingTabIds: new Set(),
     };
     log('State restored:', state);
   }
@@ -80,15 +80,15 @@ async function loadState() {
 
 // ─── Challenge Lifecycle ───────────────────────────────────────────────────────
 async function startChallenge(partyCode, maxStrikes, senderTabId) {
-  state.active          = true;
-  state.partyCode       = partyCode;
-  state.strikes         = 0;
-  state.maxStrikes      = maxStrikes || 3;
-  state.algomindTabId   = senderTabId;
+  state.active = true;
+  state.partyCode = partyCode;
+  state.strikes = 0;
+  state.maxStrikes = maxStrikes || 3;
+  state.algomindTabId = senderTabId;
   state.challengeTabIds = new Set();
-  state.lastHeartbeat   = Date.now();
-  state.windowBlurred   = false;
-  state.pendingTabIds   = new Set();
+  state.lastHeartbeat = Date.now();
+  state.windowBlurred = false;
+  state.pendingTabIds = new Set();
   state.lastViolationAt = 0;
   await saveState();
   scheduleHeartbeat();
@@ -97,12 +97,12 @@ async function startChallenge(partyCode, maxStrikes, senderTabId) {
 }
 
 async function stopChallenge() {
-  state.active          = false;
-  state.partyCode       = null;
-  state.strikes         = 0;
+  state.active = false;
+  state.partyCode = null;
+  state.strikes = 0;
   state.challengeTabIds = new Set();
-  state.windowBlurred   = false;
-  state.pendingTabIds   = new Set();
+  state.windowBlurred = false;
+  state.pendingTabIds = new Set();
   state.lastViolationAt = 0;
   chrome.alarms.clear(HEARTBEAT_ALARM);
   if (heartbeatTimer) { clearTimeout(heartbeatTimer); heartbeatTimer = null; }
@@ -117,7 +117,7 @@ function scheduleHeartbeat() {
   runHeartbeatLoop();
 }
 
-let heartbeatTimer     = null;
+let heartbeatTimer = null;
 let heartbeatMissCount = 0;
 const MAX_MISSED_BEATS = 3;   // 3 × 4s = 12s with no heartbeat → extension was killed
 
@@ -125,8 +125,8 @@ function runHeartbeatLoop() {
   if (heartbeatTimer) clearTimeout(heartbeatTimer);
   if (!state.active) return;
 
-  state.lastHeartbeat  = Date.now();
-  heartbeatMissCount   = 0;   // reset: we are running, not dead
+  state.lastHeartbeat = Date.now();
+  heartbeatMissCount = 0;   // reset: we are running, not dead
   saveState();
   notifyAlgomindTab({ type: 'ALGOMIND_HEARTBEAT', timestamp: state.lastHeartbeat });
   log('Heartbeat:', state.lastHeartbeat);
@@ -173,10 +173,10 @@ async function recordViolation(reason) {
   // Chrome notification for EVERY strike
   const remaining = state.maxStrikes - state.strikes;
   chrome.notifications.create(`strike_${now}`, {
-    type:     'basic',
-    iconUrl:  'icons/icon48.png',
-    title:    `⚠️ AlgoMind Strike ${state.strikes}/${state.maxStrikes}`,
-    message:  remaining === 1
+    type: 'basic',
+    iconUrl: 'icons/icon48.png',
+    title: `⚠️ AlgoMind Strike ${state.strikes}/${state.maxStrikes}`,
+    message: remaining === 1
       ? `Final warning! ${reason}. Next violation = auto-forfeit.`
       : `${reason}. ${remaining} violation${remaining > 1 ? 's' : ''} left before forfeit.`,
     priority: 2,
@@ -188,10 +188,10 @@ async function triggerForfeit(reason) {
   log('Auto-forfeit:', reason);
   notifyAlgomindTab({ type: 'ALGOMIND_TRIGGER_FORFEIT', reason });
   chrome.notifications.create(`forfeit_${Date.now()}`, {
-    type:     'basic',
-    iconUrl:  'icons/icon48.png',
-    title:    '❌ AlgoMind — Auto Forfeited',
-    message:  `Auto-forfeited. Reason: ${reason}`,
+    type: 'basic',
+    iconUrl: 'icons/icon48.png',
+    title: '❌ AlgoMind — Auto Forfeited',
+    message: `Auto-forfeited. Reason: ${reason}`,
     priority: 2,
   });
   await stopChallenge();

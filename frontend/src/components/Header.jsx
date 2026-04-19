@@ -17,6 +17,8 @@ const TYPE_META = {
   friend_accepted: { color: '#22C55E', icon: '🎉' },
   system:          { color: '#A855F7', icon: '🔔' },
   achievement:     { color: '#F59E0B', icon: '🏆' },
+  message:         { color: '#06B6D4', icon: '💬' },
+  party_invite:    { color: '#e63946', icon: '🎮' },
 };
 
 /* ─── Component ──────────────────────────────────────────────────── */
@@ -407,21 +409,25 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                                         style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', color: textPri }}>Dismiss</button>
                               </div>
                             )}
-                            {notif.notif_type === 'system' && notif.body.includes('code: ') && (
-                              <div className="flex gap-2 mb-1">
-                                <button onClick={(e) => {
-                                          e.stopPropagation();
-                                          const code = notif.body.split('code: ')[1]?.trim();
-                                          if(code) navigate('/challenges?join=' + code);
-                                          markRead(notif.id);
-                                        }}
-                                        className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
-                                        style={{ background: '#A855F7', color: '#fff' }}>Accept Challenge</button>
-                                <button onClick={(e) => { e.stopPropagation(); markRead(notif.id); }}
-                                        className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
-                                        style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', color: textPri }}>Decline</button>
-                              </div>
-                            )}
+                            {/* Party invite - either party_invite type or legacy system with code: in body */}
+                            {(notif.notif_type === 'party_invite' || (notif.notif_type === 'system' && notif.body.includes('code: '))) && (() => {
+                              const code = notif.body.split('code: ')[1]?.trim();
+                              return code ? (
+                                <div className="flex gap-2 mb-1">
+                                  <button onClick={(e) => {
+                                            e.stopPropagation();
+                                            markRead(notif.id);
+                                            setShowNotifDrop(false);
+                                            navigate(`/challenges?join=${code}`);
+                                          }}
+                                          className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
+                                          style={{ background: '#e63946', color: '#fff' }}>🎮 Join Party</button>
+                                  <button onClick={(e) => { e.stopPropagation(); markRead(notif.id); }}
+                                          className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
+                                          style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', color: textPri }}>Decline</button>
+                                </div>
+                              ) : null;
+                            })()}
                           </div>
                           
                           {/* UI actions (Read & Delete) */}

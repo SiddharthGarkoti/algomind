@@ -92,10 +92,14 @@ def _get_party_or_404(code):
 
 def _assign_ranks(party):
     finished = list(party.members.filter(finished_at__isnull=False).order_by('finished_at'))
+    total = party.members.count()
     for i, m in enumerate(finished, start=1):
         if m.rank != i:
             m.rank = i
             m.save(update_fields=['rank'])
+        # Award contest win rating for ranked parties
+        if party.is_ranked and not m.is_spectator:
+            m.user.award_contest_win(rank=i, total_participants=total)
 
 
 # ── Views ─────────────────────────────────────────────────────────────
@@ -281,6 +285,9 @@ class CheckCompletionView(APIView):
         if verified:
             QuestionCompletion.objects.get_or_create(member=member, question=question,
                                                      defaults={'verified': True})
+            # ── Award rating points for solving the question ─────────────────────────────
+            request.user.award_question_rating(question.difficulty)
+            # ────────────────────────────────────────────────────────────
             done = member.completions.filter(verified=True).count()
             if done >= party.questions.count() and not member.finished_at:
                 member.finished_at = timezone.now()

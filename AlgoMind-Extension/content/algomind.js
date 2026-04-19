@@ -30,7 +30,7 @@ window.addEventListener('message', (event) => {
   switch (type) {
     case 'ALGOMIND_CHALLENGE_START':
       chrome.runtime.sendMessage(
-        { type: 'ALGOMIND_CHALLENGE_START', partyCode: event.data.partyCode },
+        { type: 'ALGOMIND_CHALLENGE_START', partyCode: event.data.partyCode, maxStrikes: event.data.maxStrikes },
         (response) => log('BG response (start):', response)
       );
       break;
