@@ -37,6 +37,7 @@ function ArenaPage({ theme, toggleTheme }) {
   const [selected,    setSelected]    = useState(null);
   const [showIDE,     setShowIDE]     = useState(false);
   const [code,        setCode]        = useState(STARTER);
+  const [customInput, setCustomInput] = useState('');
   const [output,      setOutput]      = useState('');
   const [solvedSlugs, setSolvedSlugs] = useState(new Set());
 
@@ -68,8 +69,34 @@ function ArenaPage({ theme, toggleTheme }) {
     return matchTopic && matchDiff && matchSearch;
   });
 
-  const runCode = () => {
-    setOutput('// C++ execution requires backend integration.\n// Output will appear here once connected.\n\n// Your code was submitted successfully!');
+  const runCode = async () => {
+    setOutput('Running code...\nWait a moment please...');
+    try {
+      const response = await fetch('https://wandbox.org/api/compile.json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          compiler: 'gcc-head',
+          code: code,
+          stdin: customInput,
+          save: false
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.status === '0') {
+        setOutput((data.program_message || data.program_output || 'Success (no output)').trim());
+      } else {
+        setOutput((data.compiler_error || data.program_error || data.compiler_message || 'Execution failed').trim());
+      }
+    } catch (error) {
+      setOutput(`Error connecting to compiler service: ${error.message}`);
+    }
   };
 
   if (showIDE && selected) {
@@ -115,12 +142,27 @@ function ArenaPage({ theme, toggleTheme }) {
                 options={{ fontSize: 14, minimap: { enabled: false }, scrollBeyondLastLine: false, padding: { top: 16 } }}
               />
             </div>
-            {/* Output */}
-            <div className="w-80 rounded-2xl p-4 flex flex-col" style={{ background: surface, border: `1px solid ${border}` }}>
-              <p className="text-[10px] uppercase font-bold mb-3" style={{ color: textSec }}>Output</p>
-              <pre className="text-xs font-mono leading-relaxed flex-grow overflow-auto" style={{ color: output ? '#22C55E' : textSec }}>
-                {output || 'Run your code to see output...'}
-              </pre>
+            {/* Input & Output Panel */}
+            <div className="w-80 flex flex-col gap-4">
+              {/* Input */}
+              <div className="flex-1 rounded-2xl p-4 flex flex-col min-h-0" style={{ background: surface, border: `1px solid ${border}` }}>
+                <p className="text-[10px] uppercase font-bold mb-2" style={{ color: textSec }}>Input (stdin)</p>
+                <textarea
+                  value={customInput}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  placeholder="Enter test inputs here..."
+                  className="w-full flex-grow text-xs font-mono outline-none resize-none bg-transparent"
+                  style={{ color: textPri }}
+                />
+              </div>
+              
+              {/* Output */}
+              <div className="flex-1 rounded-2xl p-4 flex flex-col min-h-0" style={{ background: surface, border: `1px solid ${border}` }}>
+                <p className="text-[10px] uppercase font-bold mb-2" style={{ color: textSec }}>Output</p>
+                <pre className="text-xs font-mono leading-relaxed flex-grow overflow-auto" style={{ color: output ? '#22C55E' : textSec }}>
+                  {output || 'Run your code to see output...'}
+                </pre>
+              </div>
             </div>
           </div>
         </div>
@@ -195,7 +237,7 @@ function ArenaPage({ theme, toggleTheme }) {
                 <button
                   className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-90"
                   style={{ background: '#6366F1', color: '#fff' }}
-                  onClick={() => { setSelected(q); setCode(STARTER); setOutput(''); setShowIDE(true); }}
+                  onClick={() => { setSelected(q); setCode(STARTER); setCustomInput(''); setOutput(''); setShowIDE(true); }}
                 >
                   Solve in IDE (C++)
                 </button>
