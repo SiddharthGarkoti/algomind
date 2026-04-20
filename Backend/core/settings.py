@@ -142,6 +142,14 @@ GEMINI_API_KEY = env('GEMINI_API_KEY', default='')
 GROQ_API_KEY   = env('GROQ_API_KEY',   default='')
 OPENAI_API_KEY = env('OPENAI_API_KEY', default='')
 
+# Code execution proxy
+JUDGE0_BASE_URL        = env('JUDGE0_BASE_URL', default='https://ce.judge0.com')
+JUDGE0_AUTH_TOKEN      = env('JUDGE0_AUTH_TOKEN', default='')
+JUDGE0_CPP_LANGUAGE_ID = env.int('JUDGE0_CPP_LANGUAGE_ID', default=54)
+JUDGE0_REQUEST_TIMEOUT = env.float('JUDGE0_REQUEST_TIMEOUT', default=15)
+JUDGE0_POLL_ATTEMPTS   = env.int('JUDGE0_POLL_ATTEMPTS', default=12)
+JUDGE0_POLL_INTERVAL   = env.float('JUDGE0_POLL_INTERVAL', default=0.75)
+
 # ── Email Settings (For OTP) ──────────────────────────────────────────
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'

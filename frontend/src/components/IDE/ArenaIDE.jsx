@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import DashboardLayout from '../layout/DashboardLayout.jsx';
 import Editor from '@monaco-editor/react';
+import api from '../../utils/api.js';
 
 const STARTER = `#include <bits/stdc++.h>
 using namespace std;
@@ -27,30 +28,19 @@ function ArenaIDE({ theme, toggleTheme, selected, setShowIDE }) {
   const runCode = async () => {
     setOutput('Running code...\nWait a moment please...');
     try {
-      const response = await fetch('https://wandbox.org/api/compile.json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          compiler: 'gcc-head',
-          code: code,
-          stdin: customInput,
-          save: false
-        })
+      const data = await api.post('/dsa/execute-code/', {
+        code,
+        stdin: customInput,
       });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP Error: ${response.status}`);
-      }
 
-      const data = await response.json();
-      
       if (data.status === '0') {
         setOutput((data.program_message || data.program_output || 'Success (no output)').trim());
       } else {
         setOutput((data.compiler_error || data.program_error || data.compiler_message || 'Execution failed').trim());
       }
     } catch (error) {
-      setOutput(`Error connecting to compiler service: ${error.message}`);
+      const message = error?.detail || error?.error || error?.message || 'Unknown error';
+      setOutput(`Error connecting to compiler service: ${message}`);
     }
   };
 

@@ -46,3 +46,8 @@ class SubmissionCreateSerializer(serializers.ModelSerializer):
         if not value.is_active:
             raise serializers.ValidationError('This problem is no longer active.')
         return value
+
+
+class CodeExecutionSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    stdin = serializers.CharField(required=False, allow_blank=True, default='')
