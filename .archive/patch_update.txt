@@ -1,0 +1,24 @@
+# AlgoMind Patch Update & Known Challenges
+# Created: 2026-04-19
+
+The following is a list of discovered bugs that need fixing in an upcoming patch:
+
+### 1. Extension "No Active Challenge" Glitch
+**Symptom:** If a user manually disabled (`chrome://extensions`) and subsequently re-enables the extension mid-session, joining or starting a challenge results in the extension displaying "No active challenge is on."
+**Root Cause:**
+- When the extension re-evaluates or reloads, the old `content_scripts` on already open tabs are left running but securely severed from the new `background.js` (service worker). 
+- If the React application transmits `ALGOMIND_CHALLENGE_START`, the old script's `chrome.runtime.sendMessage` fails with an `Extension context invalidated` error message, preventing the message from reaching the background layer.
+- **Proposed Fix:** Modify the content script (`algomind.js`) to capture the "invalidated" exception and fire a reciprocal message (`ALGOMIND_EXTENSION_INVALIDATED`) to the React application (`useAlgoMindExtension.js`). The React app should catch this and trigger a page refresh (`window.location.reload()`) to naturally load the new extension context.
+
+### 2. Email OTP Login Plugin Connectivity
+**Symptom:** The SignInModal UI has an email OTP workflow (Send code -> enter 6 digits), but the final verification step fails to authenticate the user and establish a login session.
+**Root Cause:** 
+- The React SignIn prompt does not properly process the successful verification API response into establishing the user's overarching contextual state.
+- **Proposed Fix:** Ensure the OTP verification API returns a valid JWT (access + refresh tokens), and configure the SignInModal to consume it via `login(token_payload)` in the AuthContext.
+
+### 3. Chrome Web Store Publishing Readiness
+**Symptom:** The extension cannot be installed normally.
+**Task:** 
+- Finalize the `manifest.json`.
+- Pack the extension.
+- Substitute the placeholder extension ID with the official Store-generated identifier.

@@ -1,0 +1,179 @@
+/* popup/popup.css — AlgoMind Extension Popup Styles */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: #0d1117;
+  color: #e6edf3;
+  width: 280px;
+  min-height: 180px;
+}
+
+.popup-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Header ── */
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid #21262d;
+  background: linear-gradient(135deg, #161b22, #1a1f29);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-icon { font-size: 1.2rem; }
+.logo-text {
+  font-size: 1rem;
+  font-weight: 700;
+  background: linear-gradient(90deg, #58a6ff, #a5d6ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.3px;
+}
+
+/* ── Status Badge ── */
+.badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.badge--inactive {
+  background: #21262d;
+  color: #8b949e;
+  border: 1px solid #30363d;
+}
+
+.badge--active {
+  background: rgba(63, 185, 80, 0.15);
+  color: #3fb950;
+  border: 1px solid #3fb950;
+  box-shadow: 0 0 10px rgba(63, 185, 80, 0.2);
+  animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 8px rgba(63, 185, 80, 0.2); }
+  50%       { box-shadow: 0 0 16px rgba(63, 185, 80, 0.45); }
+}
+
+/* ── Challenge Section ── */
+.challenge-section {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.label {
+  font-size: 0.78rem;
+  color: #8b949e;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.mono { font-family: 'SFMono-Regular', 'Consolas', monospace; }
+
+/* Strike Indicators */
+.strikes {
+  display: flex;
+  gap: 8px;
+}
+
+.strike {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #21262d;
+  border: 2px solid #30363d;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.strike::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.3s;
+}
+
+.strike--active {
+  border-color: #e63946;
+  background: rgba(230, 57, 70, 0.2);
+  box-shadow: 0 0 8px rgba(230, 57, 70, 0.4);
+}
+
+.strike--active::after {
+  background: #e63946;
+}
+
+/* ── Idle Section ── */
+.idle-section {
+  padding: 20px 18px;
+  text-align: center;
+}
+
+.idle-text {
+  font-size: 0.82rem;
+  color: #8b949e;
+  line-height: 1.7;
+}
+
+/* ── Footer ── */
+.popup-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-top: 1px solid #21262d;
+  background: #0d1117;
+}
+
+.footer-version {
+  font-size: 0.7rem;
+  color: #484f58;
+}
+
+.footer-link {
+  font-size: 0.7rem;
+  color: #58a6ff;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-link:hover { color: #a5d6ff; }
+
+/* Utility */
+.hidden { display: none !important; }
