@@ -24,9 +24,9 @@ AlgoMind is a next-generation, **Adaptive + Competitive Learning System** design
 3. Start the dev server: `npm run dev`.
 
 ### Chrome Extension Setup
-1. Open Google Chrome and go to `chrome://extensions/`.
-2. Enable "Developer mode" in the top right.
-3. Click "Load unpacked" and select the `AlgoMind-Extension/` directory from this repository.
+1. Open Google Chrome.
+2. Install the **AlgoMind Fair Play** extension from the **[Chrome Web Store](https://chromewebstore.google.com/detail/lfpemlimminiefikoofinbldcjoalbib)**.
+3. Once installed, it will automatically sync your LeetCode and Codeforces progress to your active AlgoMind profile!
 
 ## 🗂️ Project Repository Map
 There are a few dedicated core directories maintaining code separations concisely:

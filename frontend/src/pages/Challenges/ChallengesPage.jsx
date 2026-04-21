@@ -1219,7 +1219,7 @@ function PartyTab({ isDark, isRankedView = false }) {
               </div>
               <a
                 id="algomind-extension-install-btn"
-                href="https://chrome.google.com/webstore/detail/algomind-fair-play/PLACEHOLDER_ID"
+                href="https://chromewebstore.google.com/detail/lfpemlimminiefikoofinbldcjoalbib"
                 target="_blank" rel="noreferrer"
                 className="shrink-0 px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all hover:scale-[1.03]"
                 style={{ background: 'linear-gradient(135deg,#e63946,#c1121f)', color: '#fff', boxShadow: '0 8px 20px -6px rgba(230,57,70,0.5)' }}

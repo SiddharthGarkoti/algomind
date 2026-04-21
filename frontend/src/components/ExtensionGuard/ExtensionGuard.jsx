@@ -16,7 +16,7 @@ import styles from './ExtensionGuard.module.css';
 
 // Replace this URL with the actual Chrome Web Store URL once published
 const EXTENSION_DOWNLOAD_URL =
-  'https://chrome.google.com/webstore/detail/algomind-fair-play/PLACEHOLDER_ID';
+  'https://chromewebstore.google.com/detail/lfpemlimminiefikoofinbldcjoalbib';
 
 export default function ExtensionGuard({ children }) {
   const { extensionInstalled, checking } = useAlgoMindExtension();
