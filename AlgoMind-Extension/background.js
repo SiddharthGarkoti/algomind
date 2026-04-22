@@ -181,6 +181,12 @@ async function recordViolation(reason) {
       : `${reason}. ${remaining} violation${remaining > 1 ? 's' : ''} left before forfeit.`,
     priority: 2,
   });
+
+  // Schedule next continuous strike if still violating
+  clearContinuousViolation();
+  if (state.strikes < state.maxStrikes) {
+    continuousViolationTimer = setTimeout(checkAndApplyContinuousViolation, 7000);
+  }
 }
 
 async function triggerForfeit(reason) {
@@ -219,6 +225,51 @@ function isAlgomindUrl(url) {
   return url.includes('localhost') || url.includes('algomind') || url.includes('onrender.com');
 }
 
+// ─── Continuous Violation Checking ─────────────────────────────────────────────
+let continuousViolationTimer = null;
+
+function clearContinuousViolation() {
+  if (continuousViolationTimer) {
+    clearTimeout(continuousViolationTimer);
+    continuousViolationTimer = null;
+    log('Continuous violation timer cleared.');
+  }
+}
+
+async function checkAndApplyContinuousViolation() {
+  if (!state.active) return;
+  if (state.strikes >= state.maxStrikes) return;
+
+  if (state.windowBlurred) {
+    recordViolation('Continuously away from browser (>7s)');
+    return;
+  }
+
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []);
+  if (!activeTab) return;
+
+  const url = activeTab.url || '';
+  if (activeTab.id === state.algomindTabId || isAlgomindUrl(url)) {
+    clearContinuousViolation();
+    return;
+  }
+
+  if (isWhitelistedUrl(url)) {
+    if (isRestrictedUrl(url)) {
+      recordViolation('Continuously on restricted page (>7s)');
+    } else {
+      clearContinuousViolation();
+    }
+    return;
+  }
+
+  if (url && !url.startsWith('chrome://') && url !== 'about:blank') {
+    recordViolation('Continuously on unrelated tab (>7s)');
+  } else {
+    clearContinuousViolation();
+  }
+}
+
 // ─── Send to AlgoMind Tab ──────────────────────────────────────────────────────
 function notifyAlgomindTab(payload) {
   if (!state.algomindTabId) return;
@@ -239,12 +290,13 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   log('Tab activated:', tabId, url);
 
   // AlgoMind tab itself — always fine
-  if (tabId === state.algomindTabId) return;
-  if (isAlgomindUrl(url)) return;
+  if (tabId === state.algomindTabId) { clearContinuousViolation(); return; }
+  if (isAlgomindUrl(url)) { clearContinuousViolation(); return; }
 
   // Whitelisted coding platforms — never a violation unless restricted path
   if (isWhitelistedUrl(url)) {
     if (isRestrictedUrl(url)) recordViolation(`Restricted page opened: ${new URL(url).pathname}`);
+    else clearContinuousViolation();
     return;
   }
 
@@ -301,6 +353,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (isWhitelistedUrl(url)) {
     state.challengeTabIds.add(tabId);
     saveState();
+    if (!isRestrictedUrl(url)) clearContinuousViolation();
   }
 
   // Navigated to restricted path on a platform
@@ -322,11 +375,12 @@ chrome.windows.onFocusChanged.addListener((windowId) => {
       recordViolation('Left the browser window');
     }
   } else {
-    // Focus regained — clear flag, no penalty
+    // Focus regained — clear flag
     if (state.windowBlurred) {
       state.windowBlurred = false;
       saveState();
-      log('Window focus regained — no strike.');
+      log('Window focus regained — checking foreground state.');
+      checkAndApplyContinuousViolation(); // this will cleanly clear it if valid, or trigger if invalid
     }
   }
 });
