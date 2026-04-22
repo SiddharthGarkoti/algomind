@@ -15,7 +15,6 @@
     "*://leetcode.com/*",
     "*://codeforces.com/*",
     "*://localhost/*",
-    "*://*.algomind.app/*",
     "*://*.onrender.com/*"
   ],
   "background": {
@@ -26,7 +25,6 @@
     {
       "matches": [
         "*://localhost/*",
-        "*://*.algomind.app/*",
         "*://*.onrender.com/*"
       ],
       "js": ["content/algomind.js"],
