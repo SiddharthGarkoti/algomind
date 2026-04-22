@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AlgoMind Fair Play",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Enforces fair play during AlgoMind Friends Code Party challenges on LeetCode & Codeforces.",
   "permissions": [
     "tabs",
