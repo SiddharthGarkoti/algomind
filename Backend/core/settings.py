@@ -126,9 +126,14 @@ FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
 ])
 if FRONTEND_URL not in CORS_ALLOWED_ORIGINS:
     CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
+
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
 
 # ── OAuth credentials ─────────────────────────────────────────────────
 GITHUB_CLIENT_ID     = env('GITHUB_CLIENT_ID',     default='')
@@ -151,10 +156,22 @@ JUDGE0_POLL_ATTEMPTS   = env.int('JUDGE0_POLL_ATTEMPTS', default=12)
 JUDGE0_POLL_INTERVAL   = env.float('JUDGE0_POLL_INTERVAL', default=0.75)
 
 # ── Email Settings (For OTP) ──────────────────────────────────────────
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
+EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+_is_dummy_email = (
+    not EMAIL_HOST_USER
+    or 'your_email' in EMAIL_HOST_USER.lower()
+    or not EMAIL_HOST_PASSWORD
+    or 'your_16_digit' in EMAIL_HOST_PASSWORD.lower()
+)
+
+if _is_dummy_email:
+    EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+else:
+    EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
+
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER if not _is_dummy_email else 'noreply@algomind.io')

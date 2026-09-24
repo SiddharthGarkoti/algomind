@@ -101,6 +101,7 @@ class SendOTPView(APIView):
         cache.set(rate_key, True, timeout=60)                   # rate-limit window
 
         # Send email
+        smtp_error = None
         try:
             send_mail(
                 subject='AlgoMind — Your Verification Code',
@@ -109,15 +110,29 @@ class SendOTPView(APIView):
                     f'This code expires in 10 minutes. Do not share it with anyone.\n\n'
                     f'If you did not request this, please ignore this email.'
                 ),
-                from_email=getattr(django_settings, 'DEFAULT_FROM_EMAIL', 'noreply@algomind.io'),
+                from_email=getattr(django_settings, 'DEFAULT_FROM_EMAIL', None) or 'noreply@algomind.io',
                 recipient_list=[email],
                 fail_silently=False,
             )
         except Exception as e:
-            cache.delete(_otp_cache_key(email))
-            return Response({'detail': f'Failed to send email: {e}'}, status=500)
+            smtp_error = e
+            if django_settings.DEBUG:
+                print(f'\n=======================================================')
+                print(f'[AlgoMind OTP DEV] SMTP send error: {e}')
+                print(f'[AlgoMind OTP DEV] OTP for {email}: {otp}')
+                print(f'=======================================================\n')
+            else:
+                cache.delete(_otp_cache_key(email))
+                cache.delete(rate_key)
+                return Response({'detail': f'Failed to send email: {e}'}, status=500)
 
-        return Response({'detail': 'Verification code sent. Check your inbox (and spam folder).'})
+        resp = {'detail': 'Verification code sent. Check your inbox (and spam folder).'}
+        is_dummy = getattr(django_settings, '_is_dummy_email', False)
+        if django_settings.DEBUG and (is_dummy or smtp_error):
+            resp['dev_otp'] = otp
+            resp['detail'] = f'Verification code generated! (Dev OTP: {otp})'
+
+        return Response(resp)
 
 
 class VerifyOTPView(APIView):

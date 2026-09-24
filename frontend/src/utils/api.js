@@ -8,7 +8,9 @@
 
 import { API_BASE_URL } from '../config.js';
 
-const BASE = `${API_BASE_URL}/api`;
+const cleanBase = (API_BASE_URL || '').replace(/\/api\/?$/, '').replace(/\/$/, '');
+const BASE = cleanBase ? `${cleanBase}/api` : '/api';
+
 
 // ── token helpers ────────────────────────────────────────────────
 export function getToken()        { return localStorage.getItem('access_token'); }

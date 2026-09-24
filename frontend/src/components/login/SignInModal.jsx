@@ -97,6 +97,9 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
       setOtpSent(true);
       setOtpStep('otp');
       setOtpTimer(60);
+      if (res.dev_otp) {
+        setOtp(res.dev_otp);
+      }
       setInfo(res.detail ?? 'Verification code sent! Check your inbox.');
     } catch (err) {
       setError(extractError(err));
@@ -186,7 +189,10 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
               {/* GitHub */}
               <button
                 id="github-oauth-btn"
-                onClick={() => { window.location.href = `${API_BASE_URL}/api/auth/oauth/github/`; }}
+                onClick={() => {
+                  const base = (API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/api\/?$/, '').replace(/\/$/, '');
+                  window.location.href = `${base}/api/auth/oauth/github/`;
+                }}
                 className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-gray-200 dark:border-white/10 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors font-medium"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -198,7 +204,10 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
               {/* Google */}
               <button
                 id="google-oauth-btn"
-                onClick={() => { window.location.href = `${API_BASE_URL}/api/auth/oauth/google/`; }}
+                onClick={() => {
+                  const base = (API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/api\/?$/, '').replace(/\/$/, '');
+                  window.location.href = `${base}/api/auth/oauth/google/`;
+                }}
                 className="w-full flex items-center justify-center gap-3 px-6 py-3 border border-gray-200 dark:border-white/10 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors font-medium"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
