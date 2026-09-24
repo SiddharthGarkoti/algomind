@@ -97,7 +97,7 @@ function PrivacyPage({ isDark, toggleTheme }) {
           <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#6366F1' }}>Legal</p>
           <h1 className="text-4xl font-headline font-extrabold tracking-tight mb-4" style={{ color: textPri }}>Privacy Policy</h1>
           <p className="text-sm" style={{ color: textSec }}>
-            Last updated: April 2026 · AlgoMind — Built by Bhayankar Coders
+            Last updated: April 2026 · AlgoMind
           </p>
           <p className="text-base leading-relaxed mt-4" style={{ color: textSec }}>
             At AlgoMind, we take your privacy seriously. This policy explains what data we collect, how we use it, and what rights you have. As an early-stage platform, we keep things minimal and transparent.

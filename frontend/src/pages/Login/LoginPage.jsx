@@ -134,7 +134,7 @@ function LoginPage({ isDark, toggleTheme }) {
       <footer className="w-full border-t border-gray-200/50 dark:border-white/5 bg-white/50 dark:bg-black/20">
         <div className="flex flex-col md:flex-row justify-between items-center px-8 py-8 w-full max-w-7xl mx-auto gap-4">
           <p className="font-inter text-[12px] uppercase tracking-widest text-gray-400 dark:text-gray-600">
-            © AlgoMind — Built by Bhayankar Coders
+            © AlgoMind
           </p>
           <div className="flex gap-8">
             <button className="font-inter text-[12px] uppercase tracking-widest text-gray-400 dark:text-gray-600 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
