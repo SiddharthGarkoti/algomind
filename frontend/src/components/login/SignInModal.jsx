@@ -270,29 +270,34 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-3">
-                    {/* Register fields */}
-                    {emailMode === 'register' && (
-                      <input type="text" placeholder="Username" required
-                        value={username} onChange={e => setUsername(e.target.value)}
-                        className={inputCls} disabled={otpStep === 'otp'} />
-                    )}
-
-                    <input type="email" id="email-input" placeholder="Enter your email" required
+                    {/* Email — always first so users don't swap fields */}
+                    <input type="email" id="email-input" placeholder="Email address" required
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       onInput={e => { if (e.target.value !== email) setEmail(e.target.value); }}
                       autoComplete="email"
                       className={inputCls} disabled={otpStep === 'otp'} />
 
+                    {/* Username — register only */}
+                    {emailMode === 'register' && (
+                      <input type="text" placeholder="Choose a username" required
+                        value={username} onChange={e => setUsername(e.target.value)}
+                        autoComplete="username"
+                        className={inputCls} disabled={otpStep === 'otp'} />
+                    )}
+
                     <input type="password" placeholder="Password" required
                       value={password} onChange={e => setPassword(e.target.value)}
+                      autoComplete={emailMode === 'login' ? 'current-password' : 'new-password'}
                       className={inputCls} disabled={otpStep === 'otp'} />
 
                     {emailMode === 'register' && (
                       <input type="password" placeholder="Confirm password" required
                         value={password2} onChange={e => setPassword2(e.target.value)}
+                        autoComplete="new-password"
                         className={inputCls} disabled={otpStep === 'otp'} />
                     )}
+
 
                     {/* OTP step for registration */}
                     {emailMode === 'register' && (
