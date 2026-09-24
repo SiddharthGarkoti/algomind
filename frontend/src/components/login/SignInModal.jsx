@@ -86,14 +86,25 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
   // ── Send OTP ────────────────────────────────────────────────────────
   const handleSendOTP = async () => {
     setError(''); setInfo('');
-    if (!email || !email.includes('@')) { setError('Enter a valid email first.'); return; }
-    if (!username.trim()) { setError('Enter your username first.'); return; }
+
+    // Read live DOM value as fallback for browser autofill that skips React onChange
+    const emailInput = document.querySelector('#email-input');
+    const liveEmail = (emailInput?.value || email || '').trim();
+    if (liveEmail && liveEmail !== email) setEmail(liveEmail);
+
+    const effectiveEmail = liveEmail;
+
+    if (!effectiveEmail || !effectiveEmail.includes('@') || !effectiveEmail.includes('.')) {
+      setError('Please enter a valid email address (e.g. name@example.com).');
+      return;
+    }
+    if (!username.trim()) { setError('Please enter a username first.'); return; }
     if (!password || password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (password !== password2) { setError('Passwords do not match.'); return; }
 
     setBusy(true);
     try {
-      const res = await api.post('/auth/send-otp/', { email }, { skipAuth: true });
+      const res = await api.post('/auth/send-otp/', { email: effectiveEmail });
       setOtpSent(true);
       setOtpStep('otp');
       setOtpTimer(60);
@@ -108,12 +119,13 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
     }
   };
 
+
   // ── Resend OTP ─────────────────────────────────────────────────────
   const handleResendOTP = async () => {
     if (otpTimer > 0) return;
     setBusy(true);
     try {
-      await api.post('/auth/send-otp/', { email }, { skipAuth: true });
+      await api.post('/auth/send-otp/', { email: email.trim() });
       setOtpTimer(60);
       setInfo('New code sent!'); setError('');
     } catch (err) {
@@ -265,8 +277,11 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
                         className={inputCls} disabled={otpStep === 'otp'} />
                     )}
 
-                    <input type="email" placeholder="Enter your email" required
-                      value={email} onChange={e => setEmail(e.target.value)}
+                    <input type="email" id="email-input" placeholder="Enter your email" required
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      onInput={e => { if (e.target.value !== email) setEmail(e.target.value); }}
+                      autoComplete="email"
                       className={inputCls} disabled={otpStep === 'otp'} />
 
                     <input type="password" placeholder="Password" required
