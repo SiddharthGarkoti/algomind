@@ -124,10 +124,14 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
   const handleResendOTP = async () => {
     if (otpTimer > 0) return;
     setBusy(true);
+    setError('');
     try {
-      await api.post('/auth/send-otp/', { email: email.trim() });
+      const res = await api.post('/auth/send-otp/', { email: email.trim() });
       setOtpTimer(60);
-      setInfo('New code sent!'); setError('');
+      if (res.dev_otp) {
+        setOtp(res.dev_otp);
+      }
+      setInfo(res.detail ?? 'New code sent!');
     } catch (err) {
       setError(extractError(err));
     } finally {
@@ -139,6 +143,7 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setInfo('');
 
     if (emailMode === 'register') {
       // Must have sent OTP first
@@ -322,8 +327,15 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
                                 maxLength={6}
                                 placeholder="• • • • • •"
                                 value={otp}
-                                onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                className="flex-1 px-4 py-3 bg-gray-50 dark:bg-surface-container-low border border-indigo-300 dark:border-indigo-500/40 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 dark:text-white text-center font-mono text-lg tracking-widest"
+                                onChange={e => {
+                                  setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                                  setError('');
+                                }}
+                                className={`flex-1 px-4 py-3 bg-gray-50 dark:bg-surface-container-low border rounded-xl focus:ring-2 outline-none text-gray-900 dark:text-white text-center font-mono text-lg tracking-widest transition-all ${
+                                  error
+                                    ? 'border-red-500 ring-2 ring-red-500/20 focus:ring-red-500'
+                                    : 'border-indigo-300 dark:border-indigo-500/40 focus:ring-purple-500'
+                                }`}
                                 autoFocus
                               />
                             </div>
@@ -341,8 +353,15 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
                     )}
 
                     {/* Feedback */}
-                    {info  && <p className="text-xs text-green-600 text-center">{info}</p>}
-                    {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+                    {error ? (
+                      <div className="p-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+                        <p className="text-xs font-semibold text-red-500">{error}</p>
+                      </div>
+                    ) : info ? (
+                      <div className="p-2.5 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
+                        <p className="text-xs font-semibold text-green-600 dark:text-green-400">{info}</p>
+                      </div>
+                    ) : null}
 
                     {/* Submit — only shown when OTP step is complete (register) or always (login) */}
                     {(emailMode === 'login' || otpStep === 'otp') && (

@@ -148,8 +148,10 @@ class VerifyOTPView(APIView):
         email = (request.data.get('email') or '').strip().lower()
         otp   = (request.data.get('otp')   or '').strip()
         stored = cache.get(_otp_cache_key(email))
-        if not stored or stored != otp:
-            return Response({'detail': 'Invalid or expired code. Please request a new one.'}, status=400)
+        if not stored:
+            return Response({'detail': 'Verification code has expired or was not requested. Please click "Resend code".'}, status=400)
+        if stored != otp:
+            return Response({'detail': 'Incorrect verification code. Please check and try again.'}, status=400)
         return Response({'detail': 'Code verified.'})
 
 
@@ -165,11 +167,17 @@ class RegisterView(generics.CreateAPIView):
 
         # Require OTP verification before account creation
         stored = cache.get(_otp_cache_key(email))
-        if not stored or stored != otp:
+        if not stored:
             return Response(
-                {'detail': 'Please verify your email with the OTP before registering.'},
+                {'detail': 'Verification code has expired or was not requested. Please click "Resend code".'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if stored != otp:
+            return Response(
+                {'detail': 'Incorrect verification code. Please check and try again.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
