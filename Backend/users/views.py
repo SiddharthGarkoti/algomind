@@ -101,32 +101,37 @@ def _send_otp_email(email, otp):
         f"If you did not request this, please ignore this email."
     )
 
-    # 1. Brevo HTTPS API (Port 443 - Works on Render, sends to ANY recipient)
+    # 1. PRIMARY: Brevo HTTPS REST API (Port 443 - Works on Render and locally, sends to ANY recipient)
     if brevo_key:
-        import requests
-        brevo_sender = getattr(django_settings, 'BREVO_SENDER_EMAIL', 'AlgoMind.Support@gmail.com')
-        payload = {
-            "sender": {"name": "AlgoMind", "email": brevo_sender},
-            "to": [{"email": email}],
-            "subject": f"AlgoMind — Verification Code: {otp}",
-            "htmlContent": html_content,
-            "textContent": plain_text
-        }
-        resp = requests.post(
-            "https://api.brevo.com/v3/smtp/email",
-            json=payload,
-            headers={
-                "api-key": brevo_key,
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            timeout=10
-        )
-        if resp.status_code in (200, 201):
-            return "brevo"
-        raise Exception(f"Brevo API error ({resp.status_code}): {resp.text}")
+        try:
+            import requests
+            brevo_sender = getattr(django_settings, 'BREVO_SENDER_EMAIL', 'AlgoMind.Support@gmail.com')
+            payload = {
+                "sender": {"name": "AlgoMind", "email": brevo_sender},
+                "to": [{"email": email}],
+                "subject": f"AlgoMind — Verification Code: {otp}",
+                "htmlContent": html_content,
+                "textContent": plain_text
+            }
+            resp = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                json=payload,
+                headers={
+                    "api-key": brevo_key,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                timeout=10
+            )
+            if resp.status_code in (200, 201):
+                print(f"[AlgoMind Email] Sent successfully via Brevo HTTPS API to {email}")
+                return "brevo"
+            else:
+                print(f"[AlgoMind Email] Brevo API error ({resp.status_code}): {resp.text}. Falling back to SMTP...")
+        except Exception as e:
+            print(f"[AlgoMind Email] Brevo connection error ({e}). Falling back to SMTP...")
 
-    # 2. Gmail SMTP Direct (for local dev or servers with open SMTP ports)
+    # 2. SECONDARY / FALLBACK: Gmail SMTP Direct (for local dev or environments with open SMTP ports)
     import smtplib
     import ssl
     from email.mime.multipart import MIMEMultipart
@@ -222,8 +227,8 @@ class SendOTPView(APIView):
         is_dummy = getattr(django_settings, 'IS_DUMMY_EMAIL', False) or (
             'console' in getattr(django_settings, 'EMAIL_BACKEND', '').lower()
         )
-        has_resend = bool(getattr(django_settings, 'RESEND_API_KEY', '').strip())
-        if django_settings.DEBUG and ((is_dummy and not has_resend) or delivery_error):
+        has_brevo = bool(getattr(django_settings, 'BREVO_API_KEY', '').strip())
+        if django_settings.DEBUG and ((is_dummy and not has_brevo) or delivery_error):
             resp['dev_otp'] = otp
             resp['detail'] = f'Verification code generated! (Dev OTP: {otp})'
 
