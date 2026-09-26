@@ -389,18 +389,11 @@ npm run dev
 
 ---
 
-## ⚖️ License & Legal Notice
+## 📄 License
 
-**Copyright (c) 2025–2026 Siddharth Garkoti. All rights reserved.**
+Copyright © 2025–2026 **Siddharth Garkoti**. All rights reserved.
 
-### ⚠️ Proprietary Software Notice
-This software, including its source code, architecture, browser extension, user interface designs, and documentation, is **PROPRIETARY and CONFIDENTIAL**.
+AlgoMind is proprietary software. The source code is made public here for portfolio review, architecture inspection, and demonstration purposes.
 
-* **NOT Open for Free Copying**: This repository is **NOT** open source and is **NOT** open for free copying, cloning, modification, reproduction, redistribution, sublicensing, or commercial exploitation.
-* **Permission Required**: Prior explicit written authorization from **Siddharth Garkoti** is strictly required to reproduce, deploy, adapt, or utilize this project or any part of its source code in any commercial, institutional, or educational capacity.
-* **Legal Enforcement**: Any unauthorized use, unauthorized reproduction, distribution, scraping, or intellectual property infringement will be prosecuted to the maximum extent permitted by applicable law, including DMCA takedown requests, immediate revocation of access, and legal proceedings for statutory damages and injunctive relief.
-
-For licensing inquiries or institutional deployment permissions, please contact:
-* Author: **[Siddharth Garkoti](https://github.com/SiddharthGarkoti)**
-* Email: **[AlgoMind.Support@gmail.com](mailto:AlgoMind.Support@gmail.com)**
-* Repository: **[https://github.com/SiddharthGarkoti/algomind](https://github.com/SiddharthGarkoti/algomind)**
+* **Usage**: Copying, modifying, redistributing, or hosting this codebase without prior written permission is not permitted.
+* **Inquiries**: For permissions, institutional deployment, or partnerships, please reach out to **[AlgoMind.Support@gmail.com](mailto:AlgoMind.Support@gmail.com)** or via **[GitHub](https://github.com/SiddharthGarkoti)**.
