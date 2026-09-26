@@ -177,3 +177,9 @@ else:
 
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default=f'AlgoMind <{EMAIL_HOST_USER}>' if not IS_DUMMY_EMAIL else 'AlgoMind <noreply@algomind.io>')
 
+# ── Cloud Email Service Fallback (Resend HTTPS API) ───────────────────
+# If Render or cloud hosting blocks outbound SMTP (port 587/465),
+# RESEND_API_KEY sends OTPs via HTTPS (port 443) which is never blocked.
+RESEND_API_KEY = env('RESEND_API_KEY', default='')
+RESEND_FROM_EMAIL = env('RESEND_FROM_EMAIL', default='AlgoMind <onboarding@resend.dev>')
+

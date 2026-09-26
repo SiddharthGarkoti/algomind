@@ -71,6 +71,67 @@ def _otp_cache_key(email):
     return f'algomind_reg_otp_{email.lower().strip()}'
 
 
+def _send_otp_email(email, otp):
+    """
+    Sends OTP email using:
+    1. Resend HTTPS REST API (Port 443) if RESEND_API_KEY is configured.
+       (Recommended for Render/AWS/Cloud hosting where outbound SMTP port 587 is blocked or rate-limited).
+    2. Django standard send_mail (Gmail/SMTP) as default or fallback.
+    """
+    resend_key = getattr(django_settings, 'RESEND_API_KEY', '').strip()
+
+    # If Resend API Key is provided, prefer HTTPS API for 100% cloud reliability
+    if resend_key:
+        import requests
+        resend_from = getattr(django_settings, 'RESEND_FROM_EMAIL', 'AlgoMind <onboarding@resend.dev>')
+        payload = {
+            "from": resend_from,
+            "to": [email],
+            "subject": "AlgoMind — Your Verification Code",
+            "html": (
+                f"<div style='font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#0f172a;border-radius:16px;color:#f8fafc;border:1px solid #1e293b;'>"
+                f"<div style='margin-bottom:24px;'>"
+                f"<span style='font-size:24px;'>🧠</span> "
+                f"<span style='font-size:20px;font-weight:800;letter-spacing:-0.03em;color:#ffffff;'>Algo<span style='color:#6366f1;'>Mind</span></span>"
+                f"</div>"
+                f"<h2 style='font-size:20px;font-weight:700;color:#f8fafc;margin:0 0 12px 0;'>Verify Your Email Address</h2>"
+                f"<p style='color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px 0;'>Use the one-time code below to verify your account. It expires in 10 minutes.</p>"
+                f"<div style='background:#1e1b4b;border:1px solid #4338ca;padding:16px 24px;border-radius:12px;text-align:center;margin:0 0 24px 0;'>"
+                f"<span style='font-family:monospace;font-size:32px;font-weight:800;letter-spacing:8px;color:#818cf8;'>{otp}</span>"
+                f"</div>"
+                f"<p style='color:#64748b;font-size:12px;line-height:1.5;margin:0;'>If you did not request this verification code, please ignore this email.</p>"
+                f"</div>"
+            ),
+            "text": f"Your AlgoMind verification code is: {otp}\n\nThis code expires in 10 minutes."
+        }
+        resp = requests.post(
+            "https://api.resend.com/emails",
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {resend_key}",
+                "Content-Type": "application/json"
+            },
+            timeout=10
+        )
+        if resp.status_code in (200, 201):
+            return "resend"
+        raise Exception(f"Resend API error ({resp.status_code}): {resp.text}")
+
+    # Otherwise standard Django SMTP
+    send_mail(
+        subject='AlgoMind — Your Verification Code',
+        message=(
+            f'Your AlgoMind verification code is: {otp}\n\n'
+            f'This code expires in 10 minutes. Do not share it with anyone.\n\n'
+            f'If you did not request this, please ignore this email.'
+        ),
+        from_email=getattr(django_settings, 'DEFAULT_FROM_EMAIL', None) or 'noreply@algomind.io',
+        recipient_list=[email],
+        fail_silently=False,
+    )
+    return "smtp"
+
+
 class SendOTPView(APIView):
     """
     POST /auth/send-otp/
@@ -100,25 +161,15 @@ class SendOTPView(APIView):
         cache.set(_otp_cache_key(email), otp, timeout=600)     # valid 10 minutes
         cache.set(rate_key, True, timeout=60)                   # rate-limit window
 
-        # Send email
-        smtp_error = None
+        # Send email (SMTP or Resend HTTPS REST API)
+        delivery_error = None
         try:
-            send_mail(
-                subject='AlgoMind — Your Verification Code',
-                message=(
-                    f'Your AlgoMind verification code is: {otp}\n\n'
-                    f'This code expires in 10 minutes. Do not share it with anyone.\n\n'
-                    f'If you did not request this, please ignore this email.'
-                ),
-                from_email=getattr(django_settings, 'DEFAULT_FROM_EMAIL', None) or 'noreply@algomind.io',
-                recipient_list=[email],
-                fail_silently=False,
-            )
+            _send_otp_email(email, otp)
         except Exception as e:
-            smtp_error = e
+            delivery_error = e
             if django_settings.DEBUG:
                 print(f'\n=======================================================')
-                print(f'[AlgoMind OTP DEV] SMTP send error: {e}')
+                print(f'[AlgoMind OTP DEV] Send error: {e}')
                 print(f'[AlgoMind OTP DEV] OTP for {email}: {otp}')
                 print(f'=======================================================\n')
             else:
@@ -130,11 +181,13 @@ class SendOTPView(APIView):
         is_dummy = getattr(django_settings, 'IS_DUMMY_EMAIL', False) or (
             'console' in getattr(django_settings, 'EMAIL_BACKEND', '').lower()
         )
-        if django_settings.DEBUG and (is_dummy or smtp_error):
+        has_resend = bool(getattr(django_settings, 'RESEND_API_KEY', '').strip())
+        if django_settings.DEBUG and ((is_dummy and not has_resend) or delivery_error):
             resp['dev_otp'] = otp
             resp['detail'] = f'Verification code generated! (Dev OTP: {otp})'
 
         return Response(resp)
+
 
 
 class VerifyOTPView(APIView):

@@ -8,6 +8,7 @@ import Navbar      from '../../components/login/Navbar.jsx';
 import HeroSection from '../../components/login/HeroSection.jsx';
 import AnalyzeCard from '../../components/login/AnalyzeCard.jsx';
 import SignInModal  from '../../components/login/SignInModal.jsx';
+import GraphConstellationBackground from '../../components/login/GraphConstellationBackground.jsx';
 
 function LoginPage({ isDark, toggleTheme }) {
   const navigate = useNavigate();
@@ -109,11 +110,31 @@ function LoginPage({ isDark, toggleTheme }) {
   };
 
   return (
-    <div className="login-page min-h-screen flex flex-col font-body overflow-x-hidden selection:bg-purple-500/30 bg-gray-50 dark:bg-[#0A0A0B] text-gray-900 dark:text-gray-200 transition-colors duration-300">
+    <div className="login-page min-h-screen flex flex-col font-body overflow-x-hidden selection:bg-purple-500/30 bg-[#F8F9FE] dark:bg-[#0A0A0C] text-gray-900 dark:text-gray-200 transition-colors duration-300 relative">
+
+      {/* High-tech engineering dot-matrix background mesh — adds rich texture in both light and dark mode */}
+      <div
+        className="fixed inset-0 pointer-events-none -z-10 opacity-70 dark:opacity-40"
+        style={{
+          backgroundImage: isDark
+            ? 'radial-gradient(rgba(168, 85, 247, 0.16) 1.2px, transparent 1.2px)'
+            : 'radial-gradient(rgba(99, 102, 241, 0.18) 1.2px, transparent 1.2px)',
+          backgroundSize: '28px 28px',
+          maskImage: 'radial-gradient(ellipse at 50% 45%, black 45%, transparent 85%)',
+          WebkitMaskImage: 'radial-gradient(ellipse at 50% 45%, black 45%, transparent 85%)',
+        }}
+      />
+
+      {/* Ambient lighting pools */}
+      <div className="fixed -top-24 -right-24 w-[600px] h-[600px] bg-gradient-to-bl from-purple-500/20 via-indigo-500/15 to-transparent blur-[140px] pointer-events-none -z-20" />
+      <div className="fixed -bottom-24 -left-24 w-[600px] h-[600px] bg-gradient-to-tr from-indigo-500/18 via-cyan-500/12 to-transparent blur-[140px] pointer-events-none -z-20" />
+
+      {/* 3D Holographic Cube & Constellation — full viewport coverage */}
+      <GraphConstellationBackground isDark={isDark} />
 
       <Navbar isDark={isDark} toggleTheme={toggleTheme} onSignIn={() => setIsModalOpen(true)} />
 
-      <main className="min-h-[calc(100vh-144px)] flex flex-col md:flex-row w-full max-w-7xl mx-auto relative overflow-hidden">
+      <main className="min-h-[calc(100vh-144px)] flex flex-col md:flex-row w-full max-w-7xl mx-auto relative">
         <HeroSection />
         <AnalyzeCard
           lcUsername={lcUsername}
@@ -131,22 +152,19 @@ function LoginPage({ isDark, toggleTheme }) {
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-gray-200/50 dark:border-white/5 bg-white/50 dark:bg-black/20">
+      <footer className="w-full border-t border-gray-200/60 dark:border-white/5 bg-white/70 dark:bg-black/30 backdrop-blur-md relative z-10">
         <div className="flex flex-col md:flex-row justify-between items-center px-8 py-8 w-full max-w-7xl mx-auto gap-4">
-          <p className="font-inter text-[12px] uppercase tracking-widest text-gray-400 dark:text-gray-600">
+          <p className="font-inter text-[12px] uppercase tracking-widest text-gray-500 dark:text-gray-500 font-medium">
             © AlgoMind
           </p>
           <div className="flex gap-8">
-            <button className="font-inter text-[12px] uppercase tracking-widest text-gray-400 dark:text-gray-600 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+            <button className="font-inter text-[12px] uppercase tracking-widest text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium"
               onClick={() => navigate('/support')}>Support</button>
-            <button className="font-inter text-[12px] uppercase tracking-widest text-gray-400 dark:text-gray-600 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+            <button className="font-inter text-[12px] uppercase tracking-widest text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors font-medium"
               onClick={() => navigate('/privacy')}>Privacy</button>
           </div>
         </div>
       </footer>
-
-      <div className="fixed top-0 right-0 w-1/3 h-screen bg-gradient-to-l from-purple-500/5 to-transparent pointer-events-none -z-20" />
-      <div className="fixed bottom-0 left-0 w-1/4 h-1/2 bg-gradient-to-tr from-indigo-500/5 to-transparent pointer-events-none -z-20" />
 
       <SignInModal
         isOpen={isModalOpen}
