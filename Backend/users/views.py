@@ -127,7 +127,9 @@ class SendOTPView(APIView):
                 return Response({'detail': f'Failed to send email: {e}'}, status=500)
 
         resp = {'detail': 'Verification code sent. Check your inbox (and spam folder).'}
-        is_dummy = getattr(django_settings, '_is_dummy_email', False)
+        is_dummy = getattr(django_settings, 'IS_DUMMY_EMAIL', False) or (
+            'console' in getattr(django_settings, 'EMAIL_BACKEND', '').lower()
+        )
         if django_settings.DEBUG and (is_dummy or smtp_error):
             resp['dev_otp'] = otp
             resp['detail'] = f'Verification code generated! (Dev OTP: {otp})'

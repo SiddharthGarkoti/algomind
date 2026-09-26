@@ -162,16 +162,18 @@ EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 
-_is_dummy_email = (
+IS_DUMMY_EMAIL = bool(
     not EMAIL_HOST_USER
     or 'your_email' in EMAIL_HOST_USER.lower()
     or not EMAIL_HOST_PASSWORD
     or 'your_16_digit' in EMAIL_HOST_PASSWORD.lower()
+    or 'app_password' in EMAIL_HOST_PASSWORD.lower()
 )
 
-if _is_dummy_email:
+if IS_DUMMY_EMAIL:
     EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 else:
     EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
 
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER if not _is_dummy_email else 'noreply@algomind.io')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default=f'AlgoMind <{EMAIL_HOST_USER}>' if not IS_DUMMY_EMAIL else 'AlgoMind <noreply@algomind.io>')
+
