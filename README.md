@@ -402,4 +402,5 @@ This software, including its source code, architecture, browser extension, user 
 
 For licensing inquiries or institutional deployment permissions, please contact:
 * Author: **[Siddharth Garkoti](https://github.com/SiddharthGarkoti)**
+* Email: **[AlgoMind.Support@gmail.com](mailto:AlgoMind.Support@gmail.com)**
 * Repository: **[https://github.com/SiddharthGarkoti/algomind](https://github.com/SiddharthGarkoti/algomind)**

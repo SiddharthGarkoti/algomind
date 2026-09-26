@@ -59,9 +59,15 @@ function SupportPage({ isDark, toggleTheme }) {
             <span className="material-symbols-outlined text-3xl" style={{ color: '#6366F1' }}>support_agent</span>
           </div>
           <h1 className="text-4xl font-headline font-extrabold tracking-tight mb-4" style={{ color: textPri }}>Support Center</h1>
-          <p className="text-base leading-relaxed" style={{ color: textSec }}>
+          <p className="text-base leading-relaxed mb-4" style={{ color: textSec }}>
             Find answers to common questions or reach out to us directly.
           </p>
+          <a href="mailto:AlgoMind.Support@gmail.com"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold hover:opacity-85 transition-opacity"
+            style={{ background: surfLow, border: `1px solid ${border}`, color: '#6366F1' }}>
+            <span className="material-symbols-outlined text-sm">mail</span>
+            AlgoMind.Support@gmail.com
+          </a>
         </div>
 
         {/* FAQ */}

@@ -120,6 +120,12 @@ function PrivacyPage({ isDark, toggleTheme }) {
             style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
             Contact Support
           </button>
+          <p className="text-xs mt-3" style={{ color: textSec }}>
+            Or email us at{' '}
+            <a href="mailto:AlgoMind.Support@gmail.com" className="font-semibold underline hover:opacity-80" style={{ color: '#6366F1' }}>
+              AlgoMind.Support@gmail.com
+            </a>
+          </p>
         </div>
 
       </div>
