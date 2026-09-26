@@ -22,6 +22,7 @@ AlgoMind resolves these challenges through:
 * **The AlgoMind Fair Play Extension (v1.0.1)** for Chrome (Manifest V3), executing live tab-focus, continuous blur, and forbidden subpath monitoring.
 * **Multi-Platform Analytics** unifying statistics and topic mastery across LeetCode and Codeforces into an interactive radar visualization.
 * **An In-Browser Arena IDE** featuring Monaco Editor and multi-language compilation (`C++`, `Python`, `Java`, `C`, `JavaScript`) with custom `stdin` support.
+* **Atmospheric Dual-Mode Visuals & Multi-Step Auth Flow**: Dynamic interactive cosmic starfield with cursor physics in dark mode, Apple/Stripe-inspired Liquid Aurora iridescent mesh in light mode, and a sliding multi-step OTP verification dialog.
 
 ---
 
@@ -82,7 +83,7 @@ flowchart TB
 | **Database** | PostgreSQL / SQLite | Persistence for users, challenges, submissions, ratings, and notifications |
 | **Code Execution** | Wandbox & Judge0 API Gateway | High-speed proxy compilation supporting custom `stdin` execution |
 | **Platform Connectors** | Custom scraping & REST API clients | Live solve verification and stats extraction for LeetCode & Codeforces |
-| **Email Service** | Django Core Mail (SMTP / Console Fallback) | Secure 6-digit OTP verification for account registration |
+| **Email Service** | Brevo HTTPS REST API & Django Core Mail (SMTP) | Dual-engine transactional OTP delivery (zero-block cloud delivery via Port 443 HTTPS + local SMTP) |
 
 ---
 
@@ -340,12 +341,16 @@ ALLOWED_HOSTS=localhost,127.0.0.1,.onrender.com
 # Database (defaults to SQLite if DATABASE_URL is unset)
 # DATABASE_URL=postgres://user:password@host:5432/dbname
 
-# Email Verification (SMTP for OTP)
-# If placeholder or omitted, Django automatically outputs OTPs to the console in development
+# Email Verification for OTP (Option 1: Brevo HTTPS REST API - Recommended for Cloud / Render)
+# Free 300 emails/day via https://brevo.com (bypasses Render/AWS outbound SMTP port 587/465 blocks)
+BREVO_API_KEY=xkeysib-your_brevo_api_key
+BREVO_SENDER_EMAIL=algomind.support@gmail.com
+
+# Email Verification for OTP (Option 2: Gmail SMTP - Local Development)
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
-EMAIL_HOST_USER=your_email@gmail.com
-EMAIL_HOST_PASSWORD=your_app_password
+EMAIL_HOST_USER=AlgoMind.Support@gmail.com
+EMAIL_HOST_PASSWORD=your_16_digit_app_password
 EMAIL_USE_TLS=True
 
 # Compiler Gateway Settings (Optional / Custom)
