@@ -73,11 +73,60 @@ def _otp_cache_key(email):
 
 def _send_otp_email(email, otp):
     """
-    Sends OTP email directly via Gmail SMTP.
-    Tries Port 587 (STARTTLS) first with a 6s timeout.
-    If Port 587 is blocked or times out on cloud hosting (Render),
-    automatically falls back to Port 465 (SSL).
+    Sends OTP email:
+    1. If BREVO_API_KEY is configured, sends via Brevo REST API (HTTPS port 443).
+       (Guaranteed to work on Render free tier where SMTP ports 587/465 are firewalled,
+        and sends to ANY recipient with zero domain verification required).
+    2. Otherwise, sends directly via Gmail SMTP (with Port 587 TLS -> Port 465 SSL fallback).
     """
+    brevo_key = getattr(django_settings, 'BREVO_API_KEY', '').strip()
+
+    html_content = (
+        f"<div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#0f172a;border-radius:16px;color:#f8fafc;border:1px solid #1e293b;'>"
+        f"<div style='margin-bottom:24px;'>"
+        f"<span style='font-size:24px;'>🧠</span> "
+        f"<span style='font-size:20px;font-weight:800;letter-spacing:-0.03em;color:#ffffff;'>Algo<span style='color:#6366f1;'>Mind</span></span>"
+        f"</div>"
+        f"<h2 style='font-size:20px;font-weight:700;color:#f8fafc;margin:0 0 12px 0;'>Verify Your Email Address</h2>"
+        f"<p style='color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px 0;'>Use the one-time code below to verify your account. It expires in 10 minutes.</p>"
+        f"<div style='background:#1e1b4b;border:1px solid #4338ca;padding:16px 24px;border-radius:12px;text-align:center;margin:0 0 24px 0;'>"
+        f"<span style='font-family:monospace;font-size:32px;font-weight:800;letter-spacing:8px;color:#818cf8;'>{otp}</span>"
+        f"</div>"
+        f"<p style='color:#64748b;font-size:12px;line-height:1.5;margin:0;'>If you did not request this verification code, please ignore this email.</p>"
+        f"</div>"
+    )
+    plain_text = (
+        f"Your AlgoMind verification code is: {otp}\n\n"
+        f"This code expires in 10 minutes. Do not share it with anyone.\n\n"
+        f"If you did not request this, please ignore this email."
+    )
+
+    # 1. Brevo HTTPS API (Port 443 - Works on Render, sends to ANY recipient)
+    if brevo_key:
+        import requests
+        brevo_sender = getattr(django_settings, 'BREVO_SENDER_EMAIL', 'AlgoMind.Support@gmail.com')
+        payload = {
+            "sender": {"name": "AlgoMind", "email": brevo_sender},
+            "to": [{"email": email}],
+            "subject": f"AlgoMind — Verification Code: {otp}",
+            "htmlContent": html_content,
+            "textContent": plain_text
+        }
+        resp = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            json=payload,
+            headers={
+                "api-key": brevo_key,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            timeout=10
+        )
+        if resp.status_code in (200, 201):
+            return "brevo"
+        raise Exception(f"Brevo API error ({resp.status_code}): {resp.text}")
+
+    # 2. Gmail SMTP Direct (for local dev or servers with open SMTP ports)
     import smtplib
     import ssl
     from email.mime.multipart import MIMEMultipart
@@ -93,31 +142,12 @@ def _send_otp_email(email, otp):
     msg['To'] = email
     msg['Reply-To'] = user
 
-    text_part = MIMEText(
-        f"Your AlgoMind verification code is: {otp}\n\n"
-        f"This code expires in 10 minutes. Do not share it with anyone.\n\n"
-        f"If you did not request this, please ignore this email.",
-        'plain'
-    )
-    html_part = MIMEText(
-        f"<div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#0f172a;border-radius:16px;color:#f8fafc;border:1px solid #1e293b;'>"
-        f"<div style='margin-bottom:24px;'>"
-        f"<span style='font-size:24px;'>🧠</span> "
-        f"<span style='font-size:20px;font-weight:800;letter-spacing:-0.03em;color:#ffffff;'>Algo<span style='color:#6366f1;'>Mind</span></span>"
-        f"</div>"
-        f"<h2 style='font-size:20px;font-weight:700;color:#f8fafc;margin:0 0 12px 0;'>Verify Your Email Address</h2>"
-        f"<p style='color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px 0;'>Use the one-time code below to verify your account. It expires in 10 minutes.</p>"
-        f"<div style='background:#1e1b4b;border:1px solid #4338ca;padding:16px 24px;border-radius:12px;text-align:center;margin:0 0 24px 0;'>"
-        f"<span style='font-family:monospace;font-size:32px;font-weight:800;letter-spacing:8px;color:#818cf8;'>{otp}</span>"
-        f"</div>"
-        f"<p style='color:#64748b;font-size:12px;line-height:1.5;margin:0;'>If you did not request this verification code, please ignore this email.</p>"
-        f"</div>",
-        'html'
-    )
+    text_part = MIMEText(plain_text, 'plain')
+    html_part = MIMEText(html_content, 'html')
     msg.attach(text_part)
     msg.attach(html_part)
 
-    # 1. Try Port 587 STARTTLS (6s timeout)
+    # Try Port 587 STARTTLS (6s timeout)
     port_587_err = None
     try:
         with smtplib.SMTP('smtp.gmail.com', 587, timeout=6) as server:
@@ -129,7 +159,7 @@ def _send_otp_email(email, otp):
         port_587_err = e
         print(f"[AlgoMind SMTP] Port 587 error ({e}). Attempting Port 465 SSL fallback...")
 
-    # 2. Try Port 465 SSL (in case port 587 was dropped by cloud firewall)
+    # Try Port 465 SSL fallback
     try:
         context = ssl.create_default_context()
         with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context, timeout=8) as server:
@@ -138,6 +168,7 @@ def _send_otp_email(email, otp):
             return "smtp_465"
     except Exception as e:
         raise Exception(f"Gmail SMTP failed on Port 587 ({port_587_err}) and Port 465 ({e})")
+
 
 
 
