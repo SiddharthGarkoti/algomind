@@ -74,62 +74,100 @@ def _otp_cache_key(email):
 def _send_otp_email(email, otp):
     """
     Sends OTP email using:
-    1. Resend HTTPS REST API (Port 443) if RESEND_API_KEY is configured.
-       (Recommended for Render/AWS/Cloud hosting where outbound SMTP port 587 is blocked or rate-limited).
-    2. Django standard send_mail (Gmail/SMTP) as default or fallback.
+    1. Brevo REST API (HTTPS port 443) if BREVO_API_KEY is configured.
+       (Works 100% on Render, sends to ANY recipient with 0 domain verification required).
+    2. Resend REST API (HTTPS port 443) if RESEND_API_KEY is configured.
+       (If Resend fails due to sandbox restriction, gracefully falls back to SMTP).
+    3. Django standard SMTP (Gmail/TLS) with multipart HTML + plain-text.
     """
-    resend_key = getattr(django_settings, 'RESEND_API_KEY', '').strip()
+    import requests
+    from django.core.mail import EmailMultiAlternatives
 
-    # If Resend API Key is provided, prefer HTTPS API for 100% cloud reliability
-    if resend_key:
-        import requests
-        resend_from = getattr(django_settings, 'RESEND_FROM_EMAIL', 'AlgoMind <onboarding@resend.dev>')
+    html_content = (
+        f"<div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#0f172a;border-radius:16px;color:#f8fafc;border:1px solid #1e293b;'>"
+        f"<div style='margin-bottom:24px;'>"
+        f"<span style='font-size:24px;'>🧠</span> "
+        f"<span style='font-size:20px;font-weight:800;letter-spacing:-0.03em;color:#ffffff;'>Algo<span style='color:#6366f1;'>Mind</span></span>"
+        f"</div>"
+        f"<h2 style='font-size:20px;font-weight:700;color:#f8fafc;margin:0 0 12px 0;'>Verify Your Email Address</h2>"
+        f"<p style='color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px 0;'>Use the one-time code below to verify your account. It expires in 10 minutes.</p>"
+        f"<div style='background:#1e1b4b;border:1px solid #4338ca;padding:16px 24px;border-radius:12px;text-align:center;margin:0 0 24px 0;'>"
+        f"<span style='font-family:monospace;font-size:32px;font-weight:800;letter-spacing:8px;color:#818cf8;'>{otp}</span>"
+        f"</div>"
+        f"<p style='color:#64748b;font-size:12px;line-height:1.5;margin:0;'>If you did not request this verification code, please ignore this email.</p>"
+        f"</div>"
+    )
+    plain_text = (
+        f"Your AlgoMind verification code is: {otp}\n\n"
+        f"This code expires in 10 minutes. Do not share it with anyone.\n\n"
+        f"If you did not request this, please ignore this email."
+    )
+
+    # 1. Brevo HTTPS API (Can send to ANY email address, free 300/day, no custom domain required)
+    brevo_key = getattr(django_settings, 'BREVO_API_KEY', '').strip()
+    if brevo_key:
+        brevo_sender = getattr(django_settings, 'BREVO_SENDER_EMAIL', 'AlgoMind.Support@gmail.com')
         payload = {
-            "from": resend_from,
-            "to": [email],
-            "subject": "AlgoMind — Your Verification Code",
-            "html": (
-                f"<div style='font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#0f172a;border-radius:16px;color:#f8fafc;border:1px solid #1e293b;'>"
-                f"<div style='margin-bottom:24px;'>"
-                f"<span style='font-size:24px;'>🧠</span> "
-                f"<span style='font-size:20px;font-weight:800;letter-spacing:-0.03em;color:#ffffff;'>Algo<span style='color:#6366f1;'>Mind</span></span>"
-                f"</div>"
-                f"<h2 style='font-size:20px;font-weight:700;color:#f8fafc;margin:0 0 12px 0;'>Verify Your Email Address</h2>"
-                f"<p style='color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px 0;'>Use the one-time code below to verify your account. It expires in 10 minutes.</p>"
-                f"<div style='background:#1e1b4b;border:1px solid #4338ca;padding:16px 24px;border-radius:12px;text-align:center;margin:0 0 24px 0;'>"
-                f"<span style='font-family:monospace;font-size:32px;font-weight:800;letter-spacing:8px;color:#818cf8;'>{otp}</span>"
-                f"</div>"
-                f"<p style='color:#64748b;font-size:12px;line-height:1.5;margin:0;'>If you did not request this verification code, please ignore this email.</p>"
-                f"</div>"
-            ),
-            "text": f"Your AlgoMind verification code is: {otp}\n\nThis code expires in 10 minutes."
+            "sender": {"name": "AlgoMind", "email": brevo_sender},
+            "to": [{"email": email}],
+            "subject": f"AlgoMind — Verification Code: {otp}",
+            "htmlContent": html_content,
+            "textContent": plain_text
         }
         resp = requests.post(
-            "https://api.resend.com/emails",
+            "https://api.brevo.com/v3/smtp/email",
             json=payload,
             headers={
-                "Authorization": f"Bearer {resend_key}",
-                "Content-Type": "application/json"
+                "api-key": brevo_key,
+                "Content-Type": "application/json",
+                "Accept": "application/json"
             },
             timeout=10
         )
         if resp.status_code in (200, 201):
-            return "resend"
-        raise Exception(f"Resend API error ({resp.status_code}): {resp.text}")
+            return "brevo"
+        raise Exception(f"Brevo API error ({resp.status_code}): {resp.text}")
 
-    # Otherwise standard Django SMTP
-    send_mail(
-        subject='AlgoMind — Your Verification Code',
-        message=(
-            f'Your AlgoMind verification code is: {otp}\n\n'
-            f'This code expires in 10 minutes. Do not share it with anyone.\n\n'
-            f'If you did not request this, please ignore this email.'
-        ),
-        from_email=getattr(django_settings, 'DEFAULT_FROM_EMAIL', None) or 'noreply@algomind.io',
-        recipient_list=[email],
-        fail_silently=False,
+    # 2. Resend HTTPS API (Falls back to SMTP if in sandbox mode and sending to external user)
+    resend_key = getattr(django_settings, 'RESEND_API_KEY', '').strip()
+    if resend_key:
+        resend_from = getattr(django_settings, 'RESEND_FROM_EMAIL', 'AlgoMind <onboarding@resend.dev>')
+        payload = {
+            "from": resend_from,
+            "to": [email],
+            "subject": f"AlgoMind — Verification Code: {otp}",
+            "html": html_content,
+            "text": plain_text
+        }
+        try:
+            resp = requests.post(
+                "https://api.resend.com/emails",
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {resend_key}",
+                    "Content-Type": "application/json"
+                },
+                timeout=10
+            )
+            if resp.status_code in (200, 201):
+                return "resend"
+            print(f"[AlgoMind Email] Resend API failed ({resp.status_code}): {resp.text}. Falling back to SMTP...")
+        except Exception as re_err:
+            print(f"[AlgoMind Email] Resend request exception: {re_err}. Falling back to SMTP...")
+
+    # 3. Standard Django SMTP with Multipart HTML
+    from_email = getattr(django_settings, 'DEFAULT_FROM_EMAIL', None) or 'AlgoMind <AlgoMind.Support@gmail.com>'
+    msg = EmailMultiAlternatives(
+        subject=f'AlgoMind — Verification Code: {otp}',
+        body=plain_text,
+        from_email=from_email,
+        to=[email],
+        reply_to=['AlgoMind.Support@gmail.com'],
     )
+    msg.attach_alternative(html_content, "text/html")
+    msg.send(fail_silently=False)
     return "smtp"
+
 
 
 class SendOTPView(APIView):

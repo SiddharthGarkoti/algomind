@@ -183,3 +183,9 @@ DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default=f'AlgoMind <{EMAIL_HOST_U
 RESEND_API_KEY = env('RESEND_API_KEY', default='')
 RESEND_FROM_EMAIL = env('RESEND_FROM_EMAIL', default='AlgoMind <onboarding@resend.dev>')
 
+# ── Cloud Email Service (Brevo / Sendinblue HTTPS API) ────────────────
+# Brevo offers 300 free emails/day and can send to ANY external user immediately
+# without requiring custom domain DNS verification.
+BREVO_API_KEY = env('BREVO_API_KEY', default='')
+BREVO_SENDER_EMAIL = env('BREVO_SENDER_EMAIL', default='AlgoMind.Support@gmail.com')
+
