@@ -159,8 +159,9 @@ JUDGE0_POLL_INTERVAL   = env.float('JUDGE0_POLL_INTERVAL', default=0.75)
 EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
 EMAIL_PORT = env.int('EMAIL_PORT', default=587)
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='AlgoMind.Support@gmail.com')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='bhbaikbzcecgmyby')
+EMAIL_TIMEOUT = env.float('EMAIL_TIMEOUT', default=10.0)
 
 IS_DUMMY_EMAIL = bool(
     not EMAIL_HOST_USER
@@ -175,7 +176,8 @@ if IS_DUMMY_EMAIL:
 else:
     EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
 
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default=f'AlgoMind <{EMAIL_HOST_USER}>' if not IS_DUMMY_EMAIL else 'AlgoMind <noreply@algomind.io>')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default=f'AlgoMind <{EMAIL_HOST_USER}>')
+
 
 # ── Cloud Email Service Fallback (Resend HTTPS API) ───────────────────
 # If Render or cloud hosting blocks outbound SMTP (port 587/465),

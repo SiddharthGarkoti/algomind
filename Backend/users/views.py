@@ -73,17 +73,33 @@ def _otp_cache_key(email):
 
 def _send_otp_email(email, otp):
     """
-    Sends OTP email using:
-    1. Brevo REST API (HTTPS port 443) if BREVO_API_KEY is configured.
-       (Works 100% on Render, sends to ANY recipient with 0 domain verification required).
-    2. Resend REST API (HTTPS port 443) if RESEND_API_KEY is configured.
-       (If Resend fails due to sandbox restriction, gracefully falls back to SMTP).
-    3. Django standard SMTP (Gmail/TLS) with multipart HTML + plain-text.
+    Sends OTP email directly via Gmail SMTP.
+    Tries Port 587 (STARTTLS) first with a 6s timeout.
+    If Port 587 is blocked or times out on cloud hosting (Render),
+    automatically falls back to Port 465 (SSL).
     """
-    import requests
-    from django.core.mail import EmailMultiAlternatives
+    import smtplib
+    import ssl
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
 
-    html_content = (
+    user = getattr(django_settings, 'EMAIL_HOST_USER', 'AlgoMind.Support@gmail.com')
+    pwd = getattr(django_settings, 'EMAIL_HOST_PASSWORD', 'bhbaikbzcecgmyby')
+    from_header = f"AlgoMind <{user}>"
+
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = f"AlgoMind — Verification Code: {otp}"
+    msg['From'] = from_header
+    msg['To'] = email
+    msg['Reply-To'] = user
+
+    text_part = MIMEText(
+        f"Your AlgoMind verification code is: {otp}\n\n"
+        f"This code expires in 10 minutes. Do not share it with anyone.\n\n"
+        f"If you did not request this, please ignore this email.",
+        'plain'
+    )
+    html_part = MIMEText(
         f"<div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#0f172a;border-radius:16px;color:#f8fafc;border:1px solid #1e293b;'>"
         f"<div style='margin-bottom:24px;'>"
         f"<span style='font-size:24px;'>🧠</span> "
@@ -95,78 +111,34 @@ def _send_otp_email(email, otp):
         f"<span style='font-family:monospace;font-size:32px;font-weight:800;letter-spacing:8px;color:#818cf8;'>{otp}</span>"
         f"</div>"
         f"<p style='color:#64748b;font-size:12px;line-height:1.5;margin:0;'>If you did not request this verification code, please ignore this email.</p>"
-        f"</div>"
+        f"</div>",
+        'html'
     )
-    plain_text = (
-        f"Your AlgoMind verification code is: {otp}\n\n"
-        f"This code expires in 10 minutes. Do not share it with anyone.\n\n"
-        f"If you did not request this, please ignore this email."
-    )
+    msg.attach(text_part)
+    msg.attach(html_part)
 
-    # 1. Brevo HTTPS API (Can send to ANY email address, free 300/day, no custom domain required)
-    brevo_key = getattr(django_settings, 'BREVO_API_KEY', '').strip()
-    if brevo_key:
-        brevo_sender = getattr(django_settings, 'BREVO_SENDER_EMAIL', 'AlgoMind.Support@gmail.com')
-        payload = {
-            "sender": {"name": "AlgoMind", "email": brevo_sender},
-            "to": [{"email": email}],
-            "subject": f"AlgoMind — Verification Code: {otp}",
-            "htmlContent": html_content,
-            "textContent": plain_text
-        }
-        resp = requests.post(
-            "https://api.brevo.com/v3/smtp/email",
-            json=payload,
-            headers={
-                "api-key": brevo_key,
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            timeout=10
-        )
-        if resp.status_code in (200, 201):
-            return "brevo"
-        raise Exception(f"Brevo API error ({resp.status_code}): {resp.text}")
+    # 1. Try Port 587 STARTTLS (6s timeout)
+    port_587_err = None
+    try:
+        with smtplib.SMTP('smtp.gmail.com', 587, timeout=6) as server:
+            server.starttls()
+            server.login(user, pwd)
+            server.sendmail(user, [email], msg.as_string())
+            return "smtp_587"
+    except Exception as e:
+        port_587_err = e
+        print(f"[AlgoMind SMTP] Port 587 error ({e}). Attempting Port 465 SSL fallback...")
 
-    # 2. Resend HTTPS API (Falls back to SMTP if in sandbox mode and sending to external user)
-    resend_key = getattr(django_settings, 'RESEND_API_KEY', '').strip()
-    if resend_key:
-        resend_from = getattr(django_settings, 'RESEND_FROM_EMAIL', 'AlgoMind <onboarding@resend.dev>')
-        payload = {
-            "from": resend_from,
-            "to": [email],
-            "subject": f"AlgoMind — Verification Code: {otp}",
-            "html": html_content,
-            "text": plain_text
-        }
-        try:
-            resp = requests.post(
-                "https://api.resend.com/emails",
-                json=payload,
-                headers={
-                    "Authorization": f"Bearer {resend_key}",
-                    "Content-Type": "application/json"
-                },
-                timeout=10
-            )
-            if resp.status_code in (200, 201):
-                return "resend"
-            print(f"[AlgoMind Email] Resend API failed ({resp.status_code}): {resp.text}. Falling back to SMTP...")
-        except Exception as re_err:
-            print(f"[AlgoMind Email] Resend request exception: {re_err}. Falling back to SMTP...")
+    # 2. Try Port 465 SSL (in case port 587 was dropped by cloud firewall)
+    try:
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context, timeout=8) as server:
+            server.login(user, pwd)
+            server.sendmail(user, [email], msg.as_string())
+            return "smtp_465"
+    except Exception as e:
+        raise Exception(f"Gmail SMTP failed on Port 587 ({port_587_err}) and Port 465 ({e})")
 
-    # 3. Standard Django SMTP with Multipart HTML
-    from_email = getattr(django_settings, 'DEFAULT_FROM_EMAIL', None) or 'AlgoMind <AlgoMind.Support@gmail.com>'
-    msg = EmailMultiAlternatives(
-        subject=f'AlgoMind — Verification Code: {otp}',
-        body=plain_text,
-        from_email=from_email,
-        to=[email],
-        reply_to=['AlgoMind.Support@gmail.com'],
-    )
-    msg.attach_alternative(html_content, "text/html")
-    msg.send(fail_silently=False)
-    return "smtp"
 
 
 
