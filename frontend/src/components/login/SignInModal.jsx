@@ -64,6 +64,16 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
     return () => clearTimeout(id);
   }, [otpTimer]);
 
+  /* Auto-scroll into view when OTP arrives */
+  useEffect(() => {
+    if (otpStep === 'otp') {
+      setTimeout(() => {
+        const target = document.querySelector('#otp-section');
+        target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 120);
+    }
+  }, [otpStep]);
+
   if (!isOpen) return null;
 
   // ── error extraction ───────────────────────────────────────────────
@@ -172,14 +182,14 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
   const inputCls = 'w-full px-4 py-3 bg-gray-50 dark:bg-surface-container-low border border-gray-200 dark:border-white/5 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 dark:text-white text-sm';
 
   return (
-    <div className="fixed inset-0 z-[100]" id="signin-modal">
+    <div className="fixed inset-0 z-[100] overflow-y-auto" id="signin-modal">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
 
-      {/* Modal Panel */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-4">
-        <div className="bg-white dark:bg-surface-container rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-white/10">
-          <div className="p-8">
+      {/* Modal Centering Wrapper (allows natural scrolling on small/medium viewports) */}
+      <div className="min-h-full flex items-center justify-center p-3 sm:p-6 relative pointer-events-none">
+        <div className="relative w-full max-w-md bg-white dark:bg-surface-container rounded-2xl shadow-2xl overflow-hidden border border-gray-200 dark:border-white/10 pointer-events-auto max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3.5rem)] flex flex-col my-auto">
+          <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar overscroll-contain">
 
             {/* Header */}
             <div className="flex justify-between items-start mb-8">
@@ -315,7 +325,7 @@ function SignInModal({ isOpen, onClose, onSuccess }) {
                             Send Verification Code
                           </button>
                         ) : (
-                          <div className="space-y-2">
+                          <div className="space-y-2" id="otp-section">
                             <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">
                               Enter the 6-digit code sent to {email}
                             </label>
