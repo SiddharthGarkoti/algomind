@@ -94,16 +94,15 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
             <span className="material-symbols-outlined !text-lg">{isPinned ? 'push_pin' : 'menu'}</span>
           </button>
         </div>
-        <div className="flex items-center gap-3 sidebar-content-text">
+        <div className="flex items-center gap-2.5 sidebar-content-text">
           <img
             src="/logo-symbol.png"
             alt="AlgoMind"
             className="h-8 w-8 object-contain shrink-0 drop-shadow-md"
           />
-          <div>
-            <h1 className="text-sm font-bold tracking-tight leading-none" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>AlgoMind</h1>
-            <p className="text-[11px] font-normal leading-none mt-1" style={{ color: textMuted }}>Think in Algorithms</p>
-          </div>
+          <span className="text-base font-bold tracking-tight" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+            AlgoMind
+          </span>
         </div>
       </div>
 
