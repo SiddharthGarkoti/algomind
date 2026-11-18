@@ -10,7 +10,7 @@ class ConnectPlatformSerializer(serializers.Serializer):
 class PlatformStatsSerializer(serializers.ModelSerializer):
     class Meta:
         model  = PlatformStats
-        fields = ['rating', 'problems_solved', 'contests',
+        fields = ['rating', 'streak', 'problems_solved', 'contests',
                   'easy_solved', 'medium_solved', 'hard_solved', 'last_updated']
 
 

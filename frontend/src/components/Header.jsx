@@ -463,6 +463,33 @@ function Header({ theme, toggleTheme, onOpenChat }) {
           )}
         </div>
 
+        {/* Plan Tier Badge */}
+        <div
+          onClick={() => navigate('/plans')}
+          className="rounded-xl px-3 py-2 flex items-center gap-2 cursor-pointer transition-all hover:scale-105"
+          style={{
+            background: user?.plan_tier === 'pro'
+              ? 'linear-gradient(135deg, rgba(167, 139, 250, 0.18), rgba(124, 58, 237, 0.12))'
+              : user?.plan_tier === 'plus'
+                ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(79, 70, 229, 0.12))'
+                : surface,
+            border: `1px solid ${user?.plan_tier === 'pro' ? 'rgba(167, 139, 250, 0.4)' : user?.plan_tier === 'plus' ? 'rgba(99, 102, 241, 0.4)' : border}`,
+          }}
+          title={user?.plan_tier ? `${user.plan_tier.toUpperCase()} Tier Active` : 'Upgrade Plan'}
+        >
+          <span className="material-symbols-outlined text-sm" style={{
+            color: user?.plan_tier === 'pro' ? '#A78BFA' : user?.plan_tier === 'plus' ? '#6366F1' : '#F59E0B',
+            fontVariationSettings: "'FILL' 1"
+          }}>
+            {user?.plan_tier === 'pro' ? 'workspace_premium' : user?.plan_tier === 'plus' ? 'bolt' : 'stars'}
+          </span>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{
+            color: user?.plan_tier === 'pro' ? '#A78BFA' : user?.plan_tier === 'plus' ? '#6366F1' : textSec,
+          }}>
+            {user?.plan_tier?.toUpperCase() || 'BASIC'}
+          </span>
+        </div>
+
         {/* Streak — real data from backend */}
         <div className="rounded-xl px-4 py-2.5 flex items-center gap-3 relative"
           style={{ background: surface, border: `1px solid ${border}` }}>

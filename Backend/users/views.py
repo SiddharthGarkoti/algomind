@@ -700,6 +700,124 @@ class AwardPlanCompletionView(APIView):
         request.user.award_plan_completion()
         return Response({'detail': 'Plan part completed, 200 rating awarded!', 'new_rating': request.user.rating})
 
+def _send_support_email(name: str, email: str, message: str):
+    support_recipient = getattr(django_settings, 'EMAIL_HOST_USER', 'AlgoMind.Support@gmail.com')
+    brevo_key = getattr(django_settings, 'BREVO_API_KEY', '')
+
+    html_content = (
+        f"<div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:540px;margin:0 auto;background:#0d0e12;border:1px solid #1e2029;border-radius:16px;padding:32px;color:#f8fafc;'>"
+        f"<div style='display:flex;align-items:center;gap:12px;margin-bottom:24px;'>"
+        f"<div style='width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#a855f7);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;'>⚡</div>"
+        f"<span style='font-size:18px;font-weight:800;letter-spacing:-0.5px;'>AlgoMind Support</span>"
+        f"</div>"
+        f"<h2 style='font-size:18px;font-weight:700;color:#f8fafc;margin:0 0 16px 0;'>New Support Inquiry</h2>"
+        f"<p style='color:#94a3b8;font-size:13px;margin:0 0 8px 0;'><strong>From:</strong> {name} ({email})</p>"
+        f"<div style='background:#181920;border:1px solid #2a2c38;padding:16px;border-radius:10px;margin:16px 0;font-size:14px;line-height:1.6;color:#e2e8f0;white-space:pre-wrap;'>"
+        f"{message}"
+        f"</div>"
+        f"<p style='color:#64748b;font-size:12px;margin-top:20px;'>Reply directly to this email to contact the user.</p>"
+        f"</div>"
+    )
+    plain_text = f"New Support Inquiry from {name} ({email}):\n\n{message}"
+
+    if brevo_key:
+        try:
+            import requests
+            brevo_sender = getattr(django_settings, 'BREVO_SENDER_EMAIL', 'AlgoMind.Support@gmail.com')
+            payload = {
+                "sender": {"name": f"{name} via AlgoMind", "email": brevo_sender},
+                "to": [{"email": support_recipient}],
+                "replyTo": {"email": email, "name": name},
+                "subject": f"[AlgoMind Support] Inquiry from {name}",
+                "htmlContent": html_content,
+                "textContent": plain_text
+            }
+            resp = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                json=payload,
+                headers={
+                    "api-key": brevo_key,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                timeout=10
+            )
+            if resp.status_code in (200, 201):
+                return
+        except Exception:
+            pass
+
+    try:
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        pwd = getattr(django_settings, 'EMAIL_HOST_PASSWORD', '')
+        if not pwd or 'app_password' in pwd:
+            return
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"[AlgoMind Support] Inquiry from {name}"
+        msg['From'] = f"AlgoMind <{support_recipient}>"
+        msg['To'] = support_recipient
+        msg['Reply-To'] = email
+        msg.attach(MIMEText(plain_text, 'plain'))
+        msg.attach(MIMEText(html_content, 'html'))
+
+        with smtplib.SMTP('smtp.gmail.com', 587, timeout=6) as server:
+            server.starttls()
+            server.login(support_recipient, pwd)
+            server.sendmail(support_recipient, [support_recipient], msg.as_string())
+    except Exception as e:
+        print(f"[Support Email SMTP Error] {e}")
+
+
+class SetPlanTierView(APIView):
+    """
+    POST /auth/set-plan-tier/
+    Body: { "plan_tier": "basic" | "plus" | "pro" }
+    Allows setting the user's plan tier (for testing / subscription preview).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        tier = (request.data.get('plan_tier') or 'basic').strip().lower()
+        if tier not in ('basic', 'plus', 'pro'):
+            return Response({'detail': 'Invalid plan tier. Valid options: basic, plus, pro.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        request.user.plan_tier = tier
+        request.user.save(update_fields=['plan_tier'])
+        serializer = UserProfileSerializer(request.user, context={'request': request})
+        return Response({
+            'detail': f'Plan successfully updated to {tier.upper()} (Testing Mode).',
+            'plan_tier': tier,
+            'user': serializer.data
+        })
+
+
+class ContactSupportView(APIView):
+    """
+    POST /auth/contact/
+    Body: { "name": "...", "email": "...", "message": "..." }
+    Public endpoint for support queries from SupportPage.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        name = (request.data.get('name') or '').strip()
+        email = (request.data.get('email') or '').strip()
+        message = (request.data.get('message') or request.data.get('msg') or '').strip()
+
+        if not name or not email or not message:
+            return Response({'detail': 'Name, email, and message are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            _send_support_email(name, email, message)
+        except Exception as e:
+            print(f"[AlgoMind Support] Error delivering email: {e}")
+
+        return Response({'detail': 'Your message has been received! Our support team will get back to you within 24 hours.'})
+
+
 class DeleteAccountView(APIView):
     """
     DELETE /auth/delete-account/

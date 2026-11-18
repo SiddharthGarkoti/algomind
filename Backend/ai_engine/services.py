@@ -59,18 +59,59 @@ def _call_openai(request_type: str, user_input: str, problem=None) -> str:
     return response.choices[0].message.content
 
 
-# ── Plus / Pro tier AI (placeholder slot) ─────────────────────────────────────
-# When a "Plus" or "Pro" plan AI agent is integrated, point it here.
-# The view will call call_ai_pro() for users with plan='plus' or plan='pro'.
+# ── Plus / Pro tier AI ────────────────────────────────────────────────────────
 
 def _call_pro_ai(request_type: str, user_input: str, problem=None) -> str:
     """
-    Placeholder for the Pro-plan AI agent.
-    Currently falls back to the same pipeline as the standard plan.
-    Replace this body with a more powerful model (e.g. Gemini 1.5 Pro, GPT-4o)
-    once the Plus/Pro subscription is live.
+    Pro-tier AI mentor:
+    Provides elevated algorithmic guidance, formal complexity invariants,
+    and stress-testing edge cases, with prioritized high-capacity models.
     """
-    return call_ai(request_type, user_input, problem)
+    pro_prompt_addon = (
+        "\n\n[PRO TIER DIRECTIVE: Provide deep algorithmic mentorship. "
+        "Formulate explicit time and space invariants (recurrence or space bounds), "
+        "and formulate 2 critical boundary/edge cases for the user to verify against, "
+        "without disclosing the final source code.]"
+    )
+    enhanced_input = f"{user_input}{pro_prompt_addon}"
+
+    # Try Gemini 1.5 Pro / 2.0 Flash first if configured
+    if getattr(settings, 'GEMINI_API_KEY', ''):
+        try:
+            system = get_system_prompt(request_type, problem)
+            try:
+                from google import genai
+                client = genai.Client(api_key=settings.GEMINI_API_KEY)
+                resp = client.models.generate_content(
+                    model='gemini-1.5-pro',
+                    contents=f"{system}\n\nUser: {enhanced_input}",
+                )
+                return resp.text
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    # Try OpenAI GPT-4o if configured
+    if getattr(settings, 'OPENAI_API_KEY', ''):
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            response = client.chat.completions.create(
+                model='gpt-4o',
+                messages=[
+                    {'role': 'system', 'content': get_system_prompt(request_type, problem)},
+                    {'role': 'user',   'content': enhanced_input},
+                ],
+                max_tokens=1200,
+                temperature=0.6,
+            )
+            return response.choices[0].message.content
+        except Exception:
+            pass
+
+    # Fallback to standard pipeline with enhanced input
+    return call_ai(request_type, enhanced_input, problem)
 
 
 # ── Dispatcher ────────────────────────────────────────────────────────────────

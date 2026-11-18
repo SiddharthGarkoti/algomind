@@ -13,7 +13,16 @@ const SUGGESTIONS = [
 
 function ChatbotPage({ theme, toggleTheme }) {
   const isDark  = theme === 'dark';
-  const { isGuest } = useAuth();
+  const { isGuest, user } = useAuth();
+  const isPro = user?.plan_tier === 'pro';
+  const isPlus = user?.plan_tier === 'plus';
+
+  const defaultSuggestions = isPro ? [
+    'Formal recurrence relation of Coin Change',
+    'Invariants for Binary Search bounds',
+    'Stress-test boundary edge cases for 0-1 Knapsack',
+    'Asymptotic state space of BFS vs DFS',
+  ] : SUGGESTIONS;
   const [messages, setMessages] = useState([
     { from: 'bot', text: "I'm your AI Mentor! I can help explain algorithms, debug your thinking, or suggest problems to practice. What would you like to learn today?", time: 'Just now' },
   ]);
@@ -84,19 +93,55 @@ function ChatbotPage({ theme, toggleTheme }) {
       <div className="flex flex-col h-[calc(100vh-140px)] max-w-3xl mx-auto gap-4">
 
         {/* Header */}
-        <div className="flex items-center gap-4 rounded-2xl p-4"
+        <div className="flex items-center justify-between gap-4 rounded-2xl p-4"
           style={{ background: surface, border: `1px solid ${border}` }}>
-          <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-            style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)' }}>
-            <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-          </div>
-          <div className="flex-1">
-            <h1 className="font-headline font-bold text-base" style={{ color: textPri }}>AI Mentor</h1>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-[10px]" style={{ color: textSec }}>Online — powered by backend AI</span>
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+              style={{
+                background: isPro
+                  ? 'linear-gradient(135deg, #A78BFA, #7C3AED)'
+                  : isPlus
+                    ? 'linear-gradient(135deg, #6366F1, #4F46E5)'
+                    : 'linear-gradient(135deg, #6366F1, #A855F7)'
+              }}>
+              <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>
+                {isPro ? 'workspace_premium' : 'auto_awesome'}
+              </span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="font-headline font-bold text-base" style={{ color: textPri }}>
+                  {isPro ? 'AlgoMind Pro Mentor' : isPlus ? 'AlgoMind Plus Mentor' : 'AI Mentor'}
+                </h1>
+                <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                  style={isPro
+                    ? { background: 'rgba(167, 139, 250, 0.18)', color: '#A78BFA', border: '1px solid rgba(167, 139, 250, 0.3)' }
+                    : isPlus
+                      ? { background: 'rgba(99, 102, 241, 0.18)', color: '#6366F1', border: '1px solid rgba(99, 102, 241, 0.3)' }
+                      : { background: surfLow, color: textSec, border: `1px solid ${border}` }}>
+                  {isPro ? 'PRO TIER' : isPlus ? 'PLUS TIER' : 'BASIC TIER'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-[10px]" style={{ color: textSec }}>
+                  {isPro
+                    ? 'Pro Engine: Asymptotic complexity invariants & stress-test edge cases active'
+                    : isPlus
+                      ? 'Plus Engine: Deep algorithmic diagnostics active'
+                      : 'Standard Socratic Engine · Upgrade for formal invariants'}
+                </span>
+              </div>
             </div>
           </div>
+          {!isPro && (
+            <button
+              onClick={() => window.location.href = '/plans'}
+              className="hidden sm:flex items-center gap-1 text-[11px] font-bold px-3 py-1.5 rounded-xl transition-all hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)', color: '#fff' }}>
+              <span>⚡</span> Upgrade Tier
+            </button>
+          )}
         </div>
 
         {/* Messages */}
@@ -151,11 +196,15 @@ function ChatbotPage({ theme, toggleTheme }) {
         <div className="relative">
           {/* Suggestions */}
           <div className="flex gap-2 flex-wrap mb-3">
-            {SUGGESTIONS.map(s => (
+            {defaultSuggestions.map(s => (
               <button key={s}
                 disabled={sending || isGuest}
                 className="px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all hover:opacity-80 disabled:opacity-40"
-                style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1', border: '1px solid rgba(99,102,241,0.2)' }}
+                style={{
+                  background: isPro ? 'rgba(167, 139, 250, 0.12)' : 'rgba(99,102,241,0.1)',
+                  color: isPro ? '#A78BFA' : '#6366F1',
+                  border: `1px solid ${isPro ? 'rgba(167, 139, 250, 0.25)' : 'rgba(99,102,241,0.2)'}`
+                }}
                 onClick={() => send(s)}>
                 {s}
               </button>
@@ -174,7 +223,7 @@ function ChatbotPage({ theme, toggleTheme }) {
               style={{ color: textPri }}
               disabled={sending || isGuest}
             />
-            {/* Agent toggle — Advanced requires Plus/Pro */}
+            {/* Agent toggle — Advanced unlocked for Plus/Pro */}
             <div className="flex items-center gap-1 rounded-xl p-1 shrink-0"
               style={{ background: surfLow, border: `1px solid ${border}` }}>
               <button
@@ -186,13 +235,26 @@ function ChatbotPage({ theme, toggleTheme }) {
                 Basic
               </button>
               <button
-                onClick={() => alert('Advanced Mentor requires AlgoMind Plus or Pro. Upgrade in Settings → Plans.')}
+                onClick={() => {
+                  if (isPro || isPlus) {
+                    setAgent('advanced');
+                  } else {
+                    window.location.href = '/plans';
+                  }
+                }}
                 className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all"
                 style={agent === 'advanced'
-                  ? { background: 'linear-gradient(135deg,#F59E0B,#EF4444)', color: '#fff' }
-                  : { color: '#F59E0B' }}>
+                  ? {
+                      background: isPro
+                        ? 'linear-gradient(135deg,#A78BFA,#7C3AED)'
+                        : 'linear-gradient(135deg,#6366F1,#A855F7)',
+                      color: '#fff'
+                    }
+                  : { color: isPro || isPlus ? '#A78BFA' : '#F59E0B' }}>
                 Advanced
-                <span className="material-symbols-outlined" style={{ fontSize: '10px' }}>lock</span>
+                {!(isPro || isPlus) && (
+                  <span className="material-symbols-outlined" style={{ fontSize: '10px' }}>lock</span>
+                )}
               </button>
             </div>
             <button

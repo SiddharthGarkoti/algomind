@@ -103,6 +103,12 @@ class ConnectPlatformView(APIView):
                 defaults=raw,
             )
 
+            # Sync streak if platform streak is higher
+            platform_streak = raw.get('streak', 0)
+            if platform_streak > request.user.streak:
+                request.user.streak = platform_streak
+                request.user.save(update_fields=['streak'])
+
             # Apply baseline rating logic on first platform connection
             # Only apply if user is at default 1000 rating
             if request.user.rating == 1000:
@@ -165,6 +171,12 @@ class DashboardView(APIView):
             sum(p['stats']['rating'] for p in rated_platforms) // len(rated_platforms)
             if rated_platforms else 0
         )
+        platform_streaks = [p['stats'].get('streak', 0) for p in data if p.get('stats')]
+        max_platform_streak = max(platform_streaks) if platform_streaks else 0
+        total_streak = max(max_platform_streak, request.user.streak)
+        if total_streak > request.user.streak:
+            request.user.streak = total_streak
+            request.user.save(update_fields=['streak'])
 
         return Response({
             'platforms': data,
@@ -173,6 +185,7 @@ class DashboardView(APIView):
                 'total_contests':        total_contests,
                 'average_rating':        avg_rating,
                 'platforms_connected':   len(data),
+                'streak':                total_streak,
             },
         })
 
@@ -288,6 +301,11 @@ class RefreshPlatformView(APIView):
         topic_stats_raw = raw.pop('topic_stats', [])
 
         PlatformStats.objects.update_or_create(profile=profile, defaults=raw)
+
+        platform_streak = raw.get('streak', 0)
+        if platform_streak > request.user.streak:
+            request.user.streak = platform_streak
+            request.user.save(update_fields=['streak'])
 
         for ts in topic_stats_raw:
             TopicStats.objects.update_or_create(

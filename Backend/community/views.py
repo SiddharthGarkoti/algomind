@@ -2,8 +2,8 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import CommunityPost, PostLike
-from .serializers import CommunityPostSerializer, CreatePostSerializer
+from .models import CommunityPost, PostLike, PostComment
+from .serializers import CommunityPostSerializer, CreatePostSerializer, PostCommentSerializer
 
 
 class IsAdminUser(permissions.BasePermission):
@@ -58,3 +58,42 @@ class LikePostView(APIView):
             like.delete()
             return Response({'liked': False, 'like_count': post.like_count})
         return Response({'liked': True, 'like_count': post.like_count})
+
+
+class PostCommentListCreateView(APIView):
+    """
+    GET  /api/community/posts/<pk>/comments/ — anyone can list comments
+    POST /api/community/posts/<pk>/comments/ — authenticated users can comment
+    """
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+
+    def get(self, request, pk):
+        try:
+            post = CommunityPost.objects.get(pk=pk)
+        except CommunityPost.DoesNotExist:
+            return Response({'detail': 'Post not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        comments = post.comments.select_related('author').all()
+        serializer = PostCommentSerializer(comments, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    def post(self, request, pk):
+        try:
+            post = CommunityPost.objects.get(pk=pk)
+        except CommunityPost.DoesNotExist:
+            return Response({'detail': 'Post not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        body = (request.data.get('body') or '').strip()
+        if not body:
+            return Response({'detail': 'Comment body cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        comment = PostComment.objects.create(
+            post=post,
+            author=request.user,
+            body=body,
+        )
+        serializer = PostCommentSerializer(comment, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

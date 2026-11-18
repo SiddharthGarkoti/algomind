@@ -27,8 +27,9 @@ class _BaseAIView(APIView):
             except Problem.DoesNotExist:
                 return Response({'detail': 'Problem not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        is_pro = self.use_pro or (getattr(request.user, 'plan_tier', 'basic') in ('plus', 'pro'))
         try:
-            fn         = call_ai_pro if self.use_pro else call_ai
+            fn          = call_ai_pro if is_pro else call_ai
             ai_response = fn(self.request_type, message, problem)
         except RuntimeError as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)

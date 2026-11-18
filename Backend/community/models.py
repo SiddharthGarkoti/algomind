@@ -36,6 +36,10 @@ class CommunityPost(models.Model):
     def like_count(self):
         return self.likes.count()
 
+    @property
+    def comment_count(self):
+        return self.comments.count()
+
 
 class PostLike(models.Model):
     post    = models.ForeignKey(CommunityPost, on_delete=models.CASCADE, related_name='likes')
@@ -44,3 +48,16 @@ class PostLike(models.Model):
 
     class Meta:
         unique_together = ['post', 'user']
+
+
+class PostComment(models.Model):
+    post       = models.ForeignKey(CommunityPost, on_delete=models.CASCADE, related_name='comments')
+    author     = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='community_comments')
+    body       = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.author.username}: {self.body[:30]}"

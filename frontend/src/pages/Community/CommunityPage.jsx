@@ -30,6 +30,13 @@ function CommunityPage({ theme, toggleTheme }) {
   const [loading,      setLoading]      = useState(true);
   const [likeLoading,  setLikeLoading]  = useState({});
 
+  /* Comments state per post */
+  const [expandedComments, setExpandedComments] = useState({});
+  const [postComments,     setPostComments]     = useState({});
+  const [commentsLoading,  setCommentsLoading]  = useState({});
+  const [newCommentBody,   setNewCommentBody]   = useState({});
+  const [commentSubmitting,setCommentSubmitting]= useState({});
+
   /* Admin post creation state */
   const isAdmin = user?.is_admin || user?.is_staff;
   const [showCreate,   setShowCreate]   = useState(false);
@@ -69,6 +76,48 @@ function CommunityPage({ theme, toggleTheme }) {
       ));
     } catch { /* ignore */ }
     finally { setLikeLoading(l => ({ ...l, [postId]: false })); }
+  };
+
+  const toggleComments = async (postId) => {
+    const nextState = !expandedComments[postId];
+    setExpandedComments(prev => ({ ...prev, [postId]: nextState }));
+
+    if (nextState && !postComments[postId]) {
+      setCommentsLoading(c => ({ ...c, [postId]: true }));
+      try {
+        const data = await api.get(`/community/posts/${postId}/comments/`);
+        setPostComments(prev => ({ ...prev, [postId]: data }));
+      } catch {
+        setPostComments(prev => ({ ...prev, [postId]: [] }));
+      } finally {
+        setCommentsLoading(c => ({ ...c, [postId]: false }));
+      }
+    }
+  };
+
+  const handleAddComment = async (postId, e) => {
+    e.preventDefault();
+    const text = (newCommentBody[postId] || '').trim();
+    if (!text) return;
+
+    setCommentSubmitting(c => ({ ...c, [postId]: true }));
+    try {
+      const added = await api.post(`/community/posts/${postId}/comments/`, { body: text });
+      setPostComments(prev => ({
+        ...prev,
+        [postId]: [...(prev[postId] || []), added]
+      }));
+      setNewCommentBody(prev => ({ ...prev, [postId]: '' }));
+      setPosts(prev => prev.map(p =>
+        p.id === postId
+          ? { ...p, comment_count: (p.comment_count ?? 0) + 1 }
+          : p
+      ));
+    } catch {
+      /* ignore */
+    } finally {
+      setCommentSubmitting(c => ({ ...c, [postId]: false }));
+    }
   };
 
   const handleCreate = async (e) => {
@@ -272,18 +321,98 @@ function CommunityPage({ theme, toggleTheme }) {
                         </span>
                       ))}
                     </div>
-                    <button
-                      disabled={likeLoading[post.id]}
-                      className="flex items-center gap-1.5 text-[11px] font-bold transition-all hover:scale-110 disabled:opacity-50"
-                      style={{ color: isLiked ? '#EF4444' : textSec }}
-                      onClick={() => handleLike(post.id)}>
-                      <span className="material-symbols-outlined text-base"
-                        style={{ fontVariationSettings: isLiked ? "'FILL' 1" : "'FILL' 0" }}>
-                        favorite
-                      </span>
-                      {post.like_count}
-                    </button>
+                    <div className="flex items-center gap-4">
+                      <button
+                        className="flex items-center gap-1.5 text-[11px] font-bold transition-all hover:scale-105"
+                        style={{ color: expandedComments[post.id] ? '#6366F1' : textSec }}
+                        onClick={() => toggleComments(post.id)}>
+                        <span className="material-symbols-outlined text-base">
+                          chat_bubble_outline
+                        </span>
+                        {post.comment_count ?? 0}
+                      </button>
+                      <button
+                        disabled={likeLoading[post.id]}
+                        className="flex items-center gap-1.5 text-[11px] font-bold transition-all hover:scale-110 disabled:opacity-50"
+                        style={{ color: isLiked ? '#EF4444' : textSec }}
+                        onClick={() => handleLike(post.id)}>
+                        <span className="material-symbols-outlined text-base"
+                          style={{ fontVariationSettings: isLiked ? "'FILL' 1" : "'FILL' 0" }}>
+                          favorite
+                        </span>
+                        {post.like_count}
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Expandable Comments Section */}
+                  {expandedComments[post.id] && (
+                    <div className="mt-4 pt-4 space-y-3" style={{ borderTop: `1px solid ${border}` }}>
+                      <p className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>
+                        Discussion ({postComments[post.id]?.length ?? post.comment_count ?? 0})
+                      </p>
+
+                      {/* Comment Input */}
+                      {user ? (
+                        <form onSubmit={(e) => handleAddComment(post.id, e)} className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Share your thoughts or ask a question..."
+                            value={newCommentBody[post.id] || ''}
+                            onChange={(e) => setNewCommentBody(b => ({ ...b, [post.id]: e.target.value }))}
+                            className="flex-1 rounded-xl px-3.5 py-2 text-xs outline-none"
+                            style={{ background: surfLow, border: `1px solid ${border}`, color: textPri }}
+                          />
+                          <button
+                            type="submit"
+                            disabled={commentSubmitting[post.id] || !newCommentBody[post.id]?.trim()}
+                            className="px-4 py-2 rounded-xl text-xs font-bold disabled:opacity-40 transition-all hover:opacity-90"
+                            style={{ background: '#6366F1', color: '#fff' }}>
+                            {commentSubmitting[post.id] ? '...' : 'Post'}
+                          </button>
+                        </form>
+                      ) : (
+                        <p className="text-xs italic" style={{ color: textSec }}>
+                          Sign in to join the conversation.
+                        </p>
+                      )}
+
+                      {/* Comments List */}
+                      {commentsLoading[post.id] ? (
+                        <div className="py-3 text-center text-xs" style={{ color: textSec }}>
+                          Loading comments...
+                        </div>
+                      ) : (postComments[post.id] || []).length === 0 ? (
+                        <p className="text-xs py-2" style={{ color: textSec }}>
+                          No comments yet. Be the first to start the discussion!
+                        </p>
+                      ) : (
+                        <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                          {(postComments[post.id] || []).map(comment => (
+                            <div key={comment.id} className="p-3 rounded-xl flex items-start gap-2.5" style={{ background: surfLow }}>
+                              <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0"
+                                style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)', color: '#fff' }}>
+                                {(comment.author_info?.username || '?')[0].toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                  <span className="text-xs font-bold truncate" style={{ color: textPri }}>
+                                    {comment.author_info?.username || 'User'}
+                                  </span>
+                                  <span className="text-[10px] shrink-0" style={{ color: textSec }}>
+                                    {timeAgo(comment.created_at)}
+                                  </span>
+                                </div>
+                                <p className="text-xs leading-relaxed whitespace-pre-wrap break-words" style={{ color: textPri }}>
+                                  {comment.body}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

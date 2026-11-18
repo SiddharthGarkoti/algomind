@@ -6,6 +6,7 @@ from .views import (
     NotificationListView, MarkNotificationReadView, MarkAllNotificationsReadView, DeleteNotificationView,
     FriendOnlineStatusView, AIInsightNotificationView, MentorAnalysisView,
     SendOTPView, VerifyOTPView, AwardPlanCompletionView, DeleteAccountView,
+    ContactSupportView, SetPlanTierView,
 )
 from .oauth import GitHubBeginView, GitHubCallbackView, GoogleBeginView, GoogleCallbackView
 
@@ -34,5 +35,7 @@ urlpatterns = [
     path('ai-insight/',                  AIInsightNotificationView.as_view(),     name='ai_insight'),
     path('mentor-analysis/',             MentorAnalysisView.as_view(),            name='mentor_analysis'),
     path('award-plan-completion/',       AwardPlanCompletionView.as_view(),       name='award_plan_completion'),
+    path('set-plan-tier/',               SetPlanTierView.as_view(),               name='set_plan_tier'),
+    path('contact/',                     ContactSupportView.as_view(),            name='contact_support'),
     path('delete-account/',              DeleteAccountView.as_view(),             name='delete_account'),
 ]

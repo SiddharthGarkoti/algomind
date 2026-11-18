@@ -4,6 +4,7 @@ LeetCode  — GraphQL API (no auth required for public profiles)
 Codeforces — Official REST API (public)
 """
 import requests
+from datetime import datetime, timezone, timedelta
 
 LEETCODE_GQL = 'https://leetcode.com/graphql'
 CF_API       = 'https://codeforces.com/api'
@@ -67,6 +68,10 @@ def fetch_leetcode(handle: str) -> dict:
     query getUserProfile($username: String!) {
       matchedUser(username: $username) {
         username
+        userCalendar {
+          streak
+          totalActiveDays
+        }
         submitStats {
           acSubmissionNum {
             difficulty
@@ -103,6 +108,10 @@ def fetch_leetcode(handle: str) -> dict:
         hard_solved   = raw_counts.get('Hard',   0)
         total_solved  = raw_counts.get('All', easy_solved + medium_solved + hard_solved)
 
+        # --- streak info ---
+        calendar_info = user.get('userCalendar') or {}
+        streak        = int(calendar_info.get('streak') or 0)
+
         # --- contest info ---
         contest_info = data.get('userContestRanking') or {}
         rating       = int(contest_info.get('rating') or 0)
@@ -122,6 +131,7 @@ def fetch_leetcode(handle: str) -> dict:
 
         return {
             'rating':          rating,
+            'streak':          streak,
             'problems_solved': total_solved,
             'contests':        contests,
             'easy_solved':     easy_solved,
@@ -179,10 +189,14 @@ def fetch_codeforces(handle: str) -> dict:
 
         seen_problems: dict = {}
         topic_map: dict[str, int] = {}
+        solve_dates = set()
 
         if sub_data.get('status') == 'OK':
             for sub in sub_data['result']:
                 if sub.get('verdict') == 'OK':
+                    ts = sub.get('creationTimeSeconds', 0)
+                    if ts:
+                        solve_dates.add(datetime.fromtimestamp(ts, tz=timezone.utc).date())
                     p   = sub['problem']
                     key = f"{p.get('contestId', '')}-{p.get('index', '')}"
                     if key not in seen_problems:
@@ -191,6 +205,14 @@ def fetch_codeforces(handle: str) -> dict:
                             # Skip meta-tags that start with * (e.g. '*broken')
                             if tag and not tag.startswith('*'):
                                 topic_map[tag] = topic_map.get(tag, 0) + 1
+
+        cf_streak = 0
+        check_date = datetime.now(timezone.utc).date()
+        if check_date not in solve_dates:
+            check_date -= timedelta(days=1)
+        while check_date in solve_dates:
+            cf_streak += 1
+            check_date -= timedelta(days=1)
 
         # Classify by problem rating
         easy_solved = medium_solved = hard_solved = 0
@@ -225,6 +247,7 @@ def fetch_codeforces(handle: str) -> dict:
 
         return {
             'rating':          rating,
+            'streak':          cf_streak,
             'problems_solved': len(seen_problems),
             'contests':        contests,
             'easy_solved':     easy_solved,

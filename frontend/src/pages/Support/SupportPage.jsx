@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../utils/api.js';
 
 const FAQS = [
   { q: 'How does AlgoMind analyze my profile?',       a: 'We fetch your solved problems from LeetCode and Codeforces via their public APIs, then identify weak topics and generate a personalized daily plan.' },
@@ -14,6 +15,27 @@ function SupportPage({ isDark, toggleTheme }) {
   const [open, setOpen] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', msg: '' });
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.email.trim() || !form.msg.trim()) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      await api.post('/auth/contact/', {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        message: form.msg.trim(),
+      });
+      setSent(true);
+    } catch (err) {
+      setError(err?.detail || err?.message || 'Failed to deliver message. Please try again or email us directly.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const bg      = isDark
     ? 'radial-gradient(circle at 0% 0%, rgba(99,102,241,0.12) 0%, transparent 45%), #0A0A0B'
@@ -103,9 +125,22 @@ function SupportPage({ isDark, toggleTheme }) {
               <span className="material-symbols-outlined text-5xl mb-4 block" style={{ color: '#22C55E', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
               <p className="font-headline font-bold text-lg mb-2" style={{ color: textPri }}>Message Sent!</p>
               <p style={{ color: textSec }}>We'll get back to you within 24 hours.</p>
+              <button
+                type="button"
+                onClick={() => { setSent(false); setForm({ name: '', email: '', msg: '' }); }}
+                className="mt-6 px-5 py-2 rounded-xl text-xs font-semibold hover:opacity-85 transition-opacity"
+                style={{ background: surfLow, border: `1px solid ${border}`, color: '#6366F1' }}
+              >
+                Send Another Message
+              </button>
             </div>
           ) : (
-            <form className="space-y-4" onSubmit={e => { e.preventDefault(); setSent(true); }}>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              {error && (
+                <div className="p-3 rounded-xl text-xs text-center" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
+                  {error}
+                </div>
+              )}
               {[
                 { label: 'Your Name', key: 'name', type: 'text', placeholder: 'Alex Chen' },
                 { label: 'Email',     key: 'email', type: 'email', placeholder: 'alex@example.com' },
@@ -125,10 +160,17 @@ function SupportPage({ isDark, toggleTheme }) {
                   className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
                   style={{ background: surfLow, border: `1px solid ${border}`, color: textPri }} />
               </div>
-              <button type="submit"
-                className="w-full py-4 rounded-2xl font-headline font-bold text-white transition-all hover:opacity-90 active:scale-[0.98]"
+              <button type="submit" disabled={submitting}
+                className="w-full py-4 rounded-2xl font-headline font-bold text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                 style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)', boxShadow: '0 12px 30px -8px rgba(99,102,241,0.4)' }}>
-                Send Message
+                {submitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  'Send Message'
+                )}
               </button>
             </form>
           )}
