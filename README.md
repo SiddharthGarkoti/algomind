@@ -265,15 +265,15 @@ AlgoMind features an internal rating and level progression engine to measure con
 │ Arena Medium Problem Solved                  │ +25 to +40 points                        │
 │ Arena Hard Problem Solved                    │ +50 points                               │
 │ Study Goal / Adaptive Plan Completed         │ +200 points                              │
-│ Ranked Party — 1st Place (Winner)            │ +100 points + 10 × (Participants − 1)    │
-│ Ranked Party — 2nd Place                     │ +60 points                               │
-│ Ranked Party — 3rd Place                     │ +30 points                               │
-│ Ranked Party — Other Finishing Participants  │ +10 points                               │
+│ The Gauntlet — 1st Place (Winner)            │ +100 points + 10 × (Participants − 1)    │
+│ The Gauntlet — 2nd Place                     │ +60 points                               │
+│ The Gauntlet — 3rd Place                     │ +30 points                               │
+│ The Gauntlet — Other Finishing Participants  │ +10 points                               │
 └──────────────────────────────────────────────┴──────────────────────────────────────────┘
 ```
 
 ### 3. Contest Win Bonus Formula
-In ranked code parties, the 1st place award scales dynamically with participant count:
+In The Gauntlet (ranked matches), the 1st place award scales dynamically with participant count:
 $$\text{Points}_{\text{Rank 1}} = 100 + 10 \times \max(0, N_{\text{participants}} - 1)$$
 This guarantees greater reward for winning larger, more competitive cohort sessions.
 

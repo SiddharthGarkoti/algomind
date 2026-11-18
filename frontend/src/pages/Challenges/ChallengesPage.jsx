@@ -921,7 +921,7 @@ function PartyTab({ isDark, isRankedView = false }) {
         setIsRankedFlow(true);
         // Block join if extension not installed
         if (!extensionInstalled) {
-          setError('⛔ This is a Ranked Party. Install the AlgoMind Fair Play extension to join.');
+          setError('This is The Gauntlet. Install the AlgoMind Fair Play extension to join.');
           setBusy(false);
           return;
         }
@@ -934,7 +934,7 @@ function PartyTab({ isDark, isRankedView = false }) {
   const handleStart = async (ranked = false) => {
     // Hard block — ranked challenge MUST have extension
     if (ranked && !extensionInstalled) {
-      setError('⛔ Install the AlgoMind Fair Play extension before starting a Ranked Party.');
+      setError('Install the AlgoMind Fair Play extension before starting The Gauntlet.');
       return;
     }
     try {
@@ -1215,7 +1215,7 @@ function PartyTab({ isDark, isRankedView = false }) {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold mb-0.5" style={{ color: '#e63946' }}>AlgoMind Fair Play Extension Required</p>
-                <p className="text-xs" style={{ color: t.textSec }}>Install the extension to host or join Ranked parties. It monitors fair play during the challenge.</p>
+                <p className="text-xs" style={{ color: t.textSec }}>Install the extension to host or enter The Gauntlet. It monitors fair play during the challenge.</p>
               </div>
               <a
                 id="algomind-extension-install-btn"
@@ -1243,11 +1243,11 @@ function PartyTab({ isDark, isRankedView = false }) {
                   border: '1px solid rgba(230,57,70,0.3)',
                   boxShadow: '0 0 40px rgba(230,57,70,0.25)'
                 }}>
-                <span className="material-symbols-outlined text-4xl" style={{ color: '#e63946' }}>shield</span>
+                <span className="material-symbols-outlined text-4xl" style={{ color: '#e63946' }}>swords</span>
               </div>
-              <h2 className="text-3xl font-black mb-3" style={{ color: t.textPri }}>Ranked Code Party</h2>
+              <h2 className="text-3xl font-black mb-3" style={{ color: t.textPri }}>The Gauntlet</h2>
               <p className="text-sm max-w-md mx-auto leading-relaxed mb-2" style={{ color: t.textSec }}>
-                Compete under strict fair-play rules enforced by the AlgoMind extension.
+                Enter The Gauntlet. Compete under strict fair-play rules enforced by the AlgoMind extension.
                 Tab switching, new windows, restricted pages, and focus loss are all monitored in real-time.
               </p>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold mb-8"
@@ -1262,8 +1262,8 @@ function PartyTab({ isDark, isRankedView = false }) {
                   onClick={() => { setIsRankedFlow(true); setCreateOpen(true); }}
                   className="flex-1 py-3 px-6 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.03] disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ background: 'linear-gradient(135deg,#e63946,#c1121f)', color: '#fff', boxShadow: extensionInstalled ? '0 12px 32px -8px rgba(230,57,70,0.5)' : 'none' }}>
-                  <span className="material-symbols-outlined text-lg">shield</span>
-                  {extensionInstalled ? 'Host Ranked Party' : 'Install Extension First'}
+                  <span className="material-symbols-outlined text-lg">swords</span>
+                  {extensionInstalled ? 'Host The Gauntlet' : 'Install Extension First'}
                 </button>
               </div>
             </div>
@@ -1271,7 +1271,7 @@ function PartyTab({ isDark, isRankedView = false }) {
 
           {/* Join ranked */}
           <GlassCard isDark={isDark} className="p-7" style={{ borderColor: 'rgba(230,57,70,0.2)' }}>
-            <h3 className="text-base font-bold mb-1" style={{ color: t.textPri }}>Join a Ranked Party</h3>
+            <h3 className="text-base font-bold mb-1" style={{ color: t.textPri }}>Join The Gauntlet</h3>
             <p className="text-xs mb-4" style={{ color: t.textSec }}>Enter the 6-character party code. Extension must be installed to participate.</p>
             <div className="flex gap-2">
               <input
@@ -1286,7 +1286,7 @@ function PartyTab({ isDark, isRankedView = false }) {
               <button onClick={handleJoin} disabled={busy || joinCode.length < 6 || !extensionInstalled}
                 className="px-6 py-3 rounded-2xl font-bold text-sm disabled:opacity-40 flex items-center gap-2 transition-all hover:scale-[1.03]"
                 style={{ background: '#e63946', color: '#fff' }}>
-                {busy ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Join'}
+                {busy ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Enter'}
               </button>
             </div>
           </GlassCard>
@@ -1296,7 +1296,7 @@ function PartyTab({ isDark, isRankedView = false }) {
             {[
               { icon: 'gpp_good', color: '#e63946', title: 'Extension Enforced', desc: 'Every tab switch, new window, and focus loss is tracked in real-time by the browser extension.' },
               { icon: 'bolt', color: '#F59E0B', title: 'Custom Strikes', desc: 'Host sets how many violations (1-5) are allowed before auto-forfeit. Every strike is notified.' },
-              { icon: 'leaderboard', color: '#22C55E', title: 'Ranked Leaderboard', desc: 'Strike counts visible live. Spectator mode lets the host watch without competing.' },
+              { icon: 'leaderboard', color: '#22C55E', title: 'The Gauntlet Leaderboard', desc: 'Strike counts visible live. Spectator mode lets the host watch without competing.' },
             ].map(({ icon, color, title, desc }) => (
               <GlassCard key={title} isDark={isDark} className="p-6 text-center">
                 <div className="w-12 h-12 rounded-2xl mx-auto mb-4 flex items-center justify-center"
@@ -1324,19 +1324,19 @@ function PartyTab({ isDark, isRankedView = false }) {
                   border: '1px solid rgba(99,102,241,0.3)',
                   boxShadow: '0 0 40px rgba(99,102,241,0.3)'
                 }}>
-                <span className="material-symbols-outlined text-4xl" style={{ color: '#6366F1' }}>groups</span>
+                <span className="material-symbols-outlined text-4xl" style={{ color: '#6366F1' }}>sports_esports</span>
               </div>
-              <h2 className="text-3xl font-black mb-3" style={{ color: t.textPri }}>Friends Code Party</h2>
+              <h2 className="text-3xl font-black mb-3" style={{ color: t.textPri }}>Playground</h2>
               <p className="text-sm max-w-md mx-auto leading-relaxed mb-8" style={{ color: t.textSec }}>
-                Host a live coding challenge with friends. The host selects or AI-shuffles problems
-                from LeetCode &amp; Codeforces — first to finish all wins! 🎉
+                Host a live coding match in the Playground with friends. The host selects or AI-shuffles problems
+                from LeetCode &amp; Codeforces — first to finish all wins!
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-sm mx-auto">
                 <button onClick={() => setCreateOpen(true)}
                   className="flex-1 py-3 px-6 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.03]"
                   style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff', boxShadow: '0 12px 32px -8px rgba(99,102,241,0.5)' }}>
                   <span className="material-symbols-outlined text-lg">add_circle</span>
-                  Host a Party
+                  Host Playground
                 </button>
               </div>
             </div>
@@ -1344,7 +1344,7 @@ function PartyTab({ isDark, isRankedView = false }) {
 
           {/* Casual Join */}
           <GlassCard isDark={isDark} className="p-7">
-            <h3 className="text-base font-bold mb-1" style={{ color: t.textPri }}>Join a Party</h3>
+            <h3 className="text-base font-bold mb-1" style={{ color: t.textPri }}>Join Playground</h3>
             <p className="text-xs mb-4" style={{ color: t.textSec }}>Enter the 6-character party code shared by your friend.</p>
             <div className="flex gap-2">
               <input
@@ -1396,7 +1396,7 @@ function PartyTab({ isDark, isRankedView = false }) {
 function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked = false }) {
   const t = useTheme(isDark);
   const [opts, setOpts] = useState({
-    name: modalIsRanked ? 'Ranked Code Party' : 'Code Party',
+    name: modalIsRanked ? 'The Gauntlet' : 'Playground',
     duration_minutes: 60,
     max_questions: 4,
     question_mode: 'shuffle',
@@ -1415,7 +1415,7 @@ function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked 
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-xl font-bold" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
-                {modalIsRanked ? '🛡️ Create Ranked Party' : 'Create Code Party'}
+                {modalIsRanked ? 'Create The Gauntlet' : 'Create Playground'}
               </h3>
               {modalIsRanked && (
                 <p className="text-xs mt-0.5" style={{ color: '#e63946' }}>Fair Play extension required to play</p>
@@ -1426,7 +1426,7 @@ function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked 
 
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>Party Name</label>
+              <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>Match Name</label>
               <input value={opts.name} onChange={e => setOpts(o => ({ ...o, name: e.target.value }))}
                 className="w-full px-4 py-3 rounded-xl outline-none text-sm"
                 style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }} />
@@ -1475,7 +1475,7 @@ function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked 
             {/* Ranked-only options */}
             {modalIsRanked && (
               <div className="space-y-3 pt-2 border-t" style={{ borderColor: 'rgba(230,57,70,0.2)' }}>
-                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#e63946' }}>Ranked Settings</p>
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#e63946' }}>The Gauntlet Settings</p>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -1515,7 +1515,7 @@ function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked 
             className="w-full mt-6 py-3 rounded-2xl font-bold text-white disabled:opacity-60 flex items-center justify-center gap-2"
             style={{ background: modalIsRanked ? 'linear-gradient(135deg,#e63946,#c1121f)' : 'linear-gradient(135deg,#6366F1,#A855F7)' }}>
             {busy && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-            {modalIsRanked ? '🛡️ Create Ranked Party' : 'Create Party'}
+            {modalIsRanked ? 'Create The Gauntlet' : 'Create Playground'}
           </button>
         </div>
       </div>
@@ -1524,7 +1524,7 @@ function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked 
 }
 
 /* ═════════════════════════════════════════════════════════════════
-   Main Page — 3 tabs: Casual Party, Ranked Party, Contests
+   Main Page — 3 tabs: Playground, The Gauntlet, Contests
 ═════════════════════════════════════════════════════════════════ */
 function ChallengesPage({ theme, toggleTheme }) {
   const isDark = theme === 'dark';
@@ -1532,8 +1532,8 @@ function ChallengesPage({ theme, toggleTheme }) {
   const [tab, setTab] = useState('casual');
 
   const TABS = [
-    { id: 'casual', label: 'Casual Party',  icon: 'groups',       color: '#6366F1' },
-    { id: 'ranked', label: 'Ranked Party',  icon: 'shield',        color: '#e63946' },
+    { id: 'casual', label: 'Playground',    icon: 'sports_esports', color: '#6366F1' },
+    { id: 'ranked', label: 'The Gauntlet',  icon: 'swords',         color: '#e63946' },
     { id: 'contest', label: 'Contests',     icon: 'emoji_events',  color: '#F59E0B' },
   ];
 
