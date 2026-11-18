@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
+import { buildAchievements } from './achievementsCatalog.js';
 
 function ProfilePage({ theme, toggleTheme }) {
   const isDark   = theme === 'dark';
@@ -25,6 +26,8 @@ function ProfilePage({ theme, toggleTheme }) {
   const [loadingData,   setLoadingData]   = useState(true);
   const [activeTab,     setActiveTab]     = useState('all');
   const [selectedBadge, setSelectedBadge] = useState(null);
+  const [badgeSearch,   setBadgeSearch]   = useState('');
+  const [unlockedOnly,  setUnlockedOnly]  = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -140,284 +143,50 @@ function ProfilePage({ theme, toggleTheme }) {
     return count;
   };
 
-  const twoPointerSolved   = getTopicSolved(['two-pointer', 'two_pointer', 'pointers']);
-  const binarySearchSolved = getTopicSolved(['binary-search', 'binary_search']);
-  const dpSolved           = getTopicSolved(['dynamic-programming', 'dp']);
-  const treeGraphSolved    = getTopicSolved(['tree', 'trees', 'graph', 'graphs', 'bfs', 'dfs']);
-  const arrayStringSolved  = getTopicSolved(['array', 'arrays', 'string', 'strings']);
-
-  // Real verifiable achievements
-  const allAchievements = useMemo(() => [
-    // ── Solving Milestones ──
-    {
-      id: 'solve-100',
-      category: 'Solving',
-      title: 'Centurion',
-      subtitle: '100 Problems',
-      description: 'Solve 100 problems on LeetCode or Codeforces',
-      icon: 'workspace_premium',
-      badgeColor: '#818CF8',
-      gradient: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
-      glow: '0 0 20px rgba(99, 102, 241, 0.4)',
-      current: totalSolved,
-      target: 100,
-      earned: totalSolved >= 100,
-      metricText: `${Math.min(totalSolved, 100)} / 100 solved`,
-    },
-    {
-      id: 'solve-150',
-      category: 'Solving',
-      title: 'Adept',
-      subtitle: '150 Problems',
-      description: 'Solve 150 problems across connected platforms',
-      icon: 'military_tech',
-      badgeColor: '#818CF8',
-      gradient: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
-      glow: '0 0 20px rgba(79, 70, 229, 0.4)',
-      current: totalSolved,
-      target: 150,
-      earned: totalSolved >= 150,
-      metricText: `${Math.min(totalSolved, 150)} / 150 solved`,
-    },
-    {
-      id: 'solve-250',
-      category: 'Solving',
-      title: 'Quarter-Mille',
-      subtitle: '250 Problems',
-      description: 'Reach 250 solved problems in algorithmic training',
-      icon: 'stars',
-      badgeColor: '#A855F7',
-      gradient: 'linear-gradient(135deg, #7C3AED, #A855F7)',
-      glow: '0 0 20px rgba(168, 85, 247, 0.4)',
-      current: totalSolved,
-      target: 250,
-      earned: totalSolved >= 250,
-      metricText: `${Math.min(totalSolved, 250)} / 250 solved`,
-    },
-    {
-      id: 'solve-500',
-      category: 'Solving',
-      title: 'Grandmaster',
-      subtitle: '500 Problems',
-      description: 'Solve 500 competitive algorithmic problems',
-      icon: 'diamond',
-      badgeColor: '#C084FC',
-      gradient: 'linear-gradient(135deg, #9333EA, #C084FC)',
-      glow: '0 0 24px rgba(192, 132, 252, 0.45)',
-      current: totalSolved,
-      target: 500,
-      earned: totalSolved >= 500,
-      metricText: `${Math.min(totalSolved, 500)} / 500 solved`,
-    },
-
-    // ── Streak Milestones ──
-    {
-      id: 'streak-7',
-      category: 'Streak',
-      title: 'Consistency',
-      subtitle: '7-Day Streak',
-      description: 'Maintain a 7-day problem-solving streak',
-      icon: 'local_fire_department',
-      badgeColor: '#F59E0B',
-      gradient: 'linear-gradient(135deg, #F59E0B, #D97706)',
-      glow: '0 0 20px rgba(245, 158, 11, 0.4)',
-      current: bestStreak,
-      target: 7,
-      earned: bestStreak >= 7,
-      metricText: `${Math.min(bestStreak, 7)} / 7 days`,
-    },
-    {
-      id: 'streak-30',
-      category: 'Streak',
-      title: 'Dedication',
-      subtitle: '30-Day Streak',
-      description: 'Complete 30 consecutive days of active practice',
-      icon: 'calendar_month',
-      badgeColor: '#F59E0B',
-      gradient: 'linear-gradient(135deg, #D97706, #EA580C)',
-      glow: '0 0 20px rgba(217, 119, 6, 0.4)',
-      current: bestStreak,
-      target: 30,
-      earned: bestStreak >= 30,
-      metricText: `${Math.min(bestStreak, 30)} / 30 days`,
-    },
-    {
-      id: 'streak-100',
-      category: 'Streak',
-      title: 'Centurion Streak',
-      subtitle: '100-Day Streak',
-      description: 'Reach an exceptional 100-day solving streak',
-      icon: 'bolt',
-      badgeColor: '#FB923C',
-      gradient: 'linear-gradient(135deg, #EA580C, #C2410C)',
-      glow: '0 0 20px rgba(234, 88, 12, 0.45)',
-      current: bestStreak,
-      target: 100,
-      earned: bestStreak >= 100,
-      metricText: `${Math.min(bestStreak, 100)} / 100 days`,
-    },
-    {
-      id: 'streak-365',
-      category: 'Streak',
-      title: 'Iron Will',
-      subtitle: '365-Day Year',
-      description: 'A full continuous year of daily algorithmic training',
-      icon: 'shield',
-      badgeColor: '#F97316',
-      gradient: 'linear-gradient(135deg, #C2410C, #9A3412)',
-      glow: '0 0 24px rgba(194, 65, 12, 0.5)',
-      current: bestStreak,
-      target: 365,
-      earned: bestStreak >= 365,
-      metricText: `${Math.min(bestStreak, 365)} / 365 days`,
-    },
-
-    // ── Topic Plans & Algomind Mastery ──
-    {
-      id: 'plan-two-pointers',
-      category: 'Plans',
-      title: 'Two Pointers',
-      subtitle: 'Pattern Master',
-      description: 'Complete Two Pointers plan or solve 10 Two Pointers problems',
-      icon: 'alt_route',
-      badgeColor: '#A855F7',
-      gradient: 'linear-gradient(135deg, #8B5CF6, #EC4899)',
-      glow: '0 0 20px rgba(139, 92, 246, 0.4)',
-      current: completedPlanTopics.has('two-pointers') ? 10 : twoPointerSolved,
-      target: 10,
-      earned: completedPlanTopics.has('two-pointers') || twoPointerSolved >= 10,
-      metricText: completedPlanTopics.has('two-pointers') ? 'Plan completed' : `${Math.min(twoPointerSolved, 10)} / 10 solved`,
-    },
-    {
-      id: 'plan-binary-search',
-      category: 'Plans',
-      title: 'Binary Search',
-      subtitle: 'Search Master',
-      description: 'Complete Binary Search plan or solve 10 Binary Search problems',
-      icon: 'manage_search',
-      badgeColor: '#A855F7',
-      gradient: 'linear-gradient(135deg, #7C3AED, #DB2777)',
-      glow: '0 0 20px rgba(124, 58, 237, 0.4)',
-      current: completedPlanTopics.has('binary-search') ? 10 : binarySearchSolved,
-      target: 10,
-      earned: completedPlanTopics.has('binary-search') || binarySearchSolved >= 10,
-      metricText: completedPlanTopics.has('binary-search') ? 'Plan completed' : `${Math.min(binarySearchSolved, 10)} / 10 solved`,
-    },
-    {
-      id: 'plan-dp',
-      category: 'Plans',
-      title: 'DP Strategist',
-      subtitle: 'Dynamic Prog.',
-      description: 'Complete Dynamic Programming plan or solve 15 DP problems',
-      icon: 'grid_view',
-      badgeColor: '#C084FC',
-      gradient: 'linear-gradient(135deg, #A855F7, #F43F5E)',
-      glow: '0 0 20px rgba(168, 85, 247, 0.4)',
-      current: completedPlanTopics.has('dp') || completedPlanTopics.has('dynamic-programming') ? 15 : dpSolved,
-      target: 15,
-      earned: completedPlanTopics.has('dp') || completedPlanTopics.has('dynamic-programming') || dpSolved >= 15,
-      metricText: completedPlanTopics.has('dp') || completedPlanTopics.has('dynamic-programming') ? 'Plan completed' : `${Math.min(dpSolved, 15)} / 15 solved`,
-    },
-    {
-      id: 'plan-trees-graphs',
-      category: 'Plans',
-      title: 'Graph Architect',
-      subtitle: 'Trees & Graphs',
-      description: 'Complete Trees/Graphs plan or solve 15 Tree/Graph problems',
-      icon: 'account_tree',
-      badgeColor: '#C084FC',
-      gradient: 'linear-gradient(135deg, #6366F1, #D946EF)',
-      glow: '0 0 20px rgba(99, 102, 241, 0.4)',
-      current: completedPlanTopics.has('trees') || completedPlanTopics.has('graphs') ? 15 : treeGraphSolved,
-      target: 15,
-      earned: completedPlanTopics.has('trees') || completedPlanTopics.has('graphs') || treeGraphSolved >= 15,
-      metricText: completedPlanTopics.has('trees') || completedPlanTopics.has('graphs') ? 'Plan completed' : `${Math.min(treeGraphSolved, 15)} / 15 solved`,
-    },
-    {
-      id: 'plan-arrays-strings',
-      category: 'Plans',
-      title: 'Array & String',
-      subtitle: 'Core Foundation',
-      description: 'Solve 50 or more Array & String problems',
-      icon: 'data_array',
-      badgeColor: '#A855F7',
-      gradient: 'linear-gradient(135deg, #4F46E5, #9333EA)',
-      glow: '0 0 20px rgba(79, 70, 229, 0.4)',
-      current: arrayStringSolved,
-      target: 50,
-      earned: arrayStringSolved >= 50,
-      metricText: `${Math.min(arrayStringSolved, 50)} / 50 solved`,
-    },
-
-    // ── Contest Milestones ──
-    {
-      id: 'contest-first',
-      category: 'Contests',
-      title: 'First Contest',
-      subtitle: 'Arena Debut',
-      description: 'Participate in your first rated contest',
-      icon: 'flag',
-      badgeColor: '#F43F5E',
-      gradient: 'linear-gradient(135deg, #F43F5E, #E11D48)',
-      glow: '0 0 20px rgba(244, 63, 94, 0.4)',
-      current: totalContests,
-      target: 1,
-      earned: totalContests >= 1,
-      metricText: `${Math.min(totalContests, 1)} / 1 contest`,
-    },
-    {
-      id: 'contest-5',
-      category: 'Contests',
-      title: 'Arena Veteran',
-      subtitle: '5 Contests',
-      description: 'Enter 5 or more rated competitive contests',
-      icon: 'sports_score',
-      badgeColor: '#E11D48',
-      gradient: 'linear-gradient(135deg, #E11D48, #BE123C)',
-      glow: '0 0 20px rgba(225, 29, 72, 0.4)',
-      current: totalContests,
-      target: 5,
-      earned: totalContests >= 5,
-      metricText: `${Math.min(totalContests, 5)} / 5 contests`,
-    },
-    {
-      id: 'rating-1400',
-      category: 'Contests',
-      title: 'Specialist',
-      subtitle: '1400 Rating',
-      description: 'Achieve a contest rating of 1400 or above',
-      icon: 'trending_up',
-      badgeColor: '#FB7185',
-      gradient: 'linear-gradient(135deg, #BE123C, #9F1239)',
-      glow: '0 0 20px rgba(190, 18, 60, 0.45)',
-      current: maxRating,
-      target: 1400,
-      earned: maxRating >= 1400,
-      metricText: maxRating > 0 ? `${maxRating} / 1400 rating` : '0 / 1400 rating',
-    },
-    {
-      id: 'rating-1600',
-      category: 'Contests',
-      title: 'Expert',
-      subtitle: '1600 Rating',
-      description: 'Attain a competitive contest rating of 1600 or higher',
-      icon: 'military_tech',
-      badgeColor: '#FDA4AF',
-      gradient: 'linear-gradient(135deg, #9F1239, #881337)',
-      glow: '0 0 24px rgba(159, 18, 57, 0.5)',
-      current: maxRating,
-      target: 1600,
-      earned: maxRating >= 1600,
-      metricText: maxRating > 0 ? `${maxRating} / 1600 rating` : '0 / 1600 rating',
-    },
-  ], [totalSolved, bestStreak, totalContests, maxRating, completedPlanTopics, twoPointerSolved, binarySearchSolved, dpSolved, treeGraphSolved, arrayStringSolved]);
+  // Real verifiable achievements (180+ across DSA, Core CS, Solving, Streak, Contests, Skills)
+  const allAchievements = useMemo(() => {
+    return buildAchievements({
+      totalSolved,
+      bestStreak,
+      totalContests,
+      maxRating,
+      completedPlanTopics,
+      getTopicSolved,
+      platforms,
+      user,
+    });
+  }, [totalSolved, bestStreak, totalContests, maxRating, completedPlanTopics, topics, platforms, user]);
 
   const earnedCount = allAchievements.filter(a => a.earned).length;
 
+  const categoryCounts = useMemo(() => {
+    const counts = { all: allAchievements.length };
+    allAchievements.forEach(a => {
+      const cat = a.category.toLowerCase();
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return counts;
+  }, [allAchievements]);
+
   const filteredAchievements = useMemo(() => {
-    if (activeTab === 'all') return allAchievements;
-    return allAchievements.filter(a => a.category.toLowerCase() === activeTab.toLowerCase());
-  }, [allAchievements, activeTab]);
+    let list = allAchievements;
+    if (activeTab !== 'all') {
+      list = list.filter(a => a.category.toLowerCase() === activeTab.toLowerCase());
+    }
+    if (unlockedOnly) {
+      list = list.filter(a => a.earned);
+    }
+    if (badgeSearch.trim()) {
+      const q = badgeSearch.trim().toLowerCase();
+      list = list.filter(a =>
+        a.title.toLowerCase().includes(q) ||
+        a.subtitle.toLowerCase().includes(q) ||
+        a.description.toLowerCase().includes(q) ||
+        a.category.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [allAchievements, activeTab, unlockedOnly, badgeSearch]);
 
   return (
     <DashboardLayout theme={theme} toggleTheme={toggleTheme}>
@@ -653,133 +422,212 @@ function ProfilePage({ theme, toggleTheme }) {
         {/* ── Verified Achievements (Chess.com Trophy Showcase Style) ── */}
         <div className="rounded-2xl p-6 border backdrop-blur-xl"
           style={{ background: surface, borderColor: border, boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold tracking-tight" style={{ color: textPri }}>Badges &amp; Achievements</h2>
-                <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
-                  style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#818CF8' }}>
-                  {earnedCount} of {allAchievements.length} Unlocked
-                </span>
+          <div className="flex flex-col gap-4 mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base font-semibold tracking-tight" style={{ color: textPri }}>Badges &amp; Achievements</h2>
+                  <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
+                    style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#818CF8' }}>
+                    {earnedCount} of {allAchievements.length} Unlocked
+                  </span>
+                </div>
+                <p className="text-xs mt-0.5" style={{ color: textSec }}>
+                  Over 180 verified milestones across DSA patterns, Core CS subjects, solving tiers, streaks, and contests
+                </p>
               </div>
-              <p className="text-xs mt-0.5" style={{ color: textSec }}>
-                Milestones authenticated against your connected LeetCode, Codeforces, and AlgoMind plan progress
-              </p>
+
+              {/* Unlocked Only Filter */}
+              <button
+                onClick={() => setUnlockedOnly(prev => !prev)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all shrink-0 self-start sm:self-auto border"
+                style={{
+                  background: unlockedOnly ? 'rgba(34, 197, 94, 0.15)' : surfaceLo,
+                  borderColor: unlockedOnly ? 'rgba(34, 197, 94, 0.4)' : border,
+                  color: unlockedOnly ? '#22C55E' : textSec,
+                }}
+              >
+                <span className="material-symbols-outlined text-sm">
+                  {unlockedOnly ? 'check_circle' : 'lock_open'}
+                </span>
+                <span>Unlocked Only ({earnedCount})</span>
+              </button>
+            </div>
+
+            {/* Search toolbar */}
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none"
+                style={{ color: textSec }}>
+                search
+              </span>
+              <input
+                type="text"
+                value={badgeSearch}
+                onChange={(e) => setBadgeSearch(e.target.value)}
+                placeholder="Search 180+ badges (e.g. DP, SQL, 1400, Binary Search, Streak)..."
+                className="w-full pl-9 pr-8 py-2 rounded-xl text-xs border outline-none transition-all"
+                style={{
+                  background: surfaceLo,
+                  borderColor: border,
+                  color: textPri,
+                }}
+              />
+              {badgeSearch && (
+                <button
+                  onClick={() => setBadgeSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center cursor-pointer text-xs"
+                  style={{ color: textSec }}
+                >
+                  <span className="material-symbols-outlined text-xs">close</span>
+                </button>
+              )}
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex items-center gap-1 p-1 rounded-xl shrink-0" style={{ background: surfaceLo, border: `1px solid ${border}` }}>
-              {['all', 'solving', 'streak', 'plans', 'contests'].map(tab => (
+            <div className="flex items-center gap-1.5 p-1 rounded-xl overflow-x-auto no-scrollbar"
+              style={{ background: surfaceLo, border: `1px solid ${border}` }}>
+              {[
+                { id: 'all', label: 'All', count: allAchievements.length },
+                { id: 'dsa', label: 'DSA Topics', count: categoryCounts.dsa || 0 },
+                { id: 'core cs', label: 'Core CS', count: categoryCounts['core cs'] || 0 },
+                { id: 'solving', label: 'Solving', count: categoryCounts.solving || 0 },
+                { id: 'streak', label: 'Streak', count: categoryCounts.streak || 0 },
+                { id: 'contests', label: 'Contests', count: categoryCounts.contests || 0 },
+                { id: 'skills', label: 'Skills & Arena', count: categoryCounts.skills || 0 },
+              ].map(tab => (
                 <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium capitalize transition-all cursor-pointer"
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all cursor-pointer shrink-0"
                   style={{
-                    background: activeTab === tab ? '#6366F1' : 'transparent',
-                    color: activeTab === tab ? '#FFFFFF' : textSec,
+                    background: activeTab === tab.id ? '#6366F1' : 'transparent',
+                    color: activeTab === tab.id ? '#FFFFFF' : textSec,
                   }}>
-                  {tab === 'plans' ? 'Plans' : tab}
+                  <span>{tab.label}</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full"
+                    style={{
+                      background: activeTab === tab.id ? 'rgba(255,255,255,0.2)' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'),
+                      color: activeTab === tab.id ? '#FFFFFF' : textSec,
+                    }}>
+                    {tab.count}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Chess.com Style Badges Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
-            {filteredAchievements.map((badge) => {
-              const pct = Math.min(100, Math.max(0, Math.round((badge.current / badge.target) * 100)));
-              return (
-                <button
-                  key={badge.id}
-                  onClick={() => setSelectedBadge(badge)}
-                  className="group flex flex-col items-center p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer text-center relative overflow-hidden hover:scale-[1.02]"
-                  style={{
-                    background: badge.earned
-                      ? (isDark ? 'rgba(99, 102, 241, 0.04)' : 'rgba(99, 102, 241, 0.02)')
-                      : surfaceLo,
-                    borderColor: badge.earned
-                      ? (isDark ? 'rgba(168, 85, 247, 0.25)' : 'rgba(99, 102, 241, 0.2)')
-                      : border,
-                  }}
-                >
-                  {/* Medallion */}
-                  <div className="relative my-1">
-                    <div
-                      className="w-16 h-16 sm:w-18 sm:h-18 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
-                      style={{
-                        background: badge.earned
-                          ? badge.gradient
-                          : (isDark ? '#1C1C22' : '#E2E8F0'),
-                        boxShadow: badge.earned && isDark ? badge.glow : 'none',
-                        border: badge.earned
-                          ? '2px solid rgba(255, 255, 255, 0.25)'
-                          : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                        filter: badge.earned ? 'none' : 'grayscale(1)',
-                        opacity: badge.earned ? 1 : 0.45,
-                      }}
-                    >
-                      <span
-                        className="material-symbols-outlined text-2xl sm:text-3xl"
+          {/* Chess.com Style Badges Grid / Empty State */}
+          {filteredAchievements.length === 0 ? (
+            <div className="text-center py-12 px-4 rounded-2xl border" style={{ background: surfaceLo, borderColor: border }}>
+              <span className="material-symbols-outlined text-4xl mb-2" style={{ color: textSec }}>search_off</span>
+              <p className="text-sm font-semibold" style={{ color: textPri }}>No badges match your criteria</p>
+              <p className="text-xs mt-1 mb-4" style={{ color: textSec }}>
+                Try adjusting your search query or reset the unlocked filter.
+              </p>
+              <button
+                onClick={() => { setActiveTab('all'); setBadgeSearch(''); setUnlockedOnly(false); }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white cursor-pointer"
+                style={{ background: '#6366F1' }}>
+                Reset Filters
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+              {filteredAchievements.map((badge) => {
+                const pct = Math.min(100, Math.max(0, Math.round((badge.current / badge.target) * 100)));
+                return (
+                  <button
+                    key={badge.id}
+                    onClick={() => setSelectedBadge(badge)}
+                    className="group flex flex-col items-center p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer text-center relative overflow-hidden hover:scale-[1.02]"
+                    style={{
+                      background: badge.earned
+                        ? (isDark ? 'rgba(99, 102, 241, 0.04)' : 'rgba(99, 102, 241, 0.02)')
+                        : surfaceLo,
+                      borderColor: badge.earned
+                        ? (isDark ? 'rgba(168, 85, 247, 0.25)' : 'rgba(99, 102, 241, 0.2)')
+                        : border,
+                    }}
+                  >
+                    {/* Medallion */}
+                    <div className="relative my-1">
+                      <div
+                        className="w-16 h-16 sm:w-18 sm:h-18 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
                         style={{
-                          color: badge.earned ? '#FFFFFF' : textSec,
-                          fontVariationSettings: badge.earned ? "'FILL' 1" : "'FILL' 0",
+                          background: badge.earned
+                            ? badge.gradient
+                            : (isDark ? '#1C1C22' : '#E2E8F0'),
+                          boxShadow: badge.earned && isDark ? badge.glow : 'none',
+                          border: badge.earned
+                            ? '2px solid rgba(255, 255, 255, 0.25)'
+                            : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                          filter: badge.earned ? 'none' : 'grayscale(1)',
+                          opacity: badge.earned ? 1 : 0.45,
                         }}
                       >
-                        {badge.icon}
-                      </span>
+                        <span
+                          className="material-symbols-outlined text-2xl sm:text-3xl"
+                          style={{
+                            color: badge.earned ? '#FFFFFF' : textSec,
+                            fontVariationSettings: badge.earned ? "'FILL' 1" : "'FILL' 0",
+                          }}
+                        >
+                          {badge.icon}
+                        </span>
+                      </div>
+
+                      {/* Status indicator on medal */}
+                      {badge.earned ? (
+                        <div
+                          className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 flex items-center justify-center text-white shadow-sm"
+                          style={{ borderColor: isDark ? '#141419' : '#FFFFFF' }}
+                        >
+                          <span className="material-symbols-outlined text-[12px] font-bold">check</span>
+                        </div>
+                      ) : (
+                        <div
+                          className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 flex items-center justify-center text-zinc-400 shadow-sm"
+                          style={{
+                            background: isDark ? '#27272A' : '#CBD5E1',
+                            borderColor: isDark ? '#141419' : '#FFFFFF',
+                          }}
+                        >
+                          <span className="material-symbols-outlined text-[11px]">lock</span>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Status indicator on medal */}
-                    {badge.earned ? (
-                      <div
-                        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 flex items-center justify-center text-white shadow-sm"
-                        style={{ borderColor: isDark ? '#141419' : '#FFFFFF' }}
-                      >
-                        <span className="material-symbols-outlined text-[12px] font-bold">check</span>
-                      </div>
-                    ) : (
-                      <div
-                        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 flex items-center justify-center text-zinc-400 shadow-sm"
-                        style={{
-                          background: isDark ? '#27272A' : '#CBD5E1',
-                          borderColor: isDark ? '#141419' : '#FFFFFF',
-                        }}
-                      >
-                        <span className="material-symbols-outlined text-[11px]">lock</span>
-                      </div>
-                    )}
-                  </div>
+                    {/* Badge Name & Subtitle */}
+                    <p className="text-xs font-bold truncate w-full mt-2" style={{ color: badge.earned ? textPri : textSec }}>
+                      {badge.title}
+                    </p>
+                    <p className="text-[10px] truncate w-full mt-0.5" style={{ color: textSec }}>
+                      {badge.subtitle}
+                    </p>
 
-                  {/* Badge Name & Subtitle */}
-                  <p className="text-xs font-bold truncate w-full mt-2" style={{ color: badge.earned ? textPri : textSec }}>
-                    {badge.title}
-                  </p>
-                  <p className="text-[10px] truncate w-full mt-0.5" style={{ color: textSec }}>
-                    {badge.subtitle}
-                  </p>
-
-                  {/* Status Pill */}
-                  <div className="mt-2">
-                    {badge.earned ? (
-                      <span
-                        className="text-[9px] font-bold px-2 py-0.5 rounded-full inline-block"
-                        style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#22C55E' }}
-                      >
-                        Unlocked
-                      </span>
-                    ) : (
-                      <span
-                        className="text-[9px] font-semibold px-2 py-0.5 rounded-full inline-block"
-                        style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', color: textSec }}
-                      >
-                        {pct}%
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                    {/* Status Pill */}
+                    <div className="mt-2">
+                      {badge.earned ? (
+                        <span
+                          className="text-[9px] font-bold px-2 py-0.5 rounded-full inline-block"
+                          style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#22C55E' }}
+                        >
+                          Unlocked
+                        </span>
+                      ) : (
+                        <span
+                          className="text-[9px] font-semibold px-2 py-0.5 rounded-full inline-block"
+                          style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', color: textSec }}
+                        >
+                          {pct}%
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* ── Chess.com Badge Detail Modal ── */}
