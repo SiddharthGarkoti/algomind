@@ -109,22 +109,13 @@ class ConnectPlatformView(APIView):
                 request.user.streak = platform_streak
                 request.user.save(update_fields=['streak'])
 
-            # Apply baseline rating logic on first platform connection
-            # Only apply if user is at default 1000 rating
-            if request.user.rating == 1000:
-                total_solved = raw.get('problems_solved', 0)
-                base = 1000
-                if total_solved >= 300:
-                    base = 2000
-                elif total_solved >= 150:
-                    base = 1800
-                elif total_solved >= 50:
-                    base = 1500
-                    
-                if base > 1000:
-                    request.user.rating = base
-                    request.user.level = max(1, base // 500)
-                    request.user.save(update_fields=['rating', 'level'])
+            # Elo rating: user with already an x amount of questions gets x * 10 rating
+            total_solved = raw.get('problems_solved', 0)
+            target_rating = total_solved * 10
+            if request.user.rating < target_rating:
+                request.user.rating = target_rating
+                request.user.level = max(1, target_rating // 500)
+                request.user.save(update_fields=['rating', 'level'])
 
             # --- save topic stats ---
             for ts in topic_stats_raw:
@@ -191,6 +182,11 @@ class DashboardView(APIView):
 
         rated_platforms = [p for p in data if p.get('stats') and p['stats'].get('rating', 0) > 0]
         total_problems  = sum(p['stats']['problems_solved'] for p in data if p.get('stats'))
+        base_elo = total_problems * 10
+        if request.user.rating < base_elo:
+            request.user.rating = base_elo
+            request.user.level = max(1, base_elo // 500)
+            request.user.save(update_fields=['rating', 'level'])
         total_contests  = sum(p['stats']['contests']        for p in data if p.get('stats'))
         avg_rating      = (
             sum(p['stats']['rating'] for p in rated_platforms) // len(rated_platforms)
@@ -330,6 +326,18 @@ class RefreshPlatformView(APIView):
 
         PlatformStats.objects.update_or_create(profile=profile, defaults=raw)
 
+        # Elo rating update: user with x questions gets x * 10 rating
+        all_solved = sum(
+            p.stats.problems_solved
+            for p in request.user.platform_profiles.select_related('stats')
+            if hasattr(p, 'stats') and p.stats
+        )
+        target_rating = all_solved * 10
+        if request.user.rating < target_rating:
+            request.user.rating = target_rating
+            request.user.level = max(1, target_rating // 500)
+            request.user.save(update_fields=['rating', 'level'])
+
         platform_streak = raw.get('streak', 0)
         if platform_streak > request.user.streak:
             request.user.streak = platform_streak
@@ -351,15 +359,17 @@ class RefreshPlatformView(APIView):
 class VerifySolvedView(APIView):
     """
     POST /api/analytics/verify-solved/
-    Body: { platform: 'leetcode', slug: 'climbing-stairs' }
-    Returns { verified: true/false, detail: '...' }
-    Used by the Plan practice page to cross-check LeetCode/CF submissions.
+    Body: { platform: 'leetcode', slug: 'climbing-stairs', is_plan: true }
+    Returns { verified: true/false, already_credited: bool, points_awarded: int, new_rating: int, detail: '...' }
+    Awards 10 points per question, +5 additional points when completed through the plan.
+    Zero points awarded on resubmission.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         platform = request.data.get('platform', 'leetcode').lower()
         slug     = request.data.get('slug', '').strip()
+        is_plan  = bool(request.data.get('is_plan', False))
 
         if not slug:
             return Response({'verified': False, 'detail': 'Slug is required.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -381,8 +391,39 @@ class VerifySolvedView(APIView):
             return Response({'verified': False, 'detail': 'Unsupported platform.'})
 
         if verified:
-            difficulty = request.data.get('difficulty', '')
-            if difficulty:
-                request.user.award_question_rating(difficulty)
+            from .models import VerifiedProblem
+            already_done = VerifiedProblem.objects.filter(
+                user=request.user,
+                platform=platform,
+                slug=slug
+            ).exists()
 
-        return Response({'verified': verified})
+            if already_done:
+                return Response({
+                    'verified': True,
+                    'already_credited': True,
+                    'points_awarded': 0,
+                    'new_rating': request.user.rating,
+                    'detail': 'Problem already solved. No points on resubmission.'
+                })
+
+            VerifiedProblem.objects.create(
+                user=request.user,
+                platform=platform,
+                slug=slug,
+                is_plan=is_plan
+            )
+
+            # 10 points per question + 5 additional when completed through the plan
+            points = 15 if is_plan else 10
+            request.user.award_rating(points)
+
+            return Response({
+                'verified': True,
+                'already_credited': False,
+                'points_awarded': points,
+                'new_rating': request.user.rating,
+                'detail': f'Verified! +{points} rating points awarded.'
+            })
+
+        return Response({'verified': False, 'detail': 'Submission not found on platform.'})

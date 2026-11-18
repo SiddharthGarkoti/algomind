@@ -53,3 +53,29 @@ class TopicStats(models.Model):
 
     def __str__(self):
         return f"{self.profile.platform_name} | {self.topic_name}: {self.problems_solved}"
+
+
+class VerifiedProblem(models.Model):
+    user       = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='verified_problems')
+    platform   = models.CharField(max_length=20)
+    slug       = models.CharField(max_length=150)
+    is_plan    = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'platform', 'slug']
+
+    def __str__(self):
+        return f"{self.user.username} | {self.platform}:{self.slug}"
+
+
+class CompletedPlan(models.Model):
+    user       = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='completed_plans')
+    topic_id   = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'topic_id']
+
+    def __str__(self):
+        return f"{self.user.username} | {self.topic_id}"

@@ -97,8 +97,16 @@ class SubmitView(APIView):
         submission = serializer.save(user=request.user)
 
         if submission.status == 'accepted':
-            points = DIFFICULTY_POINTS.get(submission.problem.difficulty, 10)
-            request.user.award_rating(points)
+            # Check for resubmission of an already accepted problem
+            prior_accepted = Submission.objects.filter(
+                user=request.user,
+                problem=submission.problem,
+                status='accepted'
+            ).exclude(id=submission.id).exists()
+
+            if not prior_accepted:
+                # 10 points per problem, no points on resubmission
+                request.user.award_rating(10)
 
         return Response(
             SubmissionSerializer(submission).data,

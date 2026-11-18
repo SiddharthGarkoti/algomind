@@ -977,7 +977,7 @@ function Toast({ msg, ok, onDone }) {
 function PlanViewPage({ theme, toggleTheme }) {
   const isDark   = theme === 'dark';
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, updateUser } = useAuth();
   const userId = user?.id ?? 'guest';
 
   /* ── State ── */
@@ -1056,11 +1056,21 @@ function PlanViewPage({ theme, toggleTheme }) {
     if (!isAuthenticated) { setToast({ msg: 'Sign in to verify with LeetCode', ok: false }); return; }
     setVerifying(problem.id);
     try {
-      const res = await api.post('/analytics/verify-solved/', { platform: 'leetcode', slug: problem.slug, difficulty: problem.difficulty });
+      const res = await api.post('/analytics/verify-solved/', {
+        platform: 'leetcode',
+        slug: problem.slug,
+        difficulty: problem.difficulty,
+        is_plan: true
+      });
       if (res.verified) {
         setVerified(prev => new Set([...prev, problem.id]));
         setDone(prev => new Set([...prev, problem.id]));
-        setToast({ msg: `${problem.title} verified on LeetCode!`, ok: true });
+        if (res.already_credited) {
+          setToast({ msg: `${problem.title} verified! (Already credited, no points on resubmission)`, ok: true });
+        } else {
+          setToast({ msg: `${problem.title} verified! +${res.points_awarded || 15} rating awarded!`, ok: true });
+          if (res.new_rating && updateUser) updateUser({ rating: res.new_rating });
+        }
       } else {
         setToast({ msg: res.detail ?? 'Not found in recent submissions. Solve on LeetCode first.', ok: false });
       }
@@ -1069,7 +1079,7 @@ function PlanViewPage({ theme, toggleTheme }) {
     } finally {
       setVerifying(null);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, updateUser]);
 
   const goNext = useCallback(() => {
     if (!allCompDone) return;
@@ -1077,9 +1087,16 @@ function PlanViewPage({ theme, toggleTheme }) {
     const newCompleted = new Set([...completedSet, topicId]);
     setCompletedSet(newCompleted);
 
-    // Call backend to award 200 rating
+    // Call backend to award +100 rating for plan completion
     if (isAuthenticated) {
-      api.post('/auth/award-plan-completion/', { topic_id: topicId }).catch(() => {});
+      api.post('/auth/award-plan-completion/', { topic_id: topicId })
+        .then(d => {
+          if (d.awarded > 0) {
+            setToast({ msg: 'Topic plan completed! +100 rating bonus awarded!', ok: true });
+            if (d.new_rating && updateUser) updateUser({ rating: d.new_rating });
+          }
+        })
+        .catch(() => {});
     }
 
     // Extend queue if running low

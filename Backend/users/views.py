@@ -704,14 +704,33 @@ class MentorAnalysisView(APIView):
 class AwardPlanCompletionView(APIView):
     """
     POST /auth/award-plan-completion/
-    Gives user exactly 200 rating points once per topic completed.
+    Gives user exactly 100 rating points once per topic completed.
+    No points on resubmission.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        topic_id = request.data.get('topic_id')
-        request.user.award_plan_completion()
-        return Response({'detail': 'Plan part completed, 200 rating awarded!', 'new_rating': request.user.rating})
+        topic_id = (request.data.get('topic_id') or '').strip()
+        if not topic_id:
+            return Response({'detail': 'topic_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from analytics.models import CompletedPlan
+        already_completed = CompletedPlan.objects.filter(user=request.user, topic_id=topic_id).exists()
+        if already_completed:
+            return Response({
+                'detail': 'Topic plan already completed. No points on resubmission.',
+                'awarded': 0,
+                'new_rating': request.user.rating
+            })
+
+        CompletedPlan.objects.create(user=request.user, topic_id=topic_id)
+        request.user.award_plan_completion()  # +100 rating
+
+        return Response({
+            'detail': 'Plan topic completed, +100 rating awarded!',
+            'awarded': 100,
+            'new_rating': request.user.rating
+        })
 
 def _send_support_email(name: str, email: str, message: str):
     support_recipient = getattr(django_settings, 'EMAIL_HOST_USER', 'AlgoMind.Support@gmail.com')

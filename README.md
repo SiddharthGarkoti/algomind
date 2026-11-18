@@ -157,7 +157,7 @@ flowchart TD
     J --> H
     H --> K[Submit & Earn Rating Points]
     G --> L[Complete Daily Milestones]
-    L --> M[Award +200 Rating Completion Bonus]
+    L --> M[Award +100 Rating Completion Bonus]
 ```
 
 #### Detailed Breakdown:

@@ -47,7 +47,7 @@ class User(AbstractUser):
 
     def award_plan_completion(self):
         """Call when a user completes a full algorithm/goal plan."""
-        self.award_rating(200)
+        self.award_rating(100)
 
     def award_contest_win(self, rank: int, total_participants: int):
         """
