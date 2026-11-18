@@ -314,18 +314,8 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         # Use .date() comparison so streak works with the new DateTimeField
         last_date = user.last_active.date() if user.last_active else None
 
-        # Determine highest platform streak (LeetCode / Codeforces)
-        platform_streak = 0
-        try:
-            for p in user.platform_profiles.select_related('stats'):
-                if hasattr(p, 'stats') and p.stats and p.stats.streak:
-                    platform_streak = max(platform_streak, p.stats.streak)
-        except Exception:
-            pass
-
-        if platform_streak > 0:
-            user.streak = max(user.streak, platform_streak)
-        elif not user.platform_profiles.exists() and last_date != today:
+        # In-app activity streak tracking (AlgoMind streak)
+        if last_date != today:
             yesterday   = today - timezone.timedelta(days=1)
             user.streak = (user.streak + 1) if last_date == yesterday else 1
 

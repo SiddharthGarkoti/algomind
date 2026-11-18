@@ -13,12 +13,12 @@ function timeAgo(dateStr) {
 }
 
 const TYPE_META = {
-  friend_request:  { color: '#6366F1', icon: '👤' },
-  friend_accepted: { color: '#22C55E', icon: '🎉' },
-  system:          { color: '#A855F7', icon: '🔔' },
-  achievement:     { color: '#F59E0B', icon: '🏆' },
-  message:         { color: '#06B6D4', icon: '💬' },
-  party_invite:    { color: '#e63946', icon: '🎮' },
+  friend_request:  { color: '#6366F1', icon: 'person' },
+  friend_accepted: { color: '#22C55E', icon: 'how_to_reg' },
+  system:          { color: '#A855F7', icon: 'notifications' },
+  achievement:     { color: '#F59E0B', icon: 'military_tech' },
+  message:         { color: '#06B6D4', icon: 'chat' },
+  party_invite:    { color: '#e63946', icon: 'group_add' },
 };
 
 /* ─── Component ──────────────────────────────────────────────────── */
@@ -27,13 +27,15 @@ function Header({ theme, toggleTheme, onOpenChat }) {
   const { user, isAuthenticated } = useAuth();
   const isDark    = theme === 'dark';
 
-  // ── streak (real) ────────────────────────────────────────────────
-  const cachedStreak = Number(localStorage.getItem('algomind_streak_cache') || 0);
-  const streak = Math.max(user?.streak ?? 0, cachedStreak);
+  // ── streak (real in-app streak) ──────────────────────────────────
+  const appStreak = user?.streak ?? Number(localStorage.getItem('algomind_app_streak') || 0);
+  const streak = appStreak;
 
   useEffect(() => {
-    if (user?.streak && user.streak > 0) {
-      localStorage.setItem('algomind_streak_cache', String(user.streak));
+    // Purge old platform streak cache if present
+    localStorage.removeItem('algomind_streak_cache');
+    if (user?.streak !== undefined && user?.streak !== null) {
+      localStorage.setItem('algomind_app_streak', String(user.streak));
     }
   }, [user?.streak]);
 
@@ -377,13 +379,14 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                   </div>
                 ) : notifications.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
-                    <span className="text-2xl">🔔</span>
+                    <span className="material-symbols-outlined text-2xl" style={{ color: textSec }}>notifications_none</span>
                     <p className="text-xs" style={{ color: textSec }}>No notifications yet</p>
                   </div>
                 ) : (
                   notifications.map(notif => {
                     const meta = TYPE_META[notif.notif_type] ?? TYPE_META.system;
                     const avatarDisplay = notif.avatar_text || meta.icon;
+                    const isIconName = typeof avatarDisplay === 'string' && avatarDisplay.length > 2 && !avatarDisplay.includes(' ');
                     return (
                       <div
                         key={notif.id}
@@ -399,7 +402,11 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                             className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
                             style={{ background: notif.color || meta.color }}
                           >
-                            {avatarDisplay}
+                            {isIconName ? (
+                              <span className="material-symbols-outlined text-[16px]">{avatarDisplay}</span>
+                            ) : (
+                              avatarDisplay
+                            )}
                           </div>
                           <div className="flex-grow min-w-0 pr-8">
                             <p className="text-xs font-semibold" style={{ color: textPri }}>{notif.title}</p>
@@ -428,7 +435,7 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                                             navigate(`/challenges?join=${code}`);
                                           }}
                                           className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
-                                          style={{ background: '#e63946', color: '#fff' }}>🎮 Join Party</button>
+                                          style={{ background: '#e63946', color: '#fff' }}>Join Party</button>
                                   <button onClick={(e) => { e.stopPropagation(); markRead(notif.id); }}
                                           className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
                                           style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', color: textPri }}>Decline</button>
@@ -460,7 +467,7 @@ function Header({ theme, toggleTheme, onOpenChat }) {
               {/* Streak at risk warning */}
               {streakAtRisk && (
                 <div className="px-4 py-3 flex items-center gap-2" style={{ borderTop: `1px solid ${border}`, background: isDark ? 'rgba(239,68,68,0.08)' : 'rgba(239,68,68,0.04)' }}>
-                  <span className="text-base">🔥</span>
+                  <span className="material-symbols-outlined text-base" style={{ color: '#EF4444' }}>warning</span>
                   <p className="text-[11px] font-semibold" style={{ color: '#EF4444' }}>
                     Streak at risk! Solve a problem today.
                   </p>

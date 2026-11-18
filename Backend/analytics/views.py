@@ -103,12 +103,6 @@ class ConnectPlatformView(APIView):
                 defaults=raw,
             )
 
-            # Sync streak if platform streak is higher
-            platform_streak = raw.get('streak', 0)
-            if platform_streak > request.user.streak:
-                request.user.streak = platform_streak
-                request.user.save(update_fields=['streak'])
-
             # Elo rating: user with already an x amount of questions gets x * 10 rating
             total_solved = raw.get('problems_solved', 0)
             target_rating = total_solved * 10
@@ -194,11 +188,8 @@ class DashboardView(APIView):
         )
         platform_current_streaks = [p['stats'].get('streak', 0) for p in data if p.get('stats')]
         platform_max_streaks     = [p['stats'].get('max_streak', p['stats'].get('streak', 0)) for p in data if p.get('stats')]
-        total_current_streak = max(platform_current_streaks) if platform_current_streaks else request.user.streak
-        total_max_streak     = max(platform_max_streaks) if platform_max_streaks else max(total_current_streak, request.user.streak)
-        if total_max_streak > request.user.streak:
-            request.user.streak = total_max_streak
-            request.user.save(update_fields=['streak'])
+        total_current_streak = max(platform_current_streaks) if platform_current_streaks else 0
+        total_max_streak     = max(platform_max_streaks) if platform_max_streaks else 0
 
         return Response({
             'platforms': data,
@@ -210,6 +201,7 @@ class DashboardView(APIView):
                 'streak':                total_max_streak,
                 'max_streak':            total_max_streak,
                 'current_streak':        total_current_streak,
+                'app_streak':            request.user.streak,
             },
         })
 
@@ -337,11 +329,6 @@ class RefreshPlatformView(APIView):
             request.user.rating = target_rating
             request.user.level = max(1, target_rating // 500)
             request.user.save(update_fields=['rating', 'level'])
-
-        platform_streak = raw.get('streak', 0)
-        if platform_streak > request.user.streak:
-            request.user.streak = platform_streak
-            request.user.save(update_fields=['streak'])
 
         for ts in topic_stats_raw:
             TopicStats.objects.update_or_create(

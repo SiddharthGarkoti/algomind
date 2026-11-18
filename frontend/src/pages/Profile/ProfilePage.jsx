@@ -103,7 +103,7 @@ function ProfilePage({ theme, toggleTheme }) {
   const maxRating     = Math.max(0, ...platforms.map(p => p.stats?.rating ?? 0));
   const maxPlatformStreak = platforms.reduce((m, p) => Math.max(m, p.stats?.max_streak ?? p.stats?.streak ?? 0), 0);
   const currentPlatformStreak = platforms.reduce((m, p) => Math.max(m, p.stats?.streak ?? 0), 0);
-  const bestStreak    = Math.max(user?.streak ?? 0, maxPlatformStreak, Number(localStorage.getItem('algomind_streak_cache') || 0));
+  const bestStreak    = Math.max(user?.streak ?? 0, maxPlatformStreak);
 
   // Study plan completions from localStorage
   const savedPlan = useMemo(() => {
@@ -552,13 +552,12 @@ function ProfilePage({ theme, toggleTheme }) {
                         <span className="material-symbols-outlined text-[13px]">open_in_new</span>
                       </a>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 text-center pt-2 border-t"
+                    <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t"
                       style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
                       {[
-                        { label: 'Solved',   val: s.problems_solved ?? 0 },
-                        { label: 'Current',  val: `${s.streak ?? 0}d` },
-                        { label: 'Max',      val: `${s.max_streak || s.streak || 0}d` },
-                        { label: 'Rating',   val: s.rating > 0 ? s.rating : '—' },
+                        { label: 'Solved',         val: s.problems_solved ?? 0 },
+                        { label: 'Current Streak', val: `${s.streak ?? 0}d` },
+                        { label: 'Rating',         val: s.rating > 0 ? s.rating : '—' },
                       ].map(({ label, val }) => (
                         <div key={label}>
                           <p className="text-sm font-bold" style={{ color: textPri }}>{val}</p>

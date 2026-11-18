@@ -67,17 +67,6 @@ function AnalyticsPage({ theme, toggleTheme }) {
         const summ = d.summary ?? {};
         setPlatforms(platList);
         setSummary(summ);
-
-        const maxStreak = Math.max(
-          summ?.streak ?? 0,
-          ...platList.map(p => p.stats?.streak ?? 0)
-        );
-        if (maxStreak > 0) {
-          localStorage.setItem('algomind_streak_cache', String(maxStreak));
-          if (maxStreak > (user?.streak ?? 0)) {
-            updateUser({ streak: maxStreak });
-          }
-        }
       })
       .catch(() => setPlatforms([]));
 
@@ -308,11 +297,10 @@ function AnalyticsPage({ theme, toggleTheme }) {
                             </button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                           {[
                             { label: 'Solved',         val: s.problems_solved ?? 0, color: textPri },
                             { label: 'Current Streak', val: `${s.streak ?? 0}d`, color: '#818CF8' },
-                            { label: 'Max Streak',     val: `${s.max_streak || s.streak || 0}d`, color: '#A855F7' },
                             { label: 'Contests',       val: s.contests ?? 0, color: textPri },
                             { label: 'Rating',         val: s.rating > 0 ? s.rating : '—', color: '#C084FC' },
                           ].map(({ label, val, color }) => (
