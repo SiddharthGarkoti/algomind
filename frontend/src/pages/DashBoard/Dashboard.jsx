@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import Sidebar    from '../../components/Sidebar.jsx';
-import Header     from '../../components/Header.jsx';
-import TaskCard   from '../../components/TaskCard.jsx';
+import Sidebar from '../../components/Sidebar.jsx';
+import Header from '../../components/Header.jsx';
+import TaskCard from '../../components/TaskCard.jsx';
 import RightPanel from '../../components/RightPanel.jsx';
 import ChatDrawer from '../../components/chat/ChatDrawer.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -12,12 +12,12 @@ import api from '../../utils/api.js';
 /* ── Curated LeetCode problems per topic slug ─────────────────────── */
 const TOPIC_PROBLEMS = {
   'array': [
-    { title: 'Two Sum', difficulty: 'easy',   url: 'https://leetcode.com/problems/two-sum/', platform: 'leetcode' },
+    { title: 'Two Sum', difficulty: 'easy', url: 'https://leetcode.com/problems/two-sum/', platform: 'leetcode' },
     { title: 'Best Time to Buy and Sell Stock', difficulty: 'easy', url: 'https://leetcode.com/problems/best-time-to-buy-and-sell-stock/', platform: 'leetcode' },
     { title: 'Container With Most Water', difficulty: 'medium', url: 'https://leetcode.com/problems/container-with-most-water/', platform: 'leetcode' },
   ],
   'arrays': [
-    { title: 'Two Sum', difficulty: 'easy',   url: 'https://leetcode.com/problems/two-sum/', platform: 'leetcode' },
+    { title: 'Two Sum', difficulty: 'easy', url: 'https://leetcode.com/problems/two-sum/', platform: 'leetcode' },
     { title: 'Maximum Subarray', difficulty: 'medium', url: 'https://leetcode.com/problems/maximum-subarray/', platform: 'leetcode' },
     { title: 'Product of Array Except Self', difficulty: 'medium', url: 'https://leetcode.com/problems/product-of-array-except-self/', platform: 'leetcode' },
   ],
@@ -180,7 +180,7 @@ function getProblemsForTopic(slug) {
   }];
 }
 
-const DIFF_ICON  = { easy: 'account_tree', medium: 'route', hard: 'psychology' };
+const DIFF_ICON = { easy: 'account_tree', medium: 'route', hard: 'psychology' };
 const DIFF_COLOR = { easy: '#22C55E', medium: '#6366F1', hard: '#EF4444' };
 
 function getTimeOfDayGreeting(username) {
@@ -229,10 +229,10 @@ function Dashboard({ theme, toggleTheme }) {
   const greeting = getTimeOfDayGreeting(user?.username);
 
   const [chatFriend, setChatFriend] = useState(null);
-  const [weakAreas,  setWeakAreas]  = useState([]);
-  const [platforms,  setPlatforms]  = useState([]);
-  const [summary,    setSummary]    = useState(null);
-  const [loading,    setLoading]    = useState(true);
+  const [weakAreas, setWeakAreas] = useState([]);
+  const [platforms, setPlatforms] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -244,7 +244,7 @@ function Dashboard({ theme, toggleTheme }) {
 
         if (analyticsData.status === 'fulfilled') {
           const platList = analyticsData.value?.platforms ?? [];
-          const summ     = analyticsData.value?.summary ?? null;
+          const summ = analyticsData.value?.summary ?? null;
           setPlatforms(platList);
           setSummary(summ);
         }
@@ -282,14 +282,14 @@ function Dashboard({ theme, toggleTheme }) {
         const p = probs[0];
         const diff = p.difficulty;
         tasks.push({
-          title:     p.title,
+          title: p.title,
           difficulty: diff.charAt(0).toUpperCase() + diff.slice(1),
-          category:  topic.topic_name,
-          icon:      DIFF_ICON[diff] ?? 'code',
+          category: topic.topic_name,
+          icon: DIFF_ICON[diff] ?? 'code',
           iconColor: DIFF_COLOR[diff] ?? '#6366F1',
           diffColor: DIFF_COLOR[diff] ?? '#6366F1',
-          href:      p.url,
-          platform:  p.platform,
+          href: p.url,
+          platform: p.platform,
         });
       }
       if (tasks.length >= 3) break;
@@ -297,14 +297,14 @@ function Dashboard({ theme, toggleTheme }) {
     return tasks;
   })();
 
-  const bg       = isDark
+  const bg = isDark
     ? 'radial-gradient(ellipse at 15% 15%, rgba(99,102,241,0.06) 0%, transparent 45%), #0A0A0C'
     : 'linear-gradient(180deg,#F8FAFC 0%,#EEF2FF 100%)';
-  const surface   = isDark ? 'rgba(255, 255, 255, 0.035)' : 'rgba(255, 255, 255, 0.85)';
-  const surfaceLo = isDark ? 'rgba(255, 255, 255, 0.02)'  : 'rgba(241, 245, 249, 0.6)';
-  const border    = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)';
-  const textPri   = isDark ? '#F8FAFC' : '#0F172A';
-  const textSec   = isDark ? '#94A3B8' : '#64748B';
+  const surface = isDark ? 'rgba(255, 255, 255, 0.035)' : 'rgba(255, 255, 255, 0.85)';
+  const surfaceLo = isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(241, 245, 249, 0.6)';
+  const border = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)';
+  const textPri = isDark ? '#F8FAFC' : '#0F172A';
+  const textSec = isDark ? '#94A3B8' : '#64748B';
 
   /* Mastery overview — filter out any residual *broken tags */
   const skills = weakAreas
@@ -313,18 +313,18 @@ function Dashboard({ theme, toggleTheme }) {
     .map((t, i) => {
       const max = Math.max(...weakAreas.map(x => x.problems_solved), 1);
       const pct = Math.max(5, Math.round((t.problems_solved / max) * 100));
-      const isWeak     = t.status === 'weak';
+      const isWeak = t.status === 'weak';
       const isStrength = t.status === 'strength';
       return {
-        id:         i,
-        name:       t.topic_name,
-        badge:      isStrength ? 'Mastered' : isWeak ? 'Needs Focus' : 'In Progress',
+        id: i,
+        name: t.topic_name,
+        badge: isStrength ? 'Mastered' : isWeak ? 'Needs Focus' : 'In Progress',
         badgeColor: isStrength ? '#A855F7' : isWeak ? '#94A3B8' : '#818CF8',
-        badgeBg:    isStrength ? 'rgba(168,85,247,0.12)' : isWeak ? 'rgba(148,163,184,0.1)' : 'rgba(99,102,241,0.1)',
-        subtitle:   `${t.problems_solved} problem${t.problems_solved !== 1 ? 's' : ''} solved`,
-        barColor:   isStrength ? 'linear-gradient(90deg, #6366F1, #A855F7)' : isWeak ? 'rgba(168,85,247,0.35)' : '#818CF8',
-        progress:   `${pct}%`,
-        topicSlug:  t.topic_slug,
+        badgeBg: isStrength ? 'rgba(168,85,247,0.12)' : isWeak ? 'rgba(148,163,184,0.1)' : 'rgba(99,102,241,0.1)',
+        subtitle: `${t.problems_solved} problem${t.problems_solved !== 1 ? 's' : ''} solved`,
+        barColor: isStrength ? 'linear-gradient(90deg, #6366F1, #A855F7)' : isWeak ? 'rgba(168,85,247,0.35)' : '#818CF8',
+        progress: `${pct}%`,
+        topicSlug: t.topic_slug,
       };
     });
 
@@ -370,7 +370,7 @@ function Dashboard({ theme, toggleTheme }) {
                     <>
                       <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full mb-3"
                         style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>
-                        <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings:"'FILL' 1" }}>bolt</span>
+                        <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
                         Priority Focus Area
                       </div>
                       <h1 className="font-headline font-bold leading-snug max-w-2xl"
@@ -422,7 +422,7 @@ function Dashboard({ theme, toggleTheme }) {
                     <>
                       <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full mb-3"
                         style={{ background: 'rgba(168,85,247,0.12)', color: '#A855F7' }}>
-                        <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings:"'FILL' 1" }}>check_circle</span>
+                        <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                         Consistent Performance
                       </div>
                       <h1 className="font-headline font-bold leading-snug max-w-2xl"
@@ -476,9 +476,8 @@ function Dashboard({ theme, toggleTheme }) {
                       {recommendedTasks.map((task, i) => (
                         <div
                           key={i}
-                          className={`p-4 sm:px-5 flex items-center justify-between transition-colors hover:bg-white/[0.02] group ${
-                            i < recommendedTasks.length - 1 ? 'border-b' : ''
-                          }`}
+                          className={`p-4 sm:px-5 flex items-center justify-between transition-colors hover:bg-white/[0.02] group ${i < recommendedTasks.length - 1 ? 'border-b' : ''
+                            }`}
                           style={{
                             borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
                           }}
