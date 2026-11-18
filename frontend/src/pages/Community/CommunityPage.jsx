@@ -54,7 +54,14 @@ function CommunityPage({ theme, toggleTheme }) {
     try {
       const url = filter ? `/community/posts/?type=${filter}` : '/community/posts/';
       const data = await api.get(url);
-      setPosts(Array.isArray(data) ? data : (data?.results ?? []));
+      const rawPosts = Array.isArray(data) ? data : (data?.results ?? []);
+      // Filter out any Team AlgoMind posts if present
+      const filtered = rawPosts.filter(p => {
+        const authorName = (p.author_info?.username || '').toLowerCase();
+        const title = (p.title || '').toLowerCase();
+        return !authorName.includes('team_algomind') && !authorName.includes('team algomind') && !title.includes('we want your feedback');
+      });
+      setPosts(filtered);
     } catch {
       setPosts([]);
     } finally {
@@ -143,7 +150,7 @@ function CommunityPage({ theme, toggleTheme }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>Community</h1>
-            <p className="text-sm mt-1" style={{ color: textSec }}>Updates, notes, and tips from the AlgoMind team</p>
+            <p className="text-sm mt-1" style={{ color: textSec }}>Updates, notes, and discussions from the community</p>
           </div>
           {isAdmin && (
             <button
@@ -267,7 +274,7 @@ function CommunityPage({ theme, toggleTheme }) {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold" style={{ color: textPri }}>{author?.username ?? 'AlgoMind Team'}</p>
+                        <p className="text-sm font-bold" style={{ color: textPri }}>{author?.username ?? 'Community Member'}</p>
                         {(authorIsAdmin || author?.is_staff) && (
                           author?.username === 'Siddharth' ? (
                             <span className="text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-md border"
