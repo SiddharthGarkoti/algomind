@@ -95,10 +95,11 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
           </button>
         </div>
         <div className="flex items-center gap-3 sidebar-content-text">
-          <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 shadow-lg"
-            style={{ background: 'linear-gradient(135deg,#6366F1,#4F46E5)' }}>
-            <span className="material-symbols-outlined text-white text-sm">hub</span>
-          </div>
+          <img
+            src="/logo-symbol.png"
+            alt="AlgoMind"
+            className="h-8 w-8 object-contain shrink-0 drop-shadow-md"
+          />
           <div>
             <h1 className="text-sm font-bold tracking-tight leading-none" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>AlgoMind</h1>
             <p className="text-[11px] font-normal leading-none mt-1" style={{ color: textMuted }}>Think in Algorithms</p>

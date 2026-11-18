@@ -13,12 +13,14 @@ function Navbar({ isDark, toggleTheme, onSignIn }) {
 
         {/* ── Logo ──────────────────────────────────────────────── */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 group cursor-pointer hover:opacity-90 transition-opacity">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
-              <span className="material-symbols-outlined text-white text-xl">hub</span>
-            </div>
+          <div className="flex items-center gap-2.5 group cursor-pointer hover:opacity-90 transition-opacity">
+            <img
+              src="/logo-symbol.png"
+              alt="AlgoMind"
+              className="h-8 w-8 object-contain shrink-0 drop-shadow-md"
+            />
             <span className="text-xl font-headline font-extrabold tracking-tight text-gray-900 dark:text-white">
-              AlgoMind
+              Algo<span className="text-purple-600 dark:text-purple-400">Mind</span>
             </span>
           </div>
         </div>

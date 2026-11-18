@@ -70,11 +70,12 @@ function PrivacyPage({ isDark, toggleTheme }) {
       {/* Navbar */}
       <nav className="w-full h-16 px-8 flex items-center justify-between sticky top-0 z-50"
         style={{ background: isDark ? 'rgba(10,10,11,0.9)' : 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', borderBottom: `1px solid ${border}` }}>
-        <button onClick={() => navigate('/')} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
-            <span className="material-symbols-outlined text-white text-base">hub</span>
-          </div>
+        <button onClick={() => navigate('/')} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity cursor-pointer">
+          <img
+            src="/logo-symbol.png"
+            alt="AlgoMind"
+            className="w-7 h-7 object-contain shrink-0 drop-shadow-md"
+          />
           <span className="font-headline font-extrabold text-xl tracking-tighter" style={{ color: textPri }}>AlgoMind</span>
         </button>
         <div className="flex items-center gap-3">

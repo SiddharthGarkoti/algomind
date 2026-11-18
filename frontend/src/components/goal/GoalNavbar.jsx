@@ -15,11 +15,12 @@ function GoalNavbar({ isDark, toggleTheme }) {
           : '0 4px 20px -4px rgba(0,0,0,0.06)',
       }}
     >
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg"
-          style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
-          <span className="material-symbols-outlined text-white text-xl">hub</span>
-        </div>
+      <div className="flex items-center gap-2.5">
+        <img
+          src="/logo-symbol.png"
+          alt="AlgoMind"
+          className="h-8 w-8 object-contain shrink-0 drop-shadow-md"
+        />
         <span className="text-2xl font-extrabold tracking-tighter"
           style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
           AlgoMind
