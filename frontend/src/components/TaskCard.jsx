@@ -1,8 +1,8 @@
 function TaskCard({ title, difficulty, category, icon, iconColor, diffBg, diffColor, isDark, href, platform }) {
-  const surface = isDark ? '#1f2022' : '#FFFFFF';
-  const border  = isDark ? 'rgba(70,69,84,0.12)' : 'rgba(0,0,0,0.07)';
-  const textPri = isDark ? '#e3e2e5' : '#0F172A';
-  const textSec = isDark ? '#908fa0' : '#64748B';
+  const surface = isDark ? '#1a1b1e' : '#FFFFFF';
+  const border  = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  const textPri = isDark ? '#F8FAFC' : '#0F172A';
+  const textSec = isDark ? '#94A3B8' : '#64748B';
 
   const handleStart = () => {
     if (href) {
@@ -16,31 +16,45 @@ function TaskCard({ title, difficulty, category, icon, iconColor, diffBg, diffCo
     : platform === 'codeforces' ? 'Codeforces'
     : null;
 
+  const diffNormalized = (difficulty || '').toLowerCase();
+  const badgeColor = diffNormalized === 'easy' ? '#818CF8'
+    : diffNormalized === 'medium' ? '#A855F7'
+    : diffNormalized === 'hard' ? '#C084FC'
+    : '#818CF8';
+  const badgeBg = diffNormalized === 'easy' ? 'rgba(99, 102, 241, 0.12)'
+    : diffNormalized === 'medium' ? 'rgba(168, 85, 247, 0.12)'
+    : diffNormalized === 'hard' ? 'rgba(192, 132, 252, 0.12)'
+    : 'rgba(99, 102, 241, 0.12)';
+
   return (
     <div
-      className="group rounded-xl p-4 transition-all duration-200 hover:scale-[1.01] flex items-center justify-between card-3d container-box"
-      style={{ background: surface, border: `1px solid ${border}`, boxShadow: isDark ? 'none' : '0 2px 8px -2px rgba(0,0,0,0.06)' }}
+      className="group rounded-2xl p-4 sm:p-4.5 transition-all duration-200 hover:border-purple-500/40 flex items-center justify-between"
+      style={{ background: surface, border: `1px solid ${border}`, boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.2)' : '0 2px 8px -2px rgba(0,0,0,0.06)' }}
     >
       <div className="flex items-center gap-4 min-w-0">
         <div
-          className="w-9 h-9 rounded-full flex items-center justify-center border shrink-0"
-          style={{ background: isDark ? '#292a2c' : '#F1F5F9', borderColor: border, color: iconColor }}
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: isDark ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.08)', color: '#818CF8' }}
         >
-          <span className="material-symbols-outlined text-lg">{icon}</span>
+          <span className="material-symbols-outlined text-xl">{icon || 'code'}</span>
         </div>
         <div className="min-w-0">
-          <h3 className="text-sm font-headline font-bold truncate" style={{ color: textPri }}>{title}</h3>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <h3 className="text-sm font-semibold truncate group-hover:text-indigo-400 transition-colors" style={{ color: textPri }}>
+            {title}
+          </h3>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span
-              className="text-[9px] font-label px-1.5 py-0.5 rounded font-bold"
-              style={{ background: diffBg, color: diffColor }}
+              className="text-xs px-2 py-0.5 rounded-md font-semibold"
+              style={{ background: badgeBg, color: badgeColor }}
             >
               {difficulty}
             </span>
-            <span className="text-[9px] font-label uppercase tracking-wider" style={{ color: textSec }}>{category}</span>
+            <span className="text-xs font-normal" style={{ color: textSec }}>
+              {category}
+            </span>
             {platformLabel && (
-              <span className="text-[9px] font-label px-1.5 py-0.5 rounded"
-                style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1' }}>
+              <span className="text-xs px-2 py-0.5 rounded-md font-medium"
+                style={{ background: 'rgba(255,255,255,0.06)', color: textSec }}>
                 {platformLabel}
               </span>
             )}
@@ -48,11 +62,12 @@ function TaskCard({ title, difficulty, category, icon, iconColor, diffBg, diffCo
         </div>
       </div>
       <button
-        className="task-start-btn px-4 py-1.5 rounded-lg font-label text-[10px] font-bold transition-all flex items-center gap-1.5 hover:scale-[1.04] active:scale-95 shrink-0 ml-3"
-        style={{ background: '#6366F1', color: '#FFFFFF', boxShadow: '0 4px 12px -3px rgba(99,102,241,0.4)' }}
+        className="px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 hover:opacity-90 active:scale-95 shrink-0 ml-4 cursor-pointer"
+        style={{ background: '#6366F1', color: '#FFFFFF' }}
         onClick={handleStart}
       >
-        {href ? 'Solve' : 'Start'} <span className="material-symbols-outlined text-xs">{href ? 'open_in_new' : 'arrow_forward'}</span>
+        <span>{href ? 'Solve' : 'Start'}</span>
+        <span className="material-symbols-outlined text-sm">{href ? 'open_in_new' : 'arrow_forward'}</span>
       </button>
     </div>
   );

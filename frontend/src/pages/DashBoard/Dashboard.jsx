@@ -274,10 +274,11 @@ function Dashboard({ theme, toggleTheme }) {
       return {
         id:         i,
         name:       t.topic_name,
-        badge:      isStrength ? 'Strong' : isWeak ? 'Weak' : 'Improving',
-        badgeColor: isStrength ? '#22C55E' : isWeak ? '#EF4444' : '#6366F1',
+        badge:      isStrength ? 'Mastered' : isWeak ? 'Needs Focus' : 'In Progress',
+        badgeColor: isStrength ? '#A855F7' : isWeak ? '#94A3B8' : '#818CF8',
+        badgeBg:    isStrength ? 'rgba(168,85,247,0.12)' : isWeak ? 'rgba(148,163,184,0.1)' : 'rgba(99,102,241,0.1)',
         subtitle:   `${t.problems_solved} problem${t.problems_solved !== 1 ? 's' : ''} solved`,
-        barColor:   isStrength ? '#22C55E' : isWeak ? '#EF4444' : '#6366F1',
+        barColor:   isStrength ? 'linear-gradient(90deg, #6366F1, #A855F7)' : isWeak ? 'rgba(168,85,247,0.35)' : '#818CF8',
         progress:   `${pct}%`,
         topicSlug:  t.topic_slug,
       };
@@ -300,23 +301,23 @@ function Dashboard({ theme, toggleTheme }) {
               {(loading || (summary && summary.platforms_connected > 0)) && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
                   {[
-                    { label: 'Problems Solved', value: summary?.total_problems_solved ?? 0, icon: 'check_circle', color: '#22C55E' },
-                    { label: 'Contests',         value: summary?.total_contests ?? 0,        icon: 'emoji_events',  color: '#F59E0B' },
-                    { label: 'Avg Rating',       value: summary?.average_rating ?? 0,        icon: 'star',          color: '#6366F1' },
-                    { label: 'Platforms',        value: summary?.platforms_connected ?? 0,   icon: 'link',          color: '#A855F7' },
+                    { label: 'Problems Solved', value: summary?.total_problems_solved ?? 0, icon: 'check_circle', color: '#818CF8' },
+                    { label: 'Contests',         value: summary?.total_contests ?? 0,        icon: 'emoji_events',  color: '#A855F7' },
+                    { label: 'Avg Rating',       value: summary?.average_rating ?? 0,        icon: 'star',          color: '#C084FC' },
+                    { label: 'Platforms',        value: summary?.platforms_connected ?? 0,   icon: 'link',          color: '#6366F1' },
                   ].map(({ label, value, icon, color }) => (
-                    <div key={label} className="rounded-xl p-4 flex items-center gap-3"
+                    <div key={label} className="rounded-2xl p-4 flex items-center gap-3.5 transition-all"
                       style={{ background: surface, border: `1px solid ${border}`,
-                        boxShadow: isDark ? 'none' : '0 2px 12px -4px rgba(0,0,0,0.06)' }}>
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.2)' : '0 2px 12px -4px rgba(0,0,0,0.06)' }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                         style={{ background: `${color}18`, color }}>
-                        <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+                        <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[9px] uppercase tracking-wider truncate" style={{ color: textSec }}>{label}</p>
+                        <p className="text-xs font-medium truncate" style={{ color: textSec }}>{label}</p>
                         {loading
-                          ? <div className="h-5 w-12 rounded animate-pulse mt-0.5" style={{ background: surfaceLo }} />
-                          : <p className="text-base font-bold leading-tight" style={{ color: textPri }}>
+                          ? <div className="h-6 w-16 rounded animate-pulse mt-1" style={{ background: surfaceLo }} />
+                          : <p className="text-xl font-bold tracking-tight mt-0.5" style={{ color: textPri }}>
                               {value > 0 ? value.toLocaleString() : (label === 'Avg Rating' ? '—' : value)}
                             </p>
                         }
@@ -327,14 +328,14 @@ function Dashboard({ theme, toggleTheme }) {
               )}
 
               {/* Priority Action Point */}
-              <section className="insight-banner relative overflow-hidden rounded-2xl p-7 shrink-0"
+              <section className="insight-banner relative overflow-hidden rounded-2xl p-6 sm:p-7 shrink-0"
                 style={{ background: isDark ? surfaceLo : '#FFFFFF', border: `1px solid ${border}`,
-                  boxShadow: isDark ? 'none' : '0 4px 20px -4px rgba(0,0,0,0.06)' }}>
+                  boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.2)' : '0 4px 20px -4px rgba(0,0,0,0.06)' }}>
                 <div className="accent-line" />
-                <div className="absolute top-0 right-0 w-1/2 h-full opacity-50"
-                  style={{ background: 'radial-gradient(circle at 100% 50%, rgba(99,102,241,0.15) 0%, transparent 60%)' }} />
+                <div className="absolute top-0 right-0 w-1/2 h-full opacity-40 pointer-events-none"
+                  style={{ background: 'radial-gradient(circle at 100% 50%, rgba(99,102,241,0.18) 0%, transparent 60%)' }} />
 
-                <div className="relative z-10 pl-4">
+                <div className="relative z-10 pl-2 sm:pl-3">
                   {loading ? (
                     <div className="space-y-3">
                       <div className="h-4 rounded-full w-32 animate-pulse" style={{ background: surfaceLo }} />
@@ -342,32 +343,32 @@ function Dashboard({ theme, toggleTheme }) {
                     </div>
                   ) : hasWeak ? (
                     <>
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-label uppercase tracking-widest mb-3 px-3 py-1 rounded-full insight-slide"
-                        style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1', animationDelay: '0.1s' }}>
+                      <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full mb-3"
+                        style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>
                         <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings:"'FILL' 1" }}>bolt</span>
-                        Priority Action Point
-                      </span>
-                      <h1 className="font-headline font-bold leading-snug max-w-2xl insight-slide"
-                        style={{ fontSize: '1.25rem', color: textPri, animationDelay: '0.2s' }}>
+                        Priority Focus Area
+                      </div>
+                      <h1 className="font-headline font-bold leading-snug max-w-2xl"
+                        style={{ fontSize: '1.25rem', color: textPri }}>
                         Your weakest area is{' '}
-                        <span className="px-1.5 py-0.5 rounded-lg" style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1' }}>
+                        <span className="px-2 py-0.5 rounded-lg" style={{ background: 'rgba(99,102,241,0.15)', color: '#818CF8' }}>
                           {topWeak.topic_name}
                         </span>
                         {' '}— only{' '}
-                        <span style={{ color: '#EF4444', fontWeight: 800 }}>{topWeak.problems_solved} problem{topWeak.problems_solved !== 1 ? 's' : ''}</span>
-                        {' '}solved.
+                        <span className="font-bold" style={{ color: '#A855F7' }}>{topWeak.problems_solved} problem{topWeak.problems_solved !== 1 ? 's' : ''}</span>
+                        {' '}solved so far.
                       </h1>
-                      <div className="flex items-center gap-3 mt-4 insight-slide" style={{ animationDelay: '0.3s' }}>
+                      <div className="flex items-center gap-3 mt-5 flex-wrap">
                         <button
-                          className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all hover:scale-[1.03] active:scale-95"
+                          className="px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all hover:opacity-90 active:scale-95 cursor-pointer"
                           style={{ background: '#6366F1', color: '#fff' }}
                           onClick={() => window.open(`https://leetcode.com/tag/${topWeak.topic_slug}/`, '_blank', 'noopener noreferrer')}>
                           <span className="material-symbols-outlined text-sm">open_in_new</span>
-                          Practice {topWeak.topic_name} on LeetCode
+                          Solve {topWeak.topic_name} on LeetCode
                         </button>
                         <button
-                          className="px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-70"
-                          style={{ background: isDark ? '#292a2c' : '#F1F5F9', color: textSec, border: `1px solid ${border}` }}
+                          className="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80 cursor-pointer"
+                          style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9', color: textPri, border: `1px solid ${border}` }}
                           onClick={() => navigate('/analytics')}>
                           View Full Analysis
                         </button>
@@ -375,18 +376,18 @@ function Dashboard({ theme, toggleTheme }) {
                     </>
                   ) : platforms.length === 0 ? (
                     <>
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-label uppercase tracking-widest mb-3 px-3 py-1 rounded-full"
-                        style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1' }}>
+                      <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full mb-3"
+                        style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>
                         <span className="material-symbols-outlined text-sm">link</span>
                         Get Started
-                      </span>
+                      </div>
                       <h1 className="font-headline font-bold leading-snug max-w-2xl"
                         style={{ fontSize: '1.25rem', color: textPri }}>
                         Connect your LeetCode or Codeforces account to get personalised insights.
                       </h1>
                       <div className="flex items-center gap-3 mt-4">
                         <button
-                          className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all hover:scale-[1.03]"
+                          className="px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all hover:opacity-90 cursor-pointer"
                           style={{ background: '#6366F1', color: '#fff' }}
                           onClick={() => navigate('/settings')}>
                           <span className="material-symbols-outlined text-sm">settings</span>
@@ -396,18 +397,18 @@ function Dashboard({ theme, toggleTheme }) {
                     </>
                   ) : (
                     <>
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-label uppercase tracking-widest mb-3 px-3 py-1 rounded-full"
-                        style={{ background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>
+                      <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full mb-3"
+                        style={{ background: 'rgba(168,85,247,0.12)', color: '#A855F7' }}>
                         <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings:"'FILL' 1" }}>check_circle</span>
-                        Looking Good
-                      </span>
+                        Consistent Trajectory
+                      </div>
                       <h1 className="font-headline font-bold leading-snug max-w-2xl"
                         style={{ fontSize: '1.25rem', color: textPri }}>
-                        Solid progress! Keep solving problems to unlock detailed weak-area analysis.
+                        Solid progress! Keep solving problems to expand your mastery breakdown.
                       </h1>
                       <div className="flex items-center gap-3 mt-4">
                         <button
-                          className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all hover:scale-[1.03]"
+                          className="px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all hover:opacity-90 cursor-pointer"
                           style={{ background: '#6366F1', color: '#fff' }}
                           onClick={() => window.open('https://leetcode.com/problemset/', '_blank', 'noopener noreferrer')}>
                           <span className="material-symbols-outlined text-sm">open_in_new</span>
@@ -423,18 +424,18 @@ function Dashboard({ theme, toggleTheme }) {
               <div className="space-y-4">
                 <div className="flex items-end justify-between">
                   <div>
-                    <h2 className="text-base font-headline font-bold" style={{ color: textPri }}>Recommended Tasks</h2>
-                    <p className="text-xs font-normal mt-0.5" style={{ color: textSec }}>
+                    <h2 className="text-lg font-headline font-bold" style={{ color: textPri }}>Recommended Problems</h2>
+                    <p className="text-sm font-normal mt-0.5" style={{ color: textSec }}>
                       {hasWeak
-                        ? `Focused on your weak areas — click to solve on LeetCode / Codeforces`
-                        : 'Top problems to get you started — click to solve'}
+                        ? `Targeted practice for your weak topics — solve on LeetCode / Codeforces`
+                        : 'Curated problems to accelerate your algorithmic pattern recognition'}
                     </p>
                   </div>
                   <button
-                    className="px-5 py-2.5 rounded-xl font-label text-xs font-bold transition-all hover:scale-[1.03] active:scale-95 flex items-center gap-2"
-                    style={{ background: '#6366F1', color: '#FFFFFF', boxShadow: '0 8px 20px -6px rgba(99,102,241,0.35)' }}
+                    className="px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 active:scale-95 flex items-center gap-2 cursor-pointer shrink-0"
+                    style={{ background: '#6366F1', color: '#FFFFFF' }}
                     onClick={() => navigate('/plan-view')}>
-                    Start Daily Plan
+                    <span>Start Daily Plan</span>
                     <span className="material-symbols-outlined text-sm">arrow_forward</span>
                   </button>
                 </div>
@@ -470,29 +471,33 @@ function Dashboard({ theme, toggleTheme }) {
               {/* Mastery Overview */}
               {skills.length > 0 && (
                 <div className="p-6 rounded-2xl"
-                  style={{ background: surface, border: `1px solid ${border}`, boxShadow: isDark ? 'none' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
-                  <h3 className="text-xs font-label uppercase tracking-widest mb-6" style={{ color: textSec }}>Mastery Overview</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-7 max-w-4xl">
+                  style={{ background: surface, border: `1px solid ${border}`, boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.2)' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>Mastery Overview</h3>
+                    <span className="text-xs font-medium cursor-pointer hover:underline" style={{ color: '#818CF8' }} onClick={() => navigate('/analytics')}>
+                      View Breakdown →
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 max-w-4xl">
                     {skills.map((skill, i) => (
                       <div key={skill.id}
-                        className={`space-y-3 page-enter stagger-${i + 1} cursor-pointer group`}
+                        className={`space-y-2.5 page-enter stagger-${i + 1} cursor-pointer group`}
                         onClick={() => window.open(`https://leetcode.com/tag/${skill.topicSlug}/`, '_blank', 'noopener noreferrer')}
                         title={`Practice ${skill.name} on LeetCode`}>
-                        <div className="flex justify-between items-end">
-                          <div>
-                            <span className="text-sm font-headline font-bold flex items-center gap-2 group-hover:underline" style={{ color: textPri }}>
-                              {skill.name}
-                              <span className="text-[9px] font-label uppercase" style={{ color: skill.badgeColor }}>
-                                ({skill.badge})
-                              </span>
-                            </span>
-                            <p className="text-[10px] mt-0.5" style={{ color: textSec }}>{skill.subtitle}</p>
-                          </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-semibold flex items-center gap-2 group-hover:text-indigo-400 transition-colors" style={{ color: textPri }}>
+                            {skill.name}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 rounded-md font-medium"
+                            style={{ background: skill.badgeBg, color: skill.badgeColor }}>
+                            {skill.badge}
+                          </span>
                         </div>
-                        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: isDark ? '#292a2c' : '#E2E8F0' }}>
+                        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }}>
                           <div className="h-full rounded-full transition-all duration-700"
                             style={{ width: skill.progress, background: skill.barColor }} />
                         </div>
+                        <p className="text-xs" style={{ color: textSec }}>{skill.subtitle}</p>
                       </div>
                     ))}
                   </div>

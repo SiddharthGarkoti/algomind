@@ -82,8 +82,9 @@ html[data-theme="light"] #root {
   30%         { transform:translateY(-6px); }
 }
 
+@keyframes pageEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .spinner         { animation: spin 1s linear infinite; }
-.page-enter      { animation: fadeUp 0.4s ease-out forwards; }
+.page-enter      { animation: pageEnter 280ms cubic-bezier(0.16, 1, 0.3, 1) forwards; will-change: opacity, transform; }
 .notification-fade-in { animation: notificationFade 0.5s ease forwards; }
 .streak-plus-one {
   animation: streakPop 1.2s cubic-bezier(0.34,1.56,0.64,1) forwards;
@@ -146,33 +147,89 @@ html[data-theme="light"] #root {
 .weak-accent            { position:absolute; left:0; top:25%; bottom:25%; width:3px; background:#c0c1ff; border-radius:0 4px 4px 0; }
 
 /* ════════════════════════════════════════════════════════════════
-   SIDEBAR
+   SIDEBAR (Smooth Apple/Google-Grade Motion)
    ════════════════════════════════════════════════════════════════ */
 #sidebar {
-  width:70px; transition:width 180ms ease;
-  z-index:50; overflow-x:hidden; position:sticky; top:0; height:100vh;
+  width: 72px;
+  transition: width 300ms cubic-bezier(0.16, 1, 0.3, 1), background-color 200ms ease, border-color 200ms ease;
+  z-index: 50;
+  overflow-x: hidden;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  will-change: width;
 }
-#sidebar.expanded { width:240px; }
+#sidebar.expanded {
+  width: 250px;
+}
 .sidebar-content-text {
-  opacity:0; transform:translateX(-6px);
-  transition:opacity 180ms ease, transform 180ms ease;
-  white-space:nowrap; pointer-events:none;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity 240ms cubic-bezier(0.16, 1, 0.3, 1), transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  pointer-events: none;
+  will-change: opacity, transform;
 }
-#sidebar.expanded .sidebar-content-text { opacity:1; transform:translateX(0); pointer-events:auto; }
+#sidebar.expanded .sidebar-content-text {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
 .nav-item {
-  transition:all 0.2s cubic-bezier(0.4,0,0.2,1);
-  display:flex; align-items:center; height:48px; padding:0;
-  color:#908fa0; cursor:pointer; position:relative; text-decoration:none;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  height: 46px;
+  padding: 0;
+  color: #94A3B8;
+  cursor: pointer;
+  position: relative;
+  text-decoration: none;
+  border-radius: 12px;
+  margin: 2px 8px;
 }
-.nav-item:hover       { background-color:rgba(255,255,255,0.04); color:#e3e2e5; }
-.nav-item.active-item { color:#6366F1; background-color:rgba(99,102,241,0.08); }
+.nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #F8FAFC;
+}
+.nav-item.active-item {
+  color: #818CF8;
+  background-color: rgba(99, 102, 241, 0.12);
+  font-weight: 600;
+}
 .nav-item.active-item::before {
-  content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background-color:#6366F1;
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 10px;
+  bottom: 10px;
+  width: 3.5px;
+  background-color: #6366F1;
+  border-radius: 9999px;
 }
-.icon-container { width:70px; height:48px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.icon-container span { font-size:22px; width:22px; height:22px; }
-.submenu-container  { max-height:0; opacity:0; overflow:hidden; transition:max-height 200ms ease, opacity 200ms ease; }
-#sidebar.expanded .submenu-active .submenu-container { max-height:200px; opacity:1; }
+.icon-container {
+  width: 56px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.icon-container span {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+}
+.submenu-container {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 260ms cubic-bezier(0.16, 1, 0.3, 1), opacity 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+#sidebar.expanded .submenu-active .submenu-container {
+  max-height: 220px;
+  opacity: 1;
+}
 
 /* ════════════════════════════════════════════════════════════════
    DASHBOARD

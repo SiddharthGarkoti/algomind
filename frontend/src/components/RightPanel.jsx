@@ -38,14 +38,14 @@ function RightPanel({ isDark, summary, weakAreas, loading }) {
       <AICoach isDark={isDark} />
 
       {/* Platform Summary Stats */}
-      <div className="rounded-xl p-5 flex flex-col shrink-0 card"
-        style={{ background: surface, border: `1px solid ${border}`, boxShadow: isDark ? 'none' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
+      <div className="rounded-2xl p-5 flex flex-col shrink-0"
+        style={{ background: surface, border: `1px solid ${border}`, boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.2)' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
         <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1' }}>
-            <span className="material-symbols-outlined text-base">leaderboard</span>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>
+            <span className="material-symbols-outlined text-lg">leaderboard</span>
           </div>
-          <h3 className="text-xs font-headline font-bold" style={{ color: textPri }}>Your Stats</h3>
+          <h3 className="text-sm font-semibold tracking-tight" style={{ color: textPri }}>Platform Overview</h3>
         </div>
 
         {loading ? (
@@ -60,51 +60,51 @@ function RightPanel({ isDark, summary, weakAreas, loading }) {
               Connect a platform to see your real stats.
             </p>
             <button
-              className="w-full py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all hover:opacity-90"
+              className="w-full py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90 cursor-pointer"
               style={{ background: '#6366F1', color: '#fff' }}
               onClick={() => navigate('/settings')}>
-              Connect Now
+              Connect Platform
             </button>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <div className="p-3 rounded-lg" style={{ background: surfaceLo }}>
-                <p className="text-[8px] uppercase mb-0.5" style={{ color: textSec }}>Problems</p>
+            <div className="grid grid-cols-2 gap-2.5 mb-3">
+              <div className="p-3 rounded-xl" style={{ background: surfaceLo }}>
+                <p className="text-xs mb-0.5" style={{ color: textSec }}>Problems</p>
                 <p className="text-base font-bold" style={{ color: textPri }}>{totalSolved.toLocaleString()}</p>
               </div>
-              <div className="p-3 rounded-lg" style={{ background: surfaceLo }}>
-                <p className="text-[8px] uppercase mb-0.5" style={{ color: textSec }}>Contests</p>
+              <div className="p-3 rounded-xl" style={{ background: surfaceLo }}>
+                <p className="text-xs mb-0.5" style={{ color: textSec }}>Contests</p>
                 <p className="text-base font-bold" style={{ color: textPri }}>{totalContests}</p>
               </div>
-              <div className="p-3 rounded-lg" style={{ background: surfaceLo }}>
-                <p className="text-[8px] uppercase mb-0.5" style={{ color: textSec }}>Avg Rating</p>
-                <p className="text-base font-bold" style={{ color: '#6366F1' }}>{avgRating > 0 ? avgRating : '—'}</p>
+              <div className="p-3 rounded-xl" style={{ background: surfaceLo }}>
+                <p className="text-xs mb-0.5" style={{ color: textSec }}>Avg Rating</p>
+                <p className="text-base font-bold" style={{ color: '#818CF8' }}>{avgRating > 0 ? avgRating : '—'}</p>
               </div>
-              <div className="p-3 rounded-lg" style={{ background: surfaceLo }}>
-                <p className="text-[8px] uppercase mb-0.5" style={{ color: textSec }}>Platforms</p>
-                <p className="text-base font-bold" style={{ color: '#22C55E' }}>{connected}</p>
+              <div className="p-3 rounded-xl" style={{ background: surfaceLo }}>
+                <p className="text-xs mb-0.5" style={{ color: textSec }}>Platforms</p>
+                <p className="text-base font-bold" style={{ color: '#A855F7' }}>{connected}</p>
               </div>
             </div>
             <button
-              className="w-full py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all hover:opacity-90"
+              className="w-full py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90 cursor-pointer"
               style={{ background: '#6366F1', color: '#FFFFFF' }}
               onClick={() => navigate('/analytics')}>
-              Full Analytics
+              View Full Analytics
             </button>
           </>
         )}
       </div>
 
       {/* Next Milestone */}
-      <div className="rounded-xl p-5 flex flex-col shrink-0 card"
-        style={{ background: surface, border: `1px solid ${border}`, boxShadow: isDark ? 'none' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
+      <div className="rounded-2xl p-5 flex flex-col shrink-0"
+        style={{ background: surface, border: `1px solid ${border}`, boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.2)' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
         <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1' }}>
-            <span className="material-symbols-outlined text-base">flag</span>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(168,85,247,0.12)', color: '#A855F7' }}>
+            <span className="material-symbols-outlined text-lg">flag</span>
           </div>
-          <h3 className="text-xs font-headline font-bold" style={{ color: textPri }}>Next Milestone</h3>
+          <h3 className="text-sm font-semibold tracking-tight" style={{ color: textPri }}>Next Milestone</h3>
         </div>
 
         {loading ? (
@@ -117,30 +117,30 @@ function RightPanel({ isDark, summary, weakAreas, loading }) {
         ) : (
           <>
             <div className="mb-3">
-              <p className="text-[9px] uppercase tracking-wider mb-1" style={{ color: textSec }}>Current Goal</p>
+              <p className="text-xs mb-0.5" style={{ color: textSec }}>Target</p>
               <p className="text-sm font-bold" style={{ color: textPri }}>Solve {target} Problems</p>
             </div>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <div className="p-3 rounded-lg" style={{ background: surfaceLo }}>
-                <p className="text-[8px] uppercase mb-0.5" style={{ color: textSec }}>Left</p>
-                <p className="text-[10px] font-bold" style={{ color: textPri }}>{left} Problems</p>
+            <div className="grid grid-cols-2 gap-2.5 mb-3">
+              <div className="p-3 rounded-xl" style={{ background: surfaceLo }}>
+                <p className="text-xs mb-0.5" style={{ color: textSec }}>Remaining</p>
+                <p className="text-xs font-bold" style={{ color: textPri }}>{left} Problems</p>
               </div>
-              <div className="p-3 rounded-lg" style={{ background: surfaceLo }}>
-                <p className="text-[8px] uppercase mb-0.5" style={{ color: textSec }}>Progress</p>
-                <p className="text-[10px] font-bold" style={{ color: '#6366F1' }}>{milestoneProgress}%</p>
+              <div className="p-3 rounded-xl" style={{ background: surfaceLo }}>
+                <p className="text-xs mb-0.5" style={{ color: textSec }}>Progress</p>
+                <p className="text-xs font-bold" style={{ color: '#818CF8' }}>{milestoneProgress}%</p>
               </div>
             </div>
-            <div className="w-full h-1.5 rounded-full overflow-hidden mb-3" style={{ background: surfaceLo }}>
+            <div className="w-full h-2 rounded-full overflow-hidden mb-3" style={{ background: surfaceLo }}>
               <div className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${milestoneProgress}%`, background: '#6366F1' }} />
+                style={{ width: `${milestoneProgress}%`, background: 'linear-gradient(90deg, #6366F1, #A855F7)' }} />
             </div>
             {topWeak && (
-              <div className="p-2 rounded-lg" style={{ background: surfaceLo, border: `1px solid ${border}` }}>
-                <p className="text-[10px] font-medium mb-0.5" style={{ color: textPri }}>
-                  Focus: <span style={{ color: '#EF4444' }}>{topWeak.topic_name}</span>
+              <div className="p-2.5 rounded-xl" style={{ background: surfaceLo, border: `1px solid ${border}` }}>
+                <p className="text-xs font-medium mb-0.5" style={{ color: textPri }}>
+                  Target Area: <span style={{ color: '#A855F7', fontWeight: 600 }}>{topWeak.topic_name}</span>
                 </p>
-                <p className="text-[9px] italic" style={{ color: textSec }}>
-                  Only {topWeak.problems_solved} problems solved — weakest area
+                <p className="text-xs" style={{ color: textSec }}>
+                  {topWeak.problems_solved} problems solved
                 </p>
               </div>
             )}

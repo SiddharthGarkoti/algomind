@@ -155,12 +155,35 @@ class DashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        profiles = (
+        profiles = list(
             PlatformProfile.objects
             .filter(user=request.user)
             .select_related('stats')
             .prefetch_related('topic_stats')
         )
+
+        # Auto-sync streak if any connected platform has streak == 0
+        needs_re_eval = False
+        for p in profiles:
+            if hasattr(p, 'stats') and p.stats and p.stats.streak == 0:
+                try:
+                    raw = fetch_stats(p.platform_name, p.handle)
+                    st = raw.get('streak', 0)
+                    if st > 0:
+                        p.stats.streak = st
+                        p.stats.save(update_fields=['streak'])
+                        needs_re_eval = True
+                except Exception:
+                    pass
+
+        if needs_re_eval:
+            # Re-read to get updated stats
+            profiles = list(
+                PlatformProfile.objects
+                .filter(user=request.user)
+                .select_related('stats')
+                .prefetch_related('topic_stats')
+            )
 
         data = PlatformProfileSerializer(profiles, many=True).data
 

@@ -62,15 +62,15 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
     <NavLink to={path} end={path === '/dashboard'}
       className={({ isActive }) => `nav-item${isActive ? ' active-item' : ''}`}
       style={({ isActive }) => ({
-        color: isActive ? '#6366F1' : textMuted,
-        backgroundColor: isActive ? 'rgba(99,102,241,0.08)' : 'transparent',
+        color: isActive ? (isDark ? '#FFFFFF' : '#4F46E5') : textMuted,
+        backgroundColor: isActive ? 'rgba(99,102,241,0.12)' : 'transparent',
         opacity: faded ? 0.45 : 1,
       })}
     >
       <div className="icon-container">
-        <span className="material-symbols-outlined">{icon}</span>
+        <span className="material-symbols-outlined !text-[20px]">{icon}</span>
       </div>
-      <div className="font-medium sidebar-content-text">{label}</div>
+      <div className="text-[13px] font-medium sidebar-content-text">{label}</div>
     </NavLink>
   );
 
@@ -100,14 +100,14 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
             <span className="material-symbols-outlined text-white text-sm">hub</span>
           </div>
           <div>
-            <h1 className="text-sm font-bold tracking-tight leading-none" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>AlgoMind</h1>
-            <p className="text-[9px] font-medium leading-none mt-1" style={{ color: textMuted }}>Think in Algorithms</p>
+            <h1 className="text-sm font-bold tracking-tight leading-none" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>AlgoMind</h1>
+            <p className="text-[11px] font-normal leading-none mt-1" style={{ color: textMuted }}>Think in Algorithms</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-grow py-4 overflow-y-auto overflow-x-hidden mt-2">
+      <nav className="flex-grow py-3 overflow-y-auto overflow-x-hidden">
         <div className="space-y-1">
           {NAV_TOP.map(item => <NavItem key={item.path} {...item} />)}
 
@@ -118,9 +118,9 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
               style={{ color: textMuted }}
               onClick={e => { e.stopPropagation(); if (isExpanded) setIsPracticeOpen(p => !p); }}
             >
-              <div className="icon-container"><span className="material-symbols-outlined">code</span></div>
-              <div className="font-medium flex-grow text-left sidebar-content-text">Practice</div>
-              <div className="sidebar-content-text pr-4">
+              <div className="icon-container"><span className="material-symbols-outlined !text-[20px]">code</span></div>
+              <div className="text-[13px] font-medium flex-grow text-left sidebar-content-text">Practice</div>
+              <div className="sidebar-content-text pr-3">
                 <span className={`material-symbols-outlined text-sm transition-transform duration-200${isPracticeOpen ? ' rotate-180' : ''}`}>expand_more</span>
               </div>
             </div>
@@ -128,10 +128,14 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
               <div className="py-1 space-y-1">
                 {PRACTICE_ITEMS.map(({ path, icon, label }) => (
                   <NavLink key={path} to={path}
-                    className="flex items-center h-10 pl-[70px] pr-6 text-sm transition-colors gap-3"
-                    style={({ isActive }) => ({ color: isActive ? '#6366F1' : textMuted, fontWeight: isActive ? '600' : '500' })}
+                    className="flex items-center h-9 pl-[64px] pr-4 text-[13px] transition-colors gap-2.5 rounded-lg mx-2"
+                    style={({ isActive }) => ({
+                      color: isActive ? (isDark ? '#FFFFFF' : '#4F46E5') : textMuted,
+                      backgroundColor: isActive ? 'rgba(99,102,241,0.1)' : 'transparent',
+                      fontWeight: isActive ? '600' : '400',
+                    })}
                   >
-                    <span className="material-symbols-outlined !text-lg">{icon}</span>
+                    <span className="material-symbols-outlined !text-[18px]">{icon}</span>
                     <span>{label}</span>
                   </NavLink>
                 ))}
@@ -145,15 +149,14 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
           <NavLink to="/chatbot"
             className="nav-item"
             style={({ isActive }) => ({
-              borderLeft: isActive ? '3px solid #6366F1' : '3px solid rgba(99,102,241,0.3)',
-              background: 'rgba(99,102,241,0.08)',
-              color: isActive ? '#6366F1' : '#8b89ff',
+              background: isActive ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.06)',
+              color: isActive ? (isDark ? '#FFFFFF' : '#4F46E5') : '#A5B4FC',
             })}
           >
             <div className="icon-container">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+              <span className="material-symbols-outlined !text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
             </div>
-            <div className="font-semibold sidebar-content-text">AI Mentor</div>
+            <div className="text-[13px] font-semibold sidebar-content-text">AI Mentor</div>
           </NavLink>
         </div>
       </nav>

@@ -32,8 +32,8 @@ function SolvedDonut({ easy, medium, hard, surfLow, textPri, textSec }) {
         )}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-headline font-extrabold" style={{ color: textPri }}>{total}</span>
-        <span className="text-[10px]" style={{ color: textSec }}>solved</span>
+        <span className="text-3xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>{total}</span>
+        <span className="text-xs font-medium mt-0.5" style={{ color: textSec }}>solved</span>
       </div>
     </div>
   );
@@ -89,15 +89,16 @@ function AnalyticsPage({ theme, toggleTheme }) {
 
   /* Build solved stats for current tab */
   const statsFor = (platformName) => {
+    const maxPlatformStreak = platforms?.reduce((max, p) => Math.max(max, p.stats?.streak ?? 0), 0) ?? 0;
+    const bestStreak = summary?.streak || maxPlatformStreak || user?.streak || 0;
     if (platformName === 'total') {
-      const maxPlatformStreak = platforms?.reduce((max, p) => Math.max(max, p.stats?.streak ?? 0), 0) ?? 0;
       return {
         easy:   summary?.easy_solved   ?? platforms?.reduce((s,p)=>s+(p.stats?.easy_solved??0),0) ?? 0,
         medium: summary?.medium_solved ?? platforms?.reduce((s,p)=>s+(p.stats?.medium_solved??0),0) ?? 0,
         hard:   summary?.hard_solved   ?? platforms?.reduce((s,p)=>s+(p.stats?.hard_solved??0),0) ?? 0,
         total:  summary?.total_problems_solved ?? 0,
         rating: summary?.average_rating ?? 0,
-        streak: summary?.streak || maxPlatformStreak || user?.streak || 0,
+        streak: bestStreak,
         url:    null,
       };
     }
@@ -109,7 +110,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
       hard:   s.hard_solved   ?? 0,
       total:  s.problems_solved ?? 0,
       rating: s.rating ?? 0,
-      streak: s.streak ?? 0,
+      streak: (s.streak && s.streak > 0) ? s.streak : bestStreak,
       url:    platformName === 'leetcode'   ? `https://leetcode.com/${p?.handle ?? ''}`
             : platformName === 'codeforces' ? `https://codeforces.com/profile/${p?.handle ?? ''}`
             : null,
@@ -194,10 +195,10 @@ function AnalyticsPage({ theme, toggleTheme }) {
               <div className="rounded-2xl p-6" style={{ background: surface, border: `1px solid ${border}` }}>
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-sm font-headline font-bold" style={{ color: textPri }}>Problems Solved</h2>
-                  <div className="flex gap-0.5 p-1 rounded-xl" style={{ background: surfLow, border: `1px solid ${border}` }}>
+                  <div className="flex gap-1 p-1 rounded-xl" style={{ background: surfLow, border: `1px solid ${border}` }}>
                     {availablePlatforms.map(({ key, label }) => (
                       <button key={key} onClick={() => setSolvedTab(key)}
-                        className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all"
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
                         style={solvedTab === key ? { background: '#6366F1', color: '#fff' } : { color: textSec }}>
                         {label}
                       </button>
@@ -225,7 +226,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                           <span style={{ color, fontWeight: 700 }}>{label}</span>
                           <span style={{ color: textSec }}>{val}</span>
                         </div>
-                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: surfLow }}>
+                        <div className="h-2 rounded-full overflow-hidden" style={{ background: surfLow }}>
                           <div className="h-full rounded-full transition-all duration-700"
                             style={{ width: `${currentStats.total > 0 ? Math.round((val/currentStats.total)*100) : 0}%`, background: color }} />
                         </div>
@@ -233,10 +234,10 @@ function AnalyticsPage({ theme, toggleTheme }) {
                     ))}
                     {currentStats.url && (
                       <a href={currentStats.url} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all hover:opacity-75 mt-1"
-                        style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1' }}>
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all hover:opacity-75 mt-1"
+                        style={{ background: 'rgba(99,102,241,0.1)', color: '#818CF8' }}>
                         View profile
-                        <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>open_in_new</span>
+                        <span className="material-symbols-outlined text-xs">open_in_new</span>
                       </a>
                     )}
                   </div>
@@ -245,10 +246,10 @@ function AnalyticsPage({ theme, toggleTheme }) {
                 <div className="mt-5 pt-4 flex items-center gap-4 flex-wrap" style={{ borderTop: `1px solid ${border}` }}>
                   <div className="flex items-center gap-1.5">
                     <span>🔥</span>
-                    <span className="text-xs font-bold" style={{ color: textPri }}>{currentStats.streak}d streak</span>
+                    <span className="text-sm font-bold tracking-tight" style={{ color: textPri }}>{currentStats.streak}d streak</span>
                   </div>
                   <div className="h-3 w-px" style={{ background: border }} />
-                  <span className="text-xs" style={{ color: textSec }}>Rating: {currentStats.rating}</span>
+                  <span className="text-xs font-medium" style={{ color: textSec }}>Contest Rating: {currentStats.rating > 0 ? currentStats.rating : 'Unrated'}</span>
                 </div>
               </div>
 
@@ -259,37 +260,37 @@ function AnalyticsPage({ theme, toggleTheme }) {
                   {platforms.map(p => {
                     const s = p.stats ?? {};
                     return (
-                      <div key={p.id} className="rounded-xl p-4"
+                      <div key={p.id} className="rounded-xl p-4 sm:p-5"
                         style={{ background: surfLow, border: `1px solid ${border}` }}>
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-between mb-4">
                           <div>
                             <p className="text-sm font-bold capitalize" style={{ color: textPri }}>{p.platform_name}</p>
-                            <p className="text-[10px]" style={{ color: textSec }}>@{p.handle}</p>
+                            <p className="text-xs" style={{ color: textSec }}>@{p.handle}</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-bold px-2.5 py-0.5 rounded-full"
+                            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
                               style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#C084FC', border: '1px solid rgba(168, 85, 247, 0.25)' }}>Connected</span>
                             <button
                               disabled={refreshing === p.platform_name}
                               onClick={() => refreshPlatform(p.platform_name)}
-                              className="p-1 rounded-lg transition-all hover:opacity-70 disabled:opacity-40"
+                              className="p-1.5 rounded-lg transition-all hover:opacity-70 disabled:opacity-40 cursor-pointer"
                               style={{ background: 'rgba(99,102,241,0.1)' }}
                               title="Refresh stats">
                               <span className={`material-symbols-outlined text-sm ${refreshing === p.platform_name ? 'animate-spin' : ''}`}
-                                style={{ color: '#6366F1' }}>sync</span>
+                                style={{ color: '#818CF8' }}>sync</span>
                             </button>
                           </div>
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-center">
                           {[
                             { label: 'Solved', val: s.problems_solved ?? 0 },
-                            { label: 'Streak', val: `${s.streak ?? 0}d` },
+                            { label: 'Streak', val: `${(s.streak && s.streak > 0) ? s.streak : (summary?.streak || user?.streak || 0)}d` },
                             { label: 'Contests', val: s.contests ?? 0 },
                             { label: 'Rating', val: s.rating ?? 0 },
                           ].map(({ label, val }) => (
                             <div key={label}>
-                              <p className="text-lg font-headline font-extrabold" style={{ color: '#A855F7' }}>{val}</p>
-                              <p className="text-[9px] uppercase tracking-widest" style={{ color: textSec }}>{label}</p>
+                              <p className="text-xl font-headline font-bold" style={{ color: '#A855F7' }}>{val}</p>
+                              <p className="text-xs uppercase tracking-wider mt-0.5" style={{ color: textSec }}>{label}</p>
                             </div>
                           ))}
                         </div>
@@ -308,7 +309,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                   {/* Weak areas */}
                   <div>
                     <h2 className="text-sm font-headline font-bold mb-1" style={{ color: textPri }}>Weak Areas</h2>
-                    <p className="text-[10px] mb-5" style={{ color: textSec }}>Topics with fewest problems solved — focus here</p>
+                    <p className="text-xs mb-5" style={{ color: textSec }}>Topics with fewest problems solved — focus here</p>
                     <div className="space-y-3">
                       {weakTopics.slice(0, 8).map(t => {
                         const max = Math.max(...topics.map(x => x.problems_solved), 1);
@@ -317,7 +318,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                           <div key={t.topic_slug}>
                             <div className="flex justify-between text-xs mb-1">
                               <span style={{ color: textPri, fontWeight: 600 }}>{t.topic_name}</span>
-                              <span style={{ color: textSec, fontWeight: 700 }}>{t.problems_solved} solved</span>
+                              <span style={{ color: textSec, fontWeight: 600 }}>{t.problems_solved} solved</span>
                             </div>
                             <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: surfLow }}>
                               <div className="h-full rounded-full transition-all duration-700"
@@ -332,7 +333,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                   {/* Strengths */}
                   <div>
                     <h2 className="text-sm font-headline font-bold mb-1" style={{ color: textPri }}>Strengths</h2>
-                    <p className="text-[10px] mb-5" style={{ color: textSec }}>Topics you've mastered</p>
+                    <p className="text-xs mb-5" style={{ color: textSec }}>Topics you've mastered</p>
                     <div className="space-y-3">
                       {strengthTopics.slice(0, 5).map(t => {
                         const max = Math.max(...topics.map(x => x.problems_solved), 1);
@@ -341,7 +342,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                           <div key={t.topic_slug}>
                             <div className="flex justify-between text-xs mb-1">
                               <span style={{ color: textPri, fontWeight: 600 }}>{t.topic_name}</span>
-                              <span style={{ color: '#C084FC', fontWeight: 700 }}>{t.problems_solved} solved</span>
+                              <span style={{ color: '#C084FC', fontWeight: 600 }}>{t.problems_solved} solved</span>
                             </div>
                             <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: surfLow }}>
                               <div className="h-full rounded-full transition-all duration-700"
@@ -380,11 +381,11 @@ function AnalyticsPage({ theme, toggleTheme }) {
                         href={sub.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3 rounded-xl transition-all hover:scale-[1.005] hover:opacity-90 block"
+                        className="flex items-center justify-between p-3.5 rounded-xl transition-all hover:border-purple-500/30 block"
                         style={{ background: surfLow, textDecoration: 'none' }}
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[9px] font-extrabold text-white shrink-0"
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
                             style={{ background: platformColor }}>
                             {platformLabel}
                           </div>
@@ -392,12 +393,12 @@ function AnalyticsPage({ theme, toggleTheme }) {
                             <p className="text-sm font-semibold truncate" style={{ color: textPri }}>
                               {sub.title}
                             </p>
-                            <p className="text-[10px]" style={{ color: textSec }}>
+                            <p className="text-xs" style={{ color: textSec }}>
                               {sub.language} · {dateStr}
                             </p>
                           </div>
                         </div>
-                        <span className="text-[9px] font-bold px-2 py-1 rounded-lg shrink-0 ml-2"
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-lg shrink-0 ml-2"
                           style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#818CF8' }}>
                           Accepted
                         </span>

@@ -60,10 +60,7 @@ function Header({ theme, toggleTheme, onOpenChat }) {
   const prevOnlineIds = useRef(new Set());  // track who was online last poll
   const friendToastTimer = useRef(null);
 
-  // banner rotation
-  const [notifIndex, setNotifIndex] = useState(0);
   const [showPlusOne, setShowPlusOne] = useState(false);
-  const notifRef = useRef(null);
   const dropRef  = useRef(null);
 
   // ── fetch notifications from backend ─────────────────────────────
@@ -143,50 +140,6 @@ function Header({ theme, toggleTheme, onOpenChat }) {
       setTimeout(() => setShowPlusOne(false), 1500);
     }
   }, [user, streak]);
-
-  // ── Banner notifications ──────────────────────────────────────────
-  // Mix real-time state with the AI-generated actionable insights
-  const BANNER_NOTIFS = (() => {
-    const items = [];
-    
-    if (streakAtRisk) {
-      items.push(<><span style={{ color: '#EF4444', fontWeight: 700 }}>Solve 1 more question</span> to keep your streak 🔥</>);
-    }
-    
-    if (onlineFriends.length > 0) {
-      const name = onlineFriends[0].username;
-      items.push(<><span style={{ color: '#22C55E', fontWeight: 700 }}>{name}</span> is online tracking their goals 🟢</>);
-    }
-    
-    // Add in the AI actionable tips (parsed for *keyword* colors)
-    aiInsights.forEach(text => {
-      if (text !== 'Loading insights...' || items.length === 0) {
-         // split by * to colorize emphasis
-         const parts = text.split('*').map((part, i) => 
-            i % 2 === 1 
-              ? <span key={i} style={{ color: '#F59E0B', fontWeight: 700 }}>{part}</span> 
-              : part
-         );
-         items.push(<span style={{ color: isDark ? '#c7c4d7' : '#475569' }}>{parts}</span>);
-      }
-    });
-
-    return items;
-  })();
-
-  // Rotate banner
-  useEffect(() => {
-    if (BANNER_NOTIFS.length <= 1) return;
-    const id = setInterval(() => {
-      const el = notifRef.current;
-      if (el) { el.style.opacity = '0'; el.style.transform = 'translateY(-5px)'; el.style.transition = 'all 0.3s ease'; }
-      setTimeout(() => {
-        setNotifIndex(p => (p + 1) % BANNER_NOTIFS.length);
-        if (el) { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; }
-      }, 300);
-    }, 5000);
-    return () => clearInterval(id);
-  }, [BANNER_NOTIFS.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -280,67 +233,55 @@ function Header({ theme, toggleTheme, onOpenChat }) {
         </button>
       </div>
     )}
-    <header className="w-full px-6 pt-6 pb-2 flex justify-end items-center shrink-0">
-      <div className="flex items-center gap-3">
+    <header className="w-full px-6 pt-5 pb-3 flex justify-between items-center shrink-0 border-b"
+      style={{ borderColor: border, background: isDark ? 'rgba(18, 19, 21, 0.65)' : 'rgba(255, 255, 255, 0.75)', backdropFilter: 'blur(12px)' }}>
+      {/* Left side / subtle status */}
+      <div className="flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
+        <span className="text-xs font-medium" style={{ color: textSec }}>AlgoMind Engine Active</span>
+      </div>
 
+      <div className="flex items-center gap-3">
+        {/* Community / Friends status */}
         <button
-          className="p-2.5 rounded-xl flex items-center gap-3 cursor-pointer transition-all hover:scale-[1.02]"
+          className="px-3 py-1.5 rounded-xl flex items-center gap-2.5 cursor-pointer transition-all hover:opacity-85"
           style={{ background: surface, border: `1px solid ${border}` }}
           onClick={() => navigate('/friends')}
+          title="View Friends & Leaderboard"
         >
-          <div className="flex -space-x-2">
+          <div className="flex -space-x-1.5 items-center">
             {onlineFriends.length > 0
               ? onlineFriends.slice(0, 3).map((f, i) => (
                 <div key={f.id ?? i} className="relative">
                   {f.avatar
-                    ? <img src={f.avatar} className="w-6 h-6 rounded-full object-cover border-2"
+                    ? <img src={f.avatar} className="w-5 h-5 rounded-full object-cover border"
                         style={{ borderColor: isDark ? '#121315' : '#fff' }} alt="" />
-                    : <div className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-[8px] font-bold text-white"
-                        style={{ borderColor: isDark ? '#121315' : '#fff', background: ['#2f3aa3','#62259b','#22C55E'][i % 3] }}>
+                    : <div className="w-5 h-5 rounded-full border flex items-center justify-center text-[7px] font-bold text-white"
+                        style={{ borderColor: isDark ? '#121315' : '#fff', background: ['#4F46E5','#7C3AED','#059669'][i % 3] }}>
                         {(f.username ?? '?').slice(0,2).toUpperCase()}
                       </div>
                   }
-                  <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full border border-white"
-                    style={{ background: '#22C55E', borderColor: isDark ? '#121315' : '#fff' }} />
                 </div>
               ))
-              : ['#2f3aa3','#62259b'].map((bg, i) => (
-                <div key={i} className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-[8px] font-bold"
-                  style={{ borderColor: isDark ? '#121315' : '#fff', background: bg, color: '#fff' }}>
-                  {['JD','SK'][i]}
-                </div>
-              ))
+              : <span className="material-symbols-outlined text-[16px]" style={{ color: '#818CF8' }}>group</span>
             }
           </div>
-          <div>
-            <p className="text-[9px] uppercase font-label leading-none mb-0.5" style={{ color: textSec }}>
-              {onlineFriends.length > 0 ? `${onlineFriends.length} Online` : 'Leaderboard'}
-            </p>
-            <p className="text-[11px] font-bold" style={{ color: textPri }}>Friends</p>
-          </div>
+          <span className="text-xs font-semibold" style={{ color: textPri }}>
+            {onlineFriends.length > 0 ? `${onlineFriends.length} Online` : 'Friends'}
+          </span>
         </button>
-
-        {/* Notification Banner */}
-        <div className="rounded-xl px-4 py-2.5 flex flex-col justify-center min-w-[210px] h-[48px]"
-          style={{ background: surface, border: `1px solid ${border}` }}>
-          <p className="text-[9px] uppercase tracking-[0.1em] font-label leading-none mb-0.5" style={{ color: textSec }}>Notification</p>
-          <div className="h-[14px] overflow-hidden">
-            <p ref={notifRef} className="text-[11px] font-medium whitespace-nowrap notification-fade-in" style={{ color: isDark ? '#c7c4d7' : '#475569' }}>
-              {BANNER_NOTIFS[notifIndex % BANNER_NOTIFS.length]}
-            </p>
-          </div>
-        </div>
 
         {/* Notification Bell with Dropdown */}
         <div className="relative" ref={dropRef}>
           <button
-            className="w-11 h-11 rounded-xl flex items-center justify-center transition-all hover:opacity-80 relative"
+            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:opacity-80 relative"
             style={{ background: surface, border: `1px solid ${border}`, color: textPri }}
             onClick={() => { setShowNotifDrop(p => !p); if (!showNotifDrop) fetchNotifications(); }}
+            title="Notifications"
           >
-            <span className="material-symbols-outlined text-xl">notifications</span>
+            <span className="material-symbols-outlined text-lg">notifications</span>
             {unread > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white badge-pop"
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white"
                 style={{ background: '#EF4444' }}>
                 {unread > 9 ? '9+' : unread}
               </span>
@@ -349,19 +290,17 @@ function Header({ theme, toggleTheme, onOpenChat }) {
 
           {showNotifDrop && (
             <div
-              className="notif-dropdown absolute right-0 top-14 w-80 rounded-2xl shadow-2xl overflow-hidden z-50"
+              className="notif-dropdown absolute right-0 top-12 w-80 rounded-2xl shadow-2xl overflow-hidden z-50"
               style={{ background: dropBg, border: `1px solid ${border}` }}
             >
               <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${border}` }}>
-                <p className="text-sm font-bold" style={{ color: textPri }}>Notifications</p>
+                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>Notifications</p>
                 {unread > 0 && (
-                  <button className="text-[10px] font-semibold hover:opacity-70" style={{ color: '#6366F1' }} onClick={markAllRead}>
+                  <button className="text-[11px] font-semibold hover:opacity-70" style={{ color: '#818CF8' }} onClick={markAllRead}>
                     Mark all read
                   </button>
                 )}
               </div>
-
-
 
               <div className="max-h-72 overflow-y-auto custom-scrollbar">
                 {loadingNotifs ? (
@@ -370,8 +309,8 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                   </div>
                 ) : notifications.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
-                    <span className="text-2xl">🔔</span>
-                    <p className="text-xs" style={{ color: textSec }}>No notifications yet</p>
+                    <span className="text-xl">🔔</span>
+                    <p className="text-xs" style={{ color: textSec }}>No notifications</p>
                   </div>
                 ) : (
                   notifications.map(notif => {
@@ -389,7 +328,7 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                       >
                         <div className="flex items-start gap-3 relative group">
                           <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
                             style={{ background: notif.color || meta.color }}
                           >
                             {avatarDisplay}
@@ -397,19 +336,18 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                           <div className="flex-grow min-w-0 pr-8">
                             <p className="text-xs font-semibold" style={{ color: textPri }}>{notif.title}</p>
                             <p className="text-[11px] leading-tight mt-0.5" style={{ color: textSec }}>{notif.body}</p>
-                            <p className="text-[9px] mt-0.5 mb-1.5" style={{ color: textSec }}>{timeAgo(notif.created_at)}</p>
+                            <p className="text-[9px] mt-0.5 mb-1" style={{ color: textSec }}>{timeAgo(notif.created_at)}</p>
                             {/* Action Buttons */}
                             {notif.notif_type === 'friend_request' && (
                               <div className="flex gap-2 mb-1">
                                 <button onClick={(e) => { e.stopPropagation(); navigate('/friends?tab=requests'); markRead(notif.id); }}
-                                        className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
+                                        className="text-[10px] font-bold px-2.5 py-0.5 rounded transition-all hover:opacity-80"
                                         style={{ background: '#6366F1', color: '#fff' }}>Accept</button>
                                 <button onClick={(e) => { e.stopPropagation(); markRead(notif.id); }}
-                                        className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
+                                        className="text-[10px] font-bold px-2.5 py-0.5 rounded transition-all hover:opacity-80"
                                         style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', color: textPri }}>Dismiss</button>
                               </div>
                             )}
-                            {/* Party invite - either party_invite type or legacy system with code: in body */}
                             {(notif.notif_type === 'party_invite' || (notif.notif_type === 'system' && notif.body.includes('code: '))) && (() => {
                               const code = notif.body.split('code: ')[1]?.trim();
                               return code ? (
@@ -420,29 +358,26 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                                             setShowNotifDrop(false);
                                             navigate(`/challenges?join=${code}`);
                                           }}
-                                          className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
-                                          style={{ background: '#e63946', color: '#fff' }}>🎮 Join Party</button>
+                                          className="text-[10px] font-bold px-2.5 py-0.5 rounded transition-all hover:opacity-80"
+                                          style={{ background: '#e63946', color: '#fff' }}>🎮 Join</button>
                                   <button onClick={(e) => { e.stopPropagation(); markRead(notif.id); }}
-                                          className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
+                                          className="text-[10px] font-bold px-2.5 py-0.5 rounded transition-all hover:opacity-80"
                                           style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', color: textPri }}>Decline</button>
                                 </div>
                               ) : null;
                             })()}
                           </div>
                           
-                          {/* UI actions (Read & Delete) */}
                           <div className="absolute right-0 top-0 h-full flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             {!notif.read && (
                               <button onClick={(e) => { e.stopPropagation(); markRead(notif.id); }} className="hover:scale-110" style={{ color: '#22C55E' }} title="Mark as read">
-                                <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                                <span className="material-symbols-outlined text-[15px]">check_circle</span>
                               </button>
                             )}
                             <button onClick={(e) => deleteNotif(e, notif.id, notif.read)} className="hover:scale-110" style={{ color: '#EF4444' }} title="Clear notification">
-                              <span className="material-symbols-outlined text-[16px]">cancel</span>
+                              <span className="material-symbols-outlined text-[15px]">cancel</span>
                             </button>
                           </div>
-
-                          {!notif.read && <div className="w-2 h-2 rounded-full shrink-0 mt-1 opacity-100 group-hover:opacity-0 transition-opacity" style={{ background: '#6366F1' }} />}
                         </div>
                       </div>
                     );
@@ -450,10 +385,9 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                 )}
               </div>
 
-              {/* Streak at risk warning */}
               {streakAtRisk && (
-                <div className="px-4 py-3 flex items-center gap-2" style={{ borderTop: `1px solid ${border}`, background: isDark ? 'rgba(239,68,68,0.08)' : 'rgba(239,68,68,0.04)' }}>
-                  <span className="text-base">🔥</span>
+                <div className="px-4 py-2.5 flex items-center gap-2" style={{ borderTop: `1px solid ${border}`, background: isDark ? 'rgba(239,68,68,0.08)' : 'rgba(239,68,68,0.04)' }}>
+                  <span className="text-sm">🔥</span>
                   <p className="text-[11px] font-semibold" style={{ color: '#EF4444' }}>
                     Streak at risk! Solve a problem today.
                   </p>
@@ -463,55 +397,27 @@ function Header({ theme, toggleTheme, onOpenChat }) {
           )}
         </div>
 
-        {/* Plan Tier Badge */}
-        <div
-          onClick={() => navigate('/plans')}
-          className="rounded-xl px-3 py-2 flex items-center gap-2 cursor-pointer transition-all hover:scale-105"
-          style={{
-            background: user?.plan_tier === 'pro'
-              ? 'linear-gradient(135deg, rgba(167, 139, 250, 0.18), rgba(124, 58, 237, 0.12))'
-              : user?.plan_tier === 'plus'
-                ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(79, 70, 229, 0.12))'
-                : surface,
-            border: `1px solid ${user?.plan_tier === 'pro' ? 'rgba(167, 139, 250, 0.4)' : user?.plan_tier === 'plus' ? 'rgba(99, 102, 241, 0.4)' : border}`,
-          }}
-          title={user?.plan_tier ? `${user.plan_tier.toUpperCase()} Tier Active` : 'Upgrade Plan'}
-        >
-          <span className="material-symbols-outlined text-sm" style={{
-            color: user?.plan_tier === 'pro' ? '#A78BFA' : user?.plan_tier === 'plus' ? '#6366F1' : '#F59E0B',
-            fontVariationSettings: "'FILL' 1"
-          }}>
-            {user?.plan_tier === 'pro' ? 'workspace_premium' : user?.plan_tier === 'plus' ? 'bolt' : 'stars'}
-          </span>
-          <span className="text-[10px] font-extrabold uppercase tracking-wider" style={{
-            color: user?.plan_tier === 'pro' ? '#A78BFA' : user?.plan_tier === 'plus' ? '#6366F1' : textSec,
-          }}>
-            {user?.plan_tier?.toUpperCase() || 'BASIC'}
-          </span>
-        </div>
-
-        {/* Streak — real data from backend */}
-        <div className="rounded-xl px-4 py-2.5 flex items-center gap-3 relative"
-          style={{ background: surface, border: `1px solid ${border}` }}>
+        {/* Streak — clean developer pill */}
+        <div className="rounded-xl px-3 py-1.5 flex items-center gap-2 transition-all select-none"
+          style={{ background: isDark ? 'rgba(168, 85, 247, 0.08)' : 'rgba(99, 102, 241, 0.06)', border: `1px solid ${border}` }}
+          title={streakAtRisk ? 'Streak at risk! Solve a problem today.' : `Active Streak: ${streak} days`}>
           {showPlusOne && <span className="streak-plus-one">+1</span>}
-          <div>
-            <p className="text-[9px] uppercase font-label leading-none mb-0.5" style={{ color: textSec }}>Streak</p>
-            <p className="text-[11px] font-bold" style={{ color: streakAtRisk ? '#EF4444' : '#A855F7' }}>
-              {streak > 0 ? `${streak} Days` : 'Start today!'}
-            </p>
-          </div>
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center float-anim"
-            style={{ background: `rgba(${streakAtRisk ? '239,68,68' : '168,85,247'},0.12)`, color: streakAtRisk ? '#EF4444' : '#A855F7' }}>
-            <span className="material-symbols-outlined text-lg">local_fire_department</span>
+          <span className="text-sm select-none">🔥</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-sm font-bold tracking-tight" style={{ color: streakAtRisk ? '#EF4444' : textPri }}>
+              {streak > 0 ? streak : 0}
+            </span>
+            <span className="text-[11px] font-medium" style={{ color: textSec }}>days</span>
           </div>
         </div>
 
         {/* Theme Toggle */}
         <button
           id="themeToggle"
-          className="w-10 h-10 rounded-xl flex items-center justify-center transition-all hover:opacity-80"
+          className="w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:opacity-80"
           style={{ background: surface, border: `1px solid ${border}`, color: textPri }}
           onClick={toggleTheme}
+          title="Toggle Theme"
         >
           <span className="material-symbols-outlined text-lg">{isDark ? 'dark_mode' : 'light_mode'}</span>
         </button>
