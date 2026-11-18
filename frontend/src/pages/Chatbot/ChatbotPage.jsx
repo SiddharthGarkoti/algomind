@@ -4,34 +4,31 @@ import SignInModal from '../../components/login/SignInModal.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
 
-const PROMPT_STARTERS = [
+// Targeted suggestions based strictly on core algorithmic needs
+const SUGGESTIONS = [
   {
-    title: 'Dynamic Programming',
-    desc: 'Break down optimal substructure & state transitions for 0-1 Knapsack or Coin Change.',
-    icon: 'auto_awesome',
-    prompt: 'Explain the core intuition behind Dynamic Programming state transitions with a simple example.',
+    icon: 'menu_book',
+    label: 'Explain the intuition behind Two Pointers with examples',
+    prompt: 'Could you explain the core intuition behind the Two Pointers pattern and when to use it over brute force?',
   },
   {
-    title: 'Binary Search Invariants',
-    desc: 'Master left <= right vs left < right loop conditions to eliminate off-by-one bugs.',
-    icon: 'manage_search',
-    prompt: 'How do I choose loop invariants (left <= right vs left < right) in Binary Search to prevent off-by-one errors?',
+    icon: 'schema',
+    label: 'Break down Dynamic Programming state transitions step-by-step',
+    prompt: 'How do I identify subproblems and define state transitions in Dynamic Programming for optimization problems?',
   },
   {
-    title: 'Two Pointers vs Sliding Window',
-    desc: 'Identify when to use dual pointers versus a contiguous expandable window.',
-    icon: 'compare_arrows',
-    prompt: 'What heuristics help distinguish between a Two-Pointer approach and a Sliding Window problem?',
-  },
-  {
-    title: 'Debug Logic & Edge Cases',
-    desc: 'Diagnose runtime errors, empty input bounds, or infinite recursion in your solution.',
     icon: 'bug_report',
-    prompt: 'What are the most frequent edge cases that cause Wrong Answer or Runtime Error in array and graph problems?',
+    label: 'Help me diagnose edge cases and logic bugs in my solution',
+    prompt: 'What are the most frequent edge cases (empty bounds, duplicates, overflow) that break competitive programming solutions?',
+  },
+  {
+    icon: 'psychology',
+    label: 'How do I choose loop invariants in Binary Search?',
+    prompt: 'Explain how to determine binary search boundary conditions (left <= right vs left < right) without getting off-by-one errors.',
   },
 ];
 
-// Formats message text into clean markdown-like paragraphs and code blocks
+// Formats message text into clean code blocks and paragraphs
 function FormattedMessage({ text, isDark }) {
   const [copiedIndex, setCopiedIndex] = useState(null);
 
@@ -41,7 +38,6 @@ function FormattedMessage({ text, isDark }) {
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
-  // Split by code blocks ```lang ... ```
   const parts = text.split(/(```[\s\S]*?```)/g);
 
   return (
@@ -68,20 +64,20 @@ function FormattedMessage({ text, isDark }) {
               style={{
                 background: isDark ? '#0D0D14' : '#F1F5F9',
                 borderColor: isDark ? 'rgba(168, 85, 247, 0.2)' : 'rgba(0,0,0,0.08)',
-                boxShadow: isDark ? '0 4px 20px -4px rgba(168, 85, 247, 0.15)' : 'none'
+                boxShadow: isDark ? '0 4px 20px -4px rgba(168, 85, 247, 0.15)' : 'none',
               }}
             >
               <div
                 className="px-4 py-2 border-b flex items-center justify-between text-[11px] font-sans"
                 style={{
                   background: isDark ? 'rgba(255,255,255,0.03)' : '#E2E8F0',
-                  borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+                  borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
                 }}
               >
                 <span className="font-semibold text-purple-400 uppercase tracking-wider">{lang}</span>
                 <button
                   onClick={() => handleCopy(codeBody.trim(), index)}
-                  className="flex items-center gap-1 text-[11px] font-medium transition-opacity hover:opacity-75"
+                  className="flex items-center gap-1 text-[11px] font-medium transition-opacity hover:opacity-75 cursor-pointer"
                   style={{ color: '#818CF8' }}
                 >
                   <span className="material-symbols-outlined text-[13px]">
@@ -97,14 +93,12 @@ function FormattedMessage({ text, isDark }) {
           );
         }
 
-        // Normal text lines with bullet / bold formatting
         const lines = part.split('\n');
         return (
           <div key={index} className="space-y-1.5">
             {lines.map((line, lIdx) => {
               if (!line.trim()) return <div key={lIdx} className="h-1" />;
 
-              // Bullet points
               if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
                 const bulletText = line.trim().slice(2);
                 return (
@@ -124,7 +118,6 @@ function FormattedMessage({ text, isDark }) {
   );
 }
 
-// Inline formatting: **bold**, `code`
 function renderFormattedInline(text) {
   const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
   return parts.map((part, idx) => {
@@ -149,26 +142,35 @@ function ChatbotPage({ theme, toggleTheme }) {
   const isDark = theme === 'dark';
   const { isGuest, user } = useAuth();
   const isPro = user?.plan_tier === 'pro';
-  const isPlus = user?.plan_tier === 'plus';
 
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [socraticMode, setSocraticMode] = useState(isPro ? 'pro' : 'standard');
+  const [activeMode, setActiveMode] = useState('chat'); // 'chat' | 'solve'
+  const [selectedBot, setSelectedBot] = useState(isPro ? 'sage' : 'milo'); // 'milo' | 'sage'
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
   const messagesEnd = useRef(null);
   const autoSentRef = useRef(false);
-
-  // Capitalized First Name or Engineer
-  const displayName = user?.username
-    ? user.username.split('_')[0].charAt(0).toUpperCase() + user.username.split('_')[0].slice(1)
-    : 'Engineer';
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, sending]);
 
-  // Handle URL query parameters (?ask= or ?problem=)
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  // Handle URL query parameters
   useEffect(() => {
     if (autoSentRef.current) return;
     const params = new URLSearchParams(window.location.search);
@@ -185,7 +187,6 @@ function ChatbotPage({ theme, toggleTheme }) {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Detect query intent to select optimal backend AI endpoint
   const detectEndpoint = (text) => {
     const t = text.toLowerCase();
     if (/\b(hint|stuck|clue|nudge|tip)\b/.test(t)) return '/ai/hint/';
@@ -206,8 +207,8 @@ function ChatbotPage({ theme, toggleTheme }) {
       const endpoint = detectEndpoint(text);
       const data = await api.post(endpoint, {
         message: text,
-        mode: socraticMode,
-        tier: user?.plan_tier || 'basic'
+        mode: selectedBot === 'sage' ? 'pro' : 'standard',
+        tier: selectedBot === 'sage' ? 'pro' : (user?.plan_tier || 'basic'),
       });
 
       const botReply = data.response || data.message ||
@@ -215,12 +216,14 @@ function ChatbotPage({ theme, toggleTheme }) {
 
       setMessages(prev => [...prev, {
         from: 'bot',
+        botVersion: selectedBot,
         text: botReply,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       }]);
     } catch {
       setMessages(prev => [...prev, {
         from: 'bot',
+        botVersion: selectedBot,
         text: "I'm having a brief connection pause with the reasoning engine. In the meantime, remember to inspect your boundary conditions and verify the inductive step of your algorithm.",
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       }]);
@@ -229,378 +232,519 @@ function ChatbotPage({ theme, toggleTheme }) {
     }
   };
 
-  // Color & Theme definitions
-  const bg = isDark ? '#08080C' : '#F8FAFC';
+  const handleSelectModel = (modelKey) => {
+    if (modelKey === 'sage' && !isPro) {
+      // Allow preview with pro info or direct them to plans
+      setSelectedBot('sage');
+    } else {
+      setSelectedBot(modelKey);
+    }
+    setDropdownOpen(false);
+  };
+
   const textPri = isDark ? '#F8FAFC' : '#0F172A';
   const textSec = isDark ? '#94A3B8' : '#64748B';
-  const surface = isDark ? 'rgba(255, 255, 255, 0.035)' : '#FFFFFF';
   const border = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
 
   return (
     <DashboardLayout theme={theme} toggleTheme={toggleTheme}>
-      <div className="relative min-h-[calc(100vh-120px)] flex flex-col justify-between max-w-4xl mx-auto overflow-hidden">
-        
-        {/* ── Ambient Google Gemini Purple/Indigo Glow Light Effect ────────── */}
+      <div className="relative min-h-[calc(100vh-96px)] flex flex-col justify-between max-w-4xl mx-auto w-full px-2 sm:px-4">
+
+        {/* ── Ambient Gemini Purple Light Glow Effect ────────────────────── */}
         <div
-          className="absolute -top-24 left-1/2 -translate-x-1/2 w-[650px] sm:w-[850px] h-[400px] pointer-events-none rounded-full blur-[130px] opacity-25 dark:opacity-45 -z-10"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[850px] h-[500px] pointer-events-none rounded-full blur-[140px] opacity-25 dark:opacity-40 -z-10"
           style={{
-            background: 'radial-gradient(circle at 50% 40%, #A855F7 0%, #6366F1 45%, rgba(168, 85, 247, 0) 75%)',
-          }}
-        />
-        <div
-          className="absolute top-1/3 left-1/4 -translate-x-1/2 w-[380px] h-[300px] pointer-events-none rounded-full blur-[100px] opacity-15 dark:opacity-30 -z-10"
-          style={{
-            background: 'radial-gradient(circle, #EC4899 0%, #8B5CF6 55%, transparent 80%)',
+            background: 'radial-gradient(ellipse at 50% 50%, #9333EA 0%, #6366F1 40%, rgba(147, 51, 234, 0) 75%)',
           }}
         />
 
-        {/* ── Top Header Bar (Gemini Glass Style) ─────────────────────────── */}
-        <div
-          className="flex items-center justify-between px-5 py-3 rounded-2xl border backdrop-blur-xl shrink-0 z-10 mb-4 transition-all"
-          style={{
-            background: isDark ? 'rgba(20, 20, 28, 0.65)' : 'rgba(255, 255, 255, 0.8)',
-            borderColor: isDark ? 'rgba(168, 85, 247, 0.2)' : 'rgba(0, 0, 0, 0.08)',
-            boxShadow: isDark
-              ? '0 8px 32px -4px rgba(0, 0, 0, 0.5), 0 0 20px -2px rgba(168, 85, 247, 0.12)'
-              : '0 4px 20px -2px rgba(0, 0, 0, 0.05)'
-          }}
-        >
-          <div className="flex items-center gap-3.5">
-            {/* Glowing Avatar */}
-            <div className="relative">
-              <div
-                className="w-10 h-10 rounded-2xl overflow-hidden p-0.5 border flex items-center justify-center shadow-lg"
-                style={{
-                  background: 'linear-gradient(135deg, #6366F1, #A855F7, #EC4899)',
-                  borderColor: 'rgba(255, 255, 255, 0.2)'
-                }}
-              >
-                <img src="/milo.png" alt="MILO" className="w-full h-full rounded-[14px] object-cover bg-black" />
+        {/* ── Top Bar in Conversation Mode ───────────────────────────────── */}
+        {messages.length > 0 && (
+          <div
+            className="flex items-center justify-between px-4 py-2.5 rounded-2xl border backdrop-blur-xl shrink-0 z-10 mb-3"
+            style={{
+              background: isDark ? 'rgba(16, 16, 22, 0.7)' : 'rgba(255, 255, 255, 0.85)',
+              borderColor: isDark ? 'rgba(168, 85, 247, 0.2)' : 'rgba(0, 0, 0, 0.08)',
+            }}
+          >
+            {/* Milo on side only */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full overflow-hidden p-0.5 border shrink-0 shadow-sm"
+                style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)', borderColor: 'rgba(255, 255, 255, 0.2)' }}>
+                <img src="/milo.png" alt="Milo" className="w-full h-full rounded-full object-cover bg-black" />
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-black" />
-            </div>
-
-            <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-headline font-extrabold text-base tracking-tight" style={{ color: textPri }}>
-                  MILO Socratic
-                </h1>
+                <span className="text-sm font-bold" style={{ color: textPri }}>
+                  {selectedBot === 'sage' ? 'Sage Milo' : 'Milo'}
+                </span>
                 <span
-                  className="text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
                   style={{
-                    background: isPro
-                      ? 'linear-gradient(135deg, rgba(167, 139, 250, 0.25), rgba(124, 58, 237, 0.25))'
-                      : 'rgba(99, 102, 241, 0.15)',
-                    color: isPro ? '#C084FC' : '#818CF8',
-                    border: `1px solid ${isPro ? 'rgba(167, 139, 250, 0.35)' : 'rgba(99, 102, 241, 0.25)'}`
+                    background: selectedBot === 'sage' ? 'rgba(168, 85, 247, 0.2)' : 'rgba(99, 102, 241, 0.15)',
+                    color: selectedBot === 'sage' ? '#C084FC' : '#818CF8',
+                    border: `1px solid ${selectedBot === 'sage' ? 'rgba(168, 85, 247, 0.35)' : 'rgba(99, 102, 241, 0.25)'}`,
                   }}
                 >
-                  {isPro ? '2.0 Pro' : isPlus ? '2.0 Plus' : '2.0 Flash'}
+                  {selectedBot === 'sage' ? 'Pro Plan' : 'Standard'}
                 </span>
               </div>
-              <p className="text-[11px] font-medium" style={{ color: textSec }}>
-                {isPro
-                  ? 'Asymptotic invariant reasoning & stress-testing active'
-                  : 'Socratic algorithm mentor · Guidance without spoilers'}
-              </p>
             </div>
+
+            <button
+              onClick={() => setMessages([])}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:bg-white/10 cursor-pointer"
+              style={{ color: textSec }}
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+              <span>New Chat</span>
+            </button>
           </div>
+        )}
 
-          <div className="flex items-center gap-2">
-            {messages.length > 0 && (
-              <button
-                onClick={() => setMessages([])}
-                className="p-2 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all hover:bg-white/10"
-                style={{ color: textSec }}
-                title="Start New Session"
-              >
-                <span className="material-symbols-outlined text-sm">refresh</span>
-                <span className="hidden sm:inline">New Chat</span>
-              </button>
-            )}
+        {/* ── Main Canvas ────────────────────────────────────────────────── */}
+        <div className="flex-1 flex flex-col justify-center overflow-y-auto custom-scroll">
 
-            {!isPro && (
-              <button
-                onClick={() => window.location.href = '/plans'}
-                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg"
-                style={{
-                  background: 'linear-gradient(135deg, #6366F1, #A855F7)',
-                  color: '#FFFFFF',
-                  boxShadow: '0 4px 16px -2px rgba(99, 102, 241, 0.4)'
-                }}
-              >
-                <span className="material-symbols-outlined text-xs">bolt</span>
-                <span>Upgrade</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* ── Center Stage Area ───────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-1 sm:px-2 py-4 space-y-6 custom-scroll">
-          
-          {/* Gemini-Style Welcome Hero (when no messages yet) */}
-          {messages.length === 0 && (
-            <div className="py-6 sm:py-10 space-y-8 animate-in fade-in duration-500">
+          {/* ── Initial Gemini Landing State ──────────────────────────────── */}
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center text-center my-auto py-10 w-full animate-in fade-in duration-300">
               
-              {/* Iridescent Greeting */}
-              <div className="space-y-2">
-                <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight font-headline bg-gradient-to-r from-blue-400 via-purple-300 to-indigo-300 bg-clip-text text-transparent">
-                  Hello, {displayName}
-                </h2>
-                <p className="text-xl sm:text-2xl font-medium tracking-tight" style={{ color: textSec }}>
-                  How can MILO guide your algorithmic intuition today?
-                </p>
-              </div>
+              {/* Title */}
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-headline font-normal tracking-tight mb-8"
+                style={{ color: isDark ? '#FFFFFF' : '#0F172A' }}>
+                Where should we start?
+              </h1>
 
-              {/* Gemini Starters 4-Card Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
-                {PROMPT_STARTERS.map((card, i) => (
-                  <button
-                    key={i}
-                    onClick={() => send(card.prompt)}
-                    className="p-4 sm:p-5 rounded-2xl text-left border transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden"
-                    style={{
-                      background: isDark ? 'rgba(255, 255, 255, 0.025)' : '#FFFFFF',
-                      borderColor: border,
-                      boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 16px -4px rgba(0,0,0,0.05)'
+              {/* Center Pill Prompt Capsule */}
+              <div className="w-full max-w-2xl relative z-20">
+                <div
+                  className="rounded-full p-2 pl-3.5 pr-2.5 border flex items-center gap-3 backdrop-blur-xl transition-all duration-300"
+                  style={{
+                    background: isDark ? 'rgba(22, 22, 30, 0.88)' : '#FFFFFF',
+                    borderColor: isDark ? 'rgba(168, 85, 247, 0.35)' : 'rgba(99, 102, 241, 0.25)',
+                    boxShadow: isDark
+                      ? '0 0 35px -5px rgba(147, 51, 234, 0.3), 0 0 70px -15px rgba(99, 102, 241, 0.2)'
+                      : '0 8px 30px -4px rgba(99, 102, 241, 0.15)',
+                  }}
+                >
+                  {/* Milo on side only */}
+                  <div className="w-8 h-8 rounded-full overflow-hidden p-0.5 border shrink-0 shadow-sm"
+                    style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)', borderColor: 'rgba(255, 255, 255, 0.2)' }}>
+                    <img src="/milo.png" alt="Milo" className="w-full h-full rounded-full object-cover bg-black" />
+                  </div>
+
+                  {/* Input field */}
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        send(input);
+                      }
                     }}
-                  >
-                    {/* Hover Purple Border Glow */}
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-2xl border"
-                      style={{
-                        borderColor: '#A855F7',
-                        boxShadow: 'inset 0 0 20px rgba(168, 85, 247, 0.15)'
-                      }}
-                    />
+                    placeholder={`Ask ${selectedBot === 'sage' ? 'Sage Milo' : 'Milo'}...`}
+                    disabled={sending || isGuest}
+                    className="flex-1 bg-transparent outline-none text-sm font-sans placeholder:text-gray-500 min-w-0"
+                    style={{ color: textPri }}
+                  />
 
-                    <div className="flex items-center justify-between mb-3 relative z-10">
+                  {/* 2 Chatbot Versions Dropdown (Milo vs Sage Milo) */}
+                  <div className="relative shrink-0" ref={dropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setDropdownOpen(prev => !prev)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer hover:border-purple-400"
+                      style={{
+                        background: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                        color: selectedBot === 'sage' ? '#C084FC' : textPri,
+                      }}
+                    >
+                      <span>{selectedBot === 'sage' ? 'Sage Milo' : 'Milo'}</span>
+                      <span className="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {dropdownOpen && (
                       <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center transition-transform group-hover:rotate-6"
+                        className="absolute right-0 top-full mt-2 w-56 rounded-2xl p-2 border shadow-2xl backdrop-blur-xl z-50 text-left animate-in fade-in zoom-in-95 duration-150"
                         style={{
-                          background: 'linear-gradient(135deg, rgba(99,102,241,0.18), rgba(168,85,247,0.18))',
-                          color: '#A855F7'
+                          background: isDark ? '#141419' : '#FFFFFF',
+                          borderColor: isDark ? 'rgba(168, 85, 247, 0.3)' : 'rgba(0, 0, 0, 0.1)',
                         }}
                       >
-                        <span className="material-symbols-outlined text-lg">{card.icon}</span>
-                      </div>
-                      <span className="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity text-purple-400">
-                        arrow_forward
-                      </span>
-                    </div>
+                        {/* Option 1: Milo */}
+                        <button
+                          type="button"
+                          onClick={() => handleSelectModel('milo')}
+                          className="w-full flex items-start gap-2.5 p-2.5 rounded-xl transition-all hover:bg-white/[0.06] text-left cursor-pointer"
+                          style={{
+                            background: selectedBot === 'milo' ? (isDark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.08)') : 'transparent',
+                          }}
+                        >
+                          <div className="w-7 h-7 rounded-full overflow-hidden p-0.5 border shrink-0 mt-0.5"
+                            style={{ background: 'linear-gradient(135deg, #6366F1, #818CF8)', borderColor: 'rgba(255,255,255,0.2)' }}>
+                            <img src="/milo.png" alt="Milo" className="w-full h-full rounded-full object-cover bg-black" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold" style={{ color: textPri }}>Milo</span>
+                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase"
+                                style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818CF8' }}>Standard</span>
+                            </div>
+                            <p className="text-[10px] mt-0.5" style={{ color: textSec }}>Socratic hints & algorithmic guidance</p>
+                          </div>
+                        </button>
 
-                    <h3 className="text-sm font-bold tracking-tight mb-1 relative z-10 group-hover:text-purple-300 transition-colors" style={{ color: textPri }}>
-                      {card.title}
-                    </h3>
-                    <p className="text-xs leading-relaxed relative z-10 line-clamp-2" style={{ color: textSec }}>
-                      {card.desc}
-                    </p>
+                        {/* Option 2: Sage Milo (Pro Plan) */}
+                        <button
+                          type="button"
+                          onClick={() => handleSelectModel('sage')}
+                          className="w-full flex items-start gap-2.5 p-2.5 rounded-xl transition-all hover:bg-white/[0.06] text-left cursor-pointer mt-1"
+                          style={{
+                            background: selectedBot === 'sage' ? (isDark ? 'rgba(168,85,247,0.18)' : 'rgba(168,85,247,0.1)') : 'transparent',
+                          }}
+                        >
+                          <div className="w-7 h-7 rounded-full overflow-hidden p-0.5 border shrink-0 mt-0.5"
+                            style={{ background: 'linear-gradient(135deg, #A855F7, #EC4899)', borderColor: 'rgba(255,255,255,0.2)' }}>
+                            <img src="/milo.png" alt="Sage Milo" className="w-full h-full rounded-full object-cover bg-black" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold" style={{ color: '#C084FC' }}>Sage Milo</span>
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
+                                style={{ background: 'linear-gradient(135deg, #A855F7, #EC4899)', color: '#FFFFFF' }}>Pro Plan</span>
+                            </div>
+                            <p className="text-[10px] mt-0.5" style={{ color: textSec }}>Deep invariant proofs & stress-testing</p>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Send Button */}
+                  <button
+                    onClick={() => send(input)}
+                    disabled={sending || !input.trim() || isGuest}
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40 shrink-0 cursor-pointer shadow-md"
+                    style={{
+                      background: input.trim() && !sending
+                        ? 'linear-gradient(135deg, #6366F1, #A855F7)'
+                        : (isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0'),
+                      color: input.trim() ? '#FFFFFF' : textSec,
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-sm font-bold">
+                      {input.trim() ? 'arrow_upward' : 'mic'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Mode Toggle Chips (Chat / Solve) */}
+              <div className="flex items-center gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveMode('chat')}
+                  className="px-3.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer"
+                  style={{
+                    background: activeMode === 'chat'
+                      ? (isDark ? 'rgba(168, 85, 247, 0.2)' : 'rgba(99, 102, 241, 0.15)')
+                      : 'transparent',
+                    color: activeMode === 'chat' ? '#C084FC' : textSec,
+                    border: `1px solid ${activeMode === 'chat' ? 'rgba(168, 85, 247, 0.35)' : 'transparent'}`,
+                  }}
+                >
+                  Chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveMode('solve')}
+                  className="px-3.5 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer"
+                  style={{
+                    background: activeMode === 'solve'
+                      ? (isDark ? 'rgba(168, 85, 247, 0.2)' : 'rgba(99, 102, 241, 0.15)')
+                      : 'transparent',
+                    color: activeMode === 'solve' ? '#C084FC' : textSec,
+                    border: `1px solid ${activeMode === 'solve' ? 'rgba(168, 85, 247, 0.35)' : 'transparent'}`,
+                  }}
+                >
+                  Task
+                </button>
+              </div>
+
+              {/* Focused DSA Suggestions Stack */}
+              <div className="w-full max-w-xl mt-8 space-y-1 text-left">
+                {SUGGESTIONS.map((item, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => send(item.prompt)}
+                    className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-2xl transition-all duration-200 hover:bg-white/[0.04] cursor-pointer text-left group border border-transparent hover:border-purple-500/20"
+                    style={{ color: textSec }}
+                  >
+                    <span className="material-symbols-outlined text-lg group-hover:text-purple-400 transition-colors shrink-0">
+                      {item.icon}
+                    </span>
+                    <span className="text-xs sm:text-sm font-normal group-hover:text-white transition-colors truncate">
+                      {item.label}
+                    </span>
                   </button>
                 ))}
               </div>
 
             </div>
-          )}
+          ) : (
+            /* ── Conversation Messages Thread ── */
+            <div className="py-4 space-y-5">
+              {messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex gap-3.5 ${msg.from === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-up duration-300`}
+                >
+                  {/* Milo avatar shown on the side only */}
+                  {msg.from === 'bot' && (
+                    <div className="w-8 h-8 rounded-full overflow-hidden p-0.5 border flex items-center justify-center shrink-0 mt-1 shadow-md"
+                      style={{
+                        background: msg.botVersion === 'sage'
+                          ? 'linear-gradient(135deg, #A855F7, #EC4899)'
+                          : 'linear-gradient(135deg, #6366F1, #A855F7)',
+                        borderColor: 'rgba(255,255,255,0.2)',
+                      }}>
+                      <img src="/milo.png" alt="Milo" className="w-full h-full rounded-full object-cover bg-black" />
+                    </div>
+                  )}
 
-          {/* ── Messages Feed ────────────────────────────────────────────── */}
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`flex gap-3.5 ${msg.from === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-up duration-300`}
-            >
-              {/* Bot Avatar with Glow */}
-              {msg.from === 'bot' && (
-                <div className="w-8 h-8 rounded-xl overflow-hidden p-0.5 border flex items-center justify-center shrink-0 mt-1 shadow-md"
-                  style={{
-                    background: 'linear-gradient(135deg, #6366F1, #A855F7)',
-                    borderColor: 'rgba(255,255,255,0.2)'
-                  }}>
-                  <img src="/milo.png" alt="MILO" className="w-full h-full rounded-[10px] object-cover bg-black" />
+                  <div className={`max-w-[85%] sm:max-w-[78%] ${msg.from === 'user' ? 'text-right' : 'text-left'}`}>
+                    <div
+                      className={`px-5 py-4 text-sm leading-relaxed ${
+                        msg.from === 'user'
+                          ? 'rounded-3xl rounded-tr-sm text-white'
+                          : 'rounded-3xl rounded-tl-sm border'
+                      }`}
+                      style={msg.from === 'user' ? {
+                        background: 'linear-gradient(135deg, #6366F1, #7C3AED)',
+                        boxShadow: '0 4px 20px -2px rgba(99, 102, 241, 0.4)',
+                      } : {
+                        background: isDark ? 'rgba(20, 20, 28, 0.75)' : '#FFFFFF',
+                        borderColor: isDark ? 'rgba(168, 85, 247, 0.18)' : 'rgba(0, 0, 0, 0.08)',
+                        color: textPri,
+                        boxShadow: isDark ? '0 4px 24px -2px rgba(0, 0, 0, 0.4)' : '0 4px 16px -4px rgba(0, 0, 0, 0.04)',
+                      }}
+                    >
+                      {msg.from === 'bot' ? (
+                        <FormattedMessage text={msg.text} isDark={isDark} />
+                      ) : (
+                        <p className="whitespace-pre-line text-left font-normal">{msg.text}</p>
+                      )}
+                    </div>
+
+                    <div className={`flex items-center gap-2 mt-1 px-2 text-[10px] ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}
+                      style={{ color: textSec }}>
+                      <span>{msg.time}</span>
+                      {msg.from === 'bot' && (
+                        <>
+                          <span>•</span>
+                          <span style={{ color: msg.botVersion === 'sage' ? '#C084FC' : '#818CF8' }}>
+                            {msg.botVersion === 'sage' ? 'Sage Milo' : 'Milo'}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Typing indicator */}
+              {sending && (
+                <div className="flex items-start gap-3.5 animate-in fade-in">
+                  <div className="w-8 h-8 rounded-full overflow-hidden p-0.5 border flex items-center justify-center shrink-0 mt-1 shadow-md"
+                    style={{
+                      background: selectedBot === 'sage'
+                        ? 'linear-gradient(135deg, #A855F7, #EC4899)'
+                        : 'linear-gradient(135deg, #6366F1, #A855F7)',
+                      borderColor: 'rgba(255,255,255,0.2)',
+                    }}>
+                    <img src="/milo.png" alt="Milo" className="w-full h-full rounded-full object-cover bg-black" />
+                  </div>
+
+                  <div
+                    className="px-5 py-3.5 rounded-3xl rounded-tl-sm border flex items-center gap-2"
+                    style={{
+                      background: isDark ? 'rgba(20, 20, 28, 0.75)' : '#FFFFFF',
+                      borderColor: isDark ? 'rgba(168, 85, 247, 0.25)' : 'rgba(99, 102, 241, 0.15)',
+                      boxShadow: '0 0 20px -2px rgba(168, 85, 247, 0.15)',
+                    }}
+                  >
+                    <div className="flex gap-1.5 items-center">
+                      {[0, 1, 2, 3].map(i => (
+                        <span
+                          key={i}
+                          className="w-1.5 h-1.5 rounded-full animate-bounce"
+                          style={{
+                            background: i % 2 === 0 ? '#818CF8' : '#C084FC',
+                            animationDelay: `${i * 0.12}s`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs font-medium ml-1.5 text-purple-300">
+                      {selectedBot === 'sage' ? 'Sage Milo' : 'Milo'} is thinking...
+                    </span>
+                  </div>
                 </div>
               )}
 
-              <div className={`max-w-[85%] sm:max-w-[78%] ${msg.from === 'user' ? 'text-right' : 'text-left'}`}>
-                <div
-                  className={`px-5 py-4 text-sm leading-relaxed transition-all ${
-                    msg.from === 'user'
-                      ? 'rounded-3xl rounded-tr-sm'
-                      : 'rounded-3xl rounded-tl-sm border'
-                  }`}
-                  style={msg.from === 'user' ? {
-                    background: 'linear-gradient(135deg, #6366F1, #7C3AED)',
-                    color: '#FFFFFF',
-                    boxShadow: '0 4px 20px -2px rgba(99, 102, 241, 0.4)'
-                  } : {
-                    background: isDark ? 'rgba(255, 255, 255, 0.035)' : '#FFFFFF',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
-                    color: textPri,
-                    boxShadow: isDark ? '0 4px 24px -2px rgba(0, 0, 0, 0.4)' : '0 4px 16px -4px rgba(0, 0, 0, 0.04)'
-                  }}
-                >
-                  {msg.from === 'bot' ? (
-                    <FormattedMessage text={msg.text} isDark={isDark} />
-                  ) : (
-                    <p className="whitespace-pre-line text-left font-normal">{msg.text}</p>
-                  )}
-                </div>
-
-                {/* Subtext info */}
-                <div className={`flex items-center gap-2 mt-1.5 px-2 text-[10px] ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}
-                  style={{ color: textSec }}>
-                  <span>{msg.time}</span>
-                  {msg.from === 'bot' && (
-                    <>
-                      <span>•</span>
-                      <span>Socratic Nudge</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {/* Typing Wave Indicator (Gemini Style) */}
-          {sending && (
-            <div className="flex items-start gap-3.5 animate-in fade-in">
-              <div className="w-8 h-8 rounded-xl overflow-hidden p-0.5 border flex items-center justify-center shrink-0 mt-1 shadow-md"
-                style={{
-                  background: 'linear-gradient(135deg, #6366F1, #A855F7)',
-                  borderColor: 'rgba(255,255,255,0.2)'
-                }}>
-                <img src="/milo.png" alt="MILO" className="w-full h-full rounded-[10px] object-cover bg-black" />
-              </div>
-
-              <div
-                className="px-5 py-4 rounded-3xl rounded-tl-sm border flex items-center gap-2"
-                style={{
-                  background: isDark ? 'rgba(255, 255, 255, 0.035)' : '#FFFFFF',
-                  borderColor: isDark ? 'rgba(168, 85, 247, 0.25)' : 'rgba(99, 102, 241, 0.15)',
-                  boxShadow: '0 0 20px -2px rgba(168, 85, 247, 0.15)'
-                }}
-              >
-                <div className="flex gap-1.5 items-center">
-                  {[0, 1, 2, 3].map(i => (
-                    <span
-                      key={i}
-                      className="w-2 h-2 rounded-full animate-bounce"
-                      style={{
-                        background: i % 2 === 0 ? '#818CF8' : '#C084FC',
-                        animationDelay: `${i * 0.12}s`
-                      }}
-                    />
-                  ))}
-                </div>
-                <span className="text-xs font-medium ml-2 text-purple-300">
-                  MILO is reasoning...
-                </span>
-              </div>
+              <div ref={messagesEnd} />
             </div>
           )}
 
-          <div ref={messagesEnd} />
         </div>
 
-        {/* ── Gemini Floating Input Capsule with Purple Halo ─────────────── */}
-        <div className="relative pt-4 pb-2 z-20">
-          
-          {/* Guest Lock Overlay */}
-          {isGuest && (
+        {/* ── Bottom Input Pill (when in active chat mode) ───────────────── */}
+        {messages.length > 0 && (
+          <div className="relative pt-2 pb-3 z-20">
+            {isGuest && (
+              <div
+                className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-3xl backdrop-blur-md z-30 border"
+                style={{
+                  background: isDark ? 'rgba(10, 10, 14, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                  borderColor: 'rgba(168, 85, 247, 0.3)',
+                }}
+              >
+                <p className="text-xs font-bold" style={{ color: textPri }}>Sign in to continue chatting with Milo</p>
+                <button
+                  onClick={() => setModalOpen(true)}
+                  className="px-4 py-1.5 rounded-xl text-xs font-bold text-white shadow-lg"
+                  style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)' }}
+                >
+                  Sign In Free
+                </button>
+              </div>
+            )}
+
             <div
-              className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-3xl backdrop-blur-md z-30 border"
+              className="rounded-full p-2 pl-3.5 pr-2.5 border flex items-center gap-3 backdrop-blur-xl transition-all"
               style={{
-                background: isDark ? 'rgba(10, 10, 14, 0.88)' : 'rgba(255, 255, 255, 0.9)',
-                borderColor: 'rgba(168, 85, 247, 0.3)'
+                background: isDark ? 'rgba(22, 22, 30, 0.92)' : '#FFFFFF',
+                borderColor: isDark ? 'rgba(168, 85, 247, 0.35)' : 'rgba(99, 102, 241, 0.25)',
+                boxShadow: isDark
+                  ? '0 0 35px -5px rgba(147, 51, 234, 0.25), 0 0 70px -15px rgba(99, 102, 241, 0.15)'
+                  : '0 8px 30px -4px rgba(99, 102, 241, 0.15)',
               }}
             >
-              <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)' }}
-              >
-                <span className="material-symbols-outlined">lock</span>
+              {/* Milo on side only */}
+              <div className="w-8 h-8 rounded-full overflow-hidden p-0.5 border shrink-0 shadow-sm"
+                style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)', borderColor: 'rgba(255, 255, 255, 0.2)' }}>
+                <img src="/milo.png" alt="Milo" className="w-full h-full rounded-full object-cover bg-black" />
               </div>
-              <div className="text-center">
-                <p className="text-base font-bold" style={{ color: textPri }}>Sign in to converse with MILO</p>
-                <p className="text-xs mt-0.5" style={{ color: textSec }}>Join AlgoMind to access Socratic algorithmic guidance</p>
-              </div>
-              <button
-                onClick={() => setModalOpen(true)}
-                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white transition-all hover:scale-105 active:scale-95 shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)' }}
-              >
-                Sign In / Register Free
-              </button>
-            </div>
-          )}
 
-          {/* Floating Pill Box Container */}
-          <div
-            className="rounded-3xl p-3 sm:p-4 border transition-all duration-300 relative"
-            style={{
-              background: isDark ? 'rgba(20, 20, 28, 0.85)' : '#FFFFFF',
-              borderColor: isDark ? 'rgba(168, 85, 247, 0.3)' : 'rgba(99, 102, 241, 0.25)',
-              boxShadow: isDark
-                ? '0 0 35px -5px rgba(168, 85, 247, 0.25), 0 0 70px -15px rgba(99, 102, 241, 0.15)'
-                : '0 8px 30px -4px rgba(99, 102, 241, 0.15)'
-            }}
-          >
-            {/* Input Area */}
-            <textarea
-              rows={2}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  send(input);
-                }
-              }}
-              placeholder="Ask MILO about invariant reasoning, algorithm hints, or code bugs..."
-              disabled={sending || isGuest}
-              className="w-full bg-transparent outline-none text-sm resize-none font-sans placeholder:text-gray-500 custom-scroll px-1"
-              style={{ color: textPri }}
-            />
+              <input
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    send(input);
+                  }
+                }}
+                placeholder={`Ask ${selectedBot === 'sage' ? 'Sage Milo' : 'Milo'}...`}
+                disabled={sending || isGuest}
+                className="flex-1 bg-transparent outline-none text-sm font-sans placeholder:text-gray-500 min-w-0"
+                style={{ color: textPri }}
+              />
 
-            {/* Bottom Controls inside the capsule */}
-            <div className="flex items-center justify-between pt-2 border-t mt-1"
-              style={{ borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }}>
-              
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border"
+              {/* Model Switcher Pill */}
+              <div className="relative shrink-0" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setDropdownOpen(prev => !prev)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all cursor-pointer"
                   style={{
-                    background: isDark ? 'rgba(168, 85, 247, 0.12)' : 'rgba(99, 102, 241, 0.08)',
-                    borderColor: isDark ? 'rgba(168, 85, 247, 0.25)' : 'rgba(99, 102, 241, 0.15)',
-                    color: '#C084FC'
-                  }}>
-                  <span className="material-symbols-outlined text-[13px]">auto_awesome</span>
-                  <span>Socratic Guide</span>
-                </span>
-                <span className="text-[11px] hidden sm:inline" style={{ color: textSec }}>
-                  Press <kbd className="px-1.5 py-0.5 rounded text-[10px] bg-white/10">Enter ↵</kbd> to send
-                </span>
+                    background: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                    color: selectedBot === 'sage' ? '#C084FC' : textPri,
+                  }}
+                >
+                  <span>{selectedBot === 'sage' ? 'Sage Milo' : 'Milo'}</span>
+                  <span className="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+                </button>
+
+                {dropdownOpen && (
+                  <div
+                    className="absolute right-0 bottom-full mb-2 w-56 rounded-2xl p-2 border shadow-2xl backdrop-blur-xl z-50 text-left animate-in fade-in zoom-in-95 duration-150"
+                    style={{
+                      background: isDark ? '#141419' : '#FFFFFF',
+                      borderColor: isDark ? 'rgba(168, 85, 247, 0.3)' : 'rgba(0, 0, 0, 0.1)',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSelectModel('milo')}
+                      className="w-full flex items-start gap-2.5 p-2 rounded-xl transition-all hover:bg-white/[0.06] text-left cursor-pointer"
+                      style={{
+                        background: selectedBot === 'milo' ? (isDark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.08)') : 'transparent',
+                      }}
+                    >
+                      <div className="w-6 h-6 rounded-full overflow-hidden p-0.5 border shrink-0 mt-0.5"
+                        style={{ background: 'linear-gradient(135deg, #6366F1, #818CF8)', borderColor: 'rgba(255,255,255,0.2)' }}>
+                        <img src="/milo.png" alt="Milo" className="w-full h-full rounded-full object-cover bg-black" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold" style={{ color: textPri }}>Milo</span>
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase"
+                            style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818CF8' }}>Standard</span>
+                        </div>
+                        <p className="text-[10px] mt-0.5" style={{ color: textSec }}>Socratic hints & algorithmic guidance</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectModel('sage')}
+                      className="w-full flex items-start gap-2.5 p-2 rounded-xl transition-all hover:bg-white/[0.06] text-left cursor-pointer mt-1"
+                      style={{
+                        background: selectedBot === 'sage' ? (isDark ? 'rgba(168,85,247,0.18)' : 'rgba(168,85,247,0.1)') : 'transparent',
+                      }}
+                    >
+                      <div className="w-6 h-6 rounded-full overflow-hidden p-0.5 border shrink-0 mt-0.5"
+                        style={{ background: 'linear-gradient(135deg, #A855F7, #EC4899)', borderColor: 'rgba(255,255,255,0.2)' }}>
+                        <img src="/milo.png" alt="Sage Milo" className="w-full h-full rounded-full object-cover bg-black" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold" style={{ color: '#C084FC' }}>Sage Milo</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
+                            style={{ background: 'linear-gradient(135deg, #A855F7, #EC4899)', color: '#FFFFFF' }}>Pro Plan</span>
+                        </div>
+                        <p className="text-[10px] mt-0.5" style={{ color: textSec }}>Deep invariant proofs & stress-testing</p>
+                      </div>
+                    </button>
+                  </div>
+                )}
               </div>
 
+              {/* Send Button */}
               <button
                 onClick={() => send(input)}
                 disabled={sending || !input.trim() || isGuest}
-                className="w-9 h-9 rounded-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40 shadow-lg"
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40 shrink-0 cursor-pointer shadow-md"
                 style={{
-                  background: input.trim() && !sending && !isGuest
+                  background: input.trim() && !sending
                     ? 'linear-gradient(135deg, #6366F1, #A855F7)'
                     : (isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0'),
-                  color: input.trim() && !sending && !isGuest ? '#FFFFFF' : textSec,
-                  boxShadow: input.trim() ? '0 4px 16px rgba(168, 85, 247, 0.4)' : 'none'
+                  color: input.trim() ? '#FFFFFF' : textSec,
                 }}
               >
-                <span className="material-symbols-outlined text-base">send</span>
+                <span className="material-symbols-outlined text-sm font-bold">
+                  {input.trim() ? 'arrow_upward' : 'mic'}
+                </span>
               </button>
             </div>
           </div>
-
-          {/* Gemini-Style Footer Disclaimer */}
-          <p className="text-center text-[11px] mt-2 font-medium" style={{ color: textSec }}>
-            MILO provides Socratic algorithmic intuition. Always verify edge cases and constraints.
-          </p>
-        </div>
+        )}
 
       </div>
 
