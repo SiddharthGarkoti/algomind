@@ -24,6 +24,7 @@ function ProfilePage({ theme, toggleTheme }) {
   const [topics,        setTopics]        = useState([]);
   const [loadingData,   setLoadingData]   = useState(true);
   const [activeTab,     setActiveTab]     = useState('all');
+  const [selectedBadge, setSelectedBadge] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -151,9 +152,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'solve-100',
       category: 'Solving',
-      title: 'Centurion (100 Problems)',
+      title: 'Centurion',
+      subtitle: '100 Problems',
       description: 'Solve 100 problems on LeetCode or Codeforces',
-      icon: 'task_alt',
+      icon: 'workspace_premium',
+      badgeColor: '#818CF8',
+      gradient: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+      glow: '0 0 20px rgba(99, 102, 241, 0.4)',
       current: totalSolved,
       target: 100,
       earned: totalSolved >= 100,
@@ -162,9 +167,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'solve-150',
       category: 'Solving',
-      title: 'Adept (150 Problems)',
+      title: 'Adept',
+      subtitle: '150 Problems',
       description: 'Solve 150 problems across connected platforms',
       icon: 'military_tech',
+      badgeColor: '#818CF8',
+      gradient: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+      glow: '0 0 20px rgba(79, 70, 229, 0.4)',
       current: totalSolved,
       target: 150,
       earned: totalSolved >= 150,
@@ -173,9 +182,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'solve-250',
       category: 'Solving',
-      title: 'Quarter-Mille (250 Problems)',
+      title: 'Quarter-Mille',
+      subtitle: '250 Problems',
       description: 'Reach 250 solved problems in algorithmic training',
-      icon: 'workspace_premium',
+      icon: 'stars',
+      badgeColor: '#A855F7',
+      gradient: 'linear-gradient(135deg, #7C3AED, #A855F7)',
+      glow: '0 0 20px rgba(168, 85, 247, 0.4)',
       current: totalSolved,
       target: 250,
       earned: totalSolved >= 250,
@@ -184,9 +197,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'solve-500',
       category: 'Solving',
-      title: 'Grandmaster (500 Problems)',
+      title: 'Grandmaster',
+      subtitle: '500 Problems',
       description: 'Solve 500 competitive algorithmic problems',
       icon: 'diamond',
+      badgeColor: '#C084FC',
+      gradient: 'linear-gradient(135deg, #9333EA, #C084FC)',
+      glow: '0 0 24px rgba(192, 132, 252, 0.45)',
       current: totalSolved,
       target: 500,
       earned: totalSolved >= 500,
@@ -197,9 +214,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'streak-7',
       category: 'Streak',
-      title: '7-Day Consistency',
+      title: 'Consistency',
+      subtitle: '7-Day Streak',
       description: 'Maintain a 7-day problem-solving streak',
       icon: 'local_fire_department',
+      badgeColor: '#F59E0B',
+      gradient: 'linear-gradient(135deg, #F59E0B, #D97706)',
+      glow: '0 0 20px rgba(245, 158, 11, 0.4)',
       current: bestStreak,
       target: 7,
       earned: bestStreak >= 7,
@@ -208,9 +229,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'streak-30',
       category: 'Streak',
-      title: '30-Day Dedication',
+      title: 'Dedication',
+      subtitle: '30-Day Streak',
       description: 'Complete 30 consecutive days of active practice',
       icon: 'calendar_month',
+      badgeColor: '#F59E0B',
+      gradient: 'linear-gradient(135deg, #D97706, #EA580C)',
+      glow: '0 0 20px rgba(217, 119, 6, 0.4)',
       current: bestStreak,
       target: 30,
       earned: bestStreak >= 30,
@@ -219,9 +244,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'streak-100',
       category: 'Streak',
-      title: 'Centurion Streak (100 Days)',
+      title: 'Centurion Streak',
+      subtitle: '100-Day Streak',
       description: 'Reach an exceptional 100-day solving streak',
       icon: 'bolt',
+      badgeColor: '#FB923C',
+      gradient: 'linear-gradient(135deg, #EA580C, #C2410C)',
+      glow: '0 0 20px rgba(234, 88, 12, 0.45)',
       current: bestStreak,
       target: 100,
       earned: bestStreak >= 100,
@@ -230,9 +259,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'streak-365',
       category: 'Streak',
-      title: 'Iron Will (365 Days)',
+      title: 'Iron Will',
+      subtitle: '365-Day Year',
       description: 'A full continuous year of daily algorithmic training',
       icon: 'shield',
+      badgeColor: '#F97316',
+      gradient: 'linear-gradient(135deg, #C2410C, #9A3412)',
+      glow: '0 0 24px rgba(194, 65, 12, 0.5)',
       current: bestStreak,
       target: 365,
       earned: bestStreak >= 365,
@@ -243,9 +276,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'plan-two-pointers',
       category: 'Plans',
-      title: 'Two Pointers Specialist',
+      title: 'Two Pointers',
+      subtitle: 'Pattern Master',
       description: 'Complete Two Pointers plan or solve 10 Two Pointers problems',
       icon: 'alt_route',
+      badgeColor: '#A855F7',
+      gradient: 'linear-gradient(135deg, #8B5CF6, #EC4899)',
+      glow: '0 0 20px rgba(139, 92, 246, 0.4)',
       current: completedPlanTopics.has('two-pointers') ? 10 : twoPointerSolved,
       target: 10,
       earned: completedPlanTopics.has('two-pointers') || twoPointerSolved >= 10,
@@ -254,9 +291,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'plan-binary-search',
       category: 'Plans',
-      title: 'Binary Search Navigator',
+      title: 'Binary Search',
+      subtitle: 'Search Master',
       description: 'Complete Binary Search plan or solve 10 Binary Search problems',
       icon: 'manage_search',
+      badgeColor: '#A855F7',
+      gradient: 'linear-gradient(135deg, #7C3AED, #DB2777)',
+      glow: '0 0 20px rgba(124, 58, 237, 0.4)',
       current: completedPlanTopics.has('binary-search') ? 10 : binarySearchSolved,
       target: 10,
       earned: completedPlanTopics.has('binary-search') || binarySearchSolved >= 10,
@@ -266,8 +307,12 @@ function ProfilePage({ theme, toggleTheme }) {
       id: 'plan-dp',
       category: 'Plans',
       title: 'DP Strategist',
+      subtitle: 'Dynamic Prog.',
       description: 'Complete Dynamic Programming plan or solve 15 DP problems',
       icon: 'grid_view',
+      badgeColor: '#C084FC',
+      gradient: 'linear-gradient(135deg, #A855F7, #F43F5E)',
+      glow: '0 0 20px rgba(168, 85, 247, 0.4)',
       current: completedPlanTopics.has('dp') || completedPlanTopics.has('dynamic-programming') ? 15 : dpSolved,
       target: 15,
       earned: completedPlanTopics.has('dp') || completedPlanTopics.has('dynamic-programming') || dpSolved >= 15,
@@ -276,9 +321,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'plan-trees-graphs',
       category: 'Plans',
-      title: 'Graph & Tree Architect',
+      title: 'Graph Architect',
+      subtitle: 'Trees & Graphs',
       description: 'Complete Trees/Graphs plan or solve 15 Tree/Graph problems',
       icon: 'account_tree',
+      badgeColor: '#C084FC',
+      gradient: 'linear-gradient(135deg, #6366F1, #D946EF)',
+      glow: '0 0 20px rgba(99, 102, 241, 0.4)',
       current: completedPlanTopics.has('trees') || completedPlanTopics.has('graphs') ? 15 : treeGraphSolved,
       target: 15,
       earned: completedPlanTopics.has('trees') || completedPlanTopics.has('graphs') || treeGraphSolved >= 15,
@@ -287,9 +336,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'plan-arrays-strings',
       category: 'Plans',
-      title: 'Array & String Mastery',
+      title: 'Array & String',
+      subtitle: 'Core Foundation',
       description: 'Solve 50 or more Array & String problems',
       icon: 'data_array',
+      badgeColor: '#A855F7',
+      gradient: 'linear-gradient(135deg, #4F46E5, #9333EA)',
+      glow: '0 0 20px rgba(79, 70, 229, 0.4)',
       current: arrayStringSolved,
       target: 50,
       earned: arrayStringSolved >= 50,
@@ -300,9 +353,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'contest-first',
       category: 'Contests',
-      title: 'Contest Contender',
+      title: 'First Contest',
+      subtitle: 'Arena Debut',
       description: 'Participate in your first rated contest',
       icon: 'flag',
+      badgeColor: '#F43F5E',
+      gradient: 'linear-gradient(135deg, #F43F5E, #E11D48)',
+      glow: '0 0 20px rgba(244, 63, 94, 0.4)',
       current: totalContests,
       target: 1,
       earned: totalContests >= 1,
@@ -312,8 +369,12 @@ function ProfilePage({ theme, toggleTheme }) {
       id: 'contest-5',
       category: 'Contests',
       title: 'Arena Veteran',
+      subtitle: '5 Contests',
       description: 'Enter 5 or more rated competitive contests',
       icon: 'sports_score',
+      badgeColor: '#E11D48',
+      gradient: 'linear-gradient(135deg, #E11D48, #BE123C)',
+      glow: '0 0 20px rgba(225, 29, 72, 0.4)',
       current: totalContests,
       target: 5,
       earned: totalContests >= 5,
@@ -322,9 +383,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'rating-1400',
       category: 'Contests',
-      title: 'Specialist Rank',
+      title: 'Specialist',
+      subtitle: '1400 Rating',
       description: 'Achieve a contest rating of 1400 or above',
       icon: 'trending_up',
+      badgeColor: '#FB7185',
+      gradient: 'linear-gradient(135deg, #BE123C, #9F1239)',
+      glow: '0 0 20px rgba(190, 18, 60, 0.45)',
       current: maxRating,
       target: 1400,
       earned: maxRating >= 1400,
@@ -333,9 +398,13 @@ function ProfilePage({ theme, toggleTheme }) {
     {
       id: 'rating-1600',
       category: 'Contests',
-      title: 'Expert Rank',
+      title: 'Expert',
+      subtitle: '1600 Rating',
       description: 'Attain a competitive contest rating of 1600 or higher',
-      icon: 'star',
+      icon: 'military_tech',
+      badgeColor: '#FDA4AF',
+      gradient: 'linear-gradient(135deg, #9F1239, #881337)',
+      glow: '0 0 24px rgba(159, 18, 57, 0.5)',
       current: maxRating,
       target: 1600,
       earned: maxRating >= 1600,
@@ -479,7 +548,6 @@ function ProfilePage({ theme, toggleTheme }) {
                   <p className="text-xs mt-2.5 leading-relaxed max-w-xl" style={{ color: textSec }}>
                     {user?.bio || 'No bio provided. Click Edit Profile to add your background and goals.'}
                   </p>
-                  <p className="text-[11px] mt-1" style={{ color: textSec }}>{user?.email}</p>
                 </>
               )}
             </div>
@@ -582,13 +650,13 @@ function ProfilePage({ theme, toggleTheme }) {
           )}
         </div>
 
-        {/* ── Verified Achievements (Zero Fakes, Strictly Verified) ── */}
+        {/* ── Verified Achievements (Chess.com Trophy Showcase Style) ── */}
         <div className="rounded-2xl p-6 border backdrop-blur-xl"
           style={{ background: surface, borderColor: border, boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold tracking-tight" style={{ color: textPri }}>Verified Achievements</h2>
+                <h2 className="text-base font-semibold tracking-tight" style={{ color: textPri }}>Badges &amp; Achievements</h2>
                 <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
                   style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#818CF8' }}>
                   {earnedCount} of {allAchievements.length} Unlocked
@@ -616,83 +684,226 @@ function ProfilePage({ theme, toggleTheme }) {
             </div>
           </div>
 
-          {/* Badges Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {/* Chess.com Style Badges Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
             {filteredAchievements.map((badge) => {
               const pct = Math.min(100, Math.max(0, Math.round((badge.current / badge.target) * 100)));
               return (
-                <div
+                <button
                   key={badge.id}
-                  className="p-4 rounded-xl border transition-all flex flex-col justify-between"
+                  onClick={() => setSelectedBadge(badge)}
+                  className="group flex flex-col items-center p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer text-center relative overflow-hidden hover:scale-[1.02]"
                   style={{
                     background: badge.earned
-                      ? (isDark ? 'rgba(99, 102, 241, 0.05)' : 'rgba(99, 102, 241, 0.03)')
+                      ? (isDark ? 'rgba(99, 102, 241, 0.04)' : 'rgba(99, 102, 241, 0.02)')
                       : surfaceLo,
                     borderColor: badge.earned
                       ? (isDark ? 'rgba(168, 85, 247, 0.25)' : 'rgba(99, 102, 241, 0.2)')
                       : border,
-                    opacity: badge.earned ? 1 : 0.65,
                   }}
                 >
-                  <div>
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                          style={{
-                            background: badge.earned ? 'rgba(99, 102, 241, 0.15)' : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
-                            color: badge.earned ? '#818CF8' : textSec,
-                          }}>
-                          <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: badge.earned ? "'FILL' 1" : "'FILL' 0" }}>
-                            {badge.icon}
-                          </span>
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-semibold tracking-tight" style={{ color: textPri }}>
-                            {badge.title}
-                          </h4>
-                          <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: textSec }}>
-                            {badge.category}
-                          </span>
-                        </div>
-                      </div>
-
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
+                  {/* Medallion */}
+                  <div className="relative my-1">
+                    <div
+                      className="w-16 h-16 sm:w-18 sm:h-18 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
+                      style={{
+                        background: badge.earned
+                          ? badge.gradient
+                          : (isDark ? '#1C1C22' : '#E2E8F0'),
+                        boxShadow: badge.earned && isDark ? badge.glow : 'none',
+                        border: badge.earned
+                          ? '2px solid rgba(255, 255, 255, 0.25)'
+                          : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                        filter: badge.earned ? 'none' : 'grayscale(1)',
+                        opacity: badge.earned ? 1 : 0.45,
+                      }}
+                    >
+                      <span
+                        className="material-symbols-outlined text-2xl sm:text-3xl"
                         style={{
-                          background: badge.earned ? 'rgba(34, 197, 94, 0.12)' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'),
-                          color: badge.earned ? '#22C55E' : textSec,
-                        }}>
-                        {badge.earned ? 'Unlocked' : `${pct}%`}
+                          color: badge.earned ? '#FFFFFF' : textSec,
+                          fontVariationSettings: badge.earned ? "'FILL' 1" : "'FILL' 0",
+                        }}
+                      >
+                        {badge.icon}
                       </span>
                     </div>
 
-                    <p className="text-[11px] leading-relaxed mt-1" style={{ color: textSec }}>
-                      {badge.description}
-                    </p>
+                    {/* Status indicator on medal */}
+                    {badge.earned ? (
+                      <div
+                        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 flex items-center justify-center text-white shadow-sm"
+                        style={{ borderColor: isDark ? '#141419' : '#FFFFFF' }}
+                      >
+                        <span className="material-symbols-outlined text-[12px] font-bold">check</span>
+                      </div>
+                    ) : (
+                      <div
+                        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 flex items-center justify-center text-zinc-400 shadow-sm"
+                        style={{
+                          background: isDark ? '#27272A' : '#CBD5E1',
+                          borderColor: isDark ? '#141419' : '#FFFFFF',
+                        }}
+                      >
+                        <span className="material-symbols-outlined text-[11px]">lock</span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Progress Bar & Real Counts */}
-                  <div className="mt-3.5 pt-2 border-t" style={{ borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }}>
-                    <div className="flex justify-between items-center text-[10px] mb-1.5 font-medium" style={{ color: textSec }}>
-                      <span>Progress</span>
-                      <span style={{ color: badge.earned ? '#818CF8' : textPri, fontWeight: 600 }}>{badge.metricText}</span>
-                    </div>
-                    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }}>
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${pct}%`,
-                          background: badge.earned
-                            ? 'linear-gradient(90deg, #6366F1, #A855F7)'
-                            : '#818CF8',
-                        }}
-                      />
-                    </div>
+                  {/* Badge Name & Subtitle */}
+                  <p className="text-xs font-bold truncate w-full mt-2" style={{ color: badge.earned ? textPri : textSec }}>
+                    {badge.title}
+                  </p>
+                  <p className="text-[10px] truncate w-full mt-0.5" style={{ color: textSec }}>
+                    {badge.subtitle}
+                  </p>
+
+                  {/* Status Pill */}
+                  <div className="mt-2">
+                    {badge.earned ? (
+                      <span
+                        className="text-[9px] font-bold px-2 py-0.5 rounded-full inline-block"
+                        style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#22C55E' }}
+                      >
+                        Unlocked
+                      </span>
+                    ) : (
+                      <span
+                        className="text-[9px] font-semibold px-2 py-0.5 rounded-full inline-block"
+                        style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', color: textSec }}
+                      >
+                        {pct}%
+                      </span>
+                    )}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
         </div>
+
+        {/* ── Chess.com Badge Detail Modal ── */}
+        {selectedBadge && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setSelectedBadge(null)}
+          >
+            <div
+              className="w-full max-w-sm rounded-3xl p-6 relative border text-center shadow-2xl"
+              style={{
+                background: isDark ? '#141419' : '#FFFFFF',
+                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSelectedBadge(null)}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-colors"
+                style={{ background: surfaceLo, color: textSec }}
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+
+              {/* Large Medallion */}
+              <div
+                className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-full flex items-center justify-center relative mb-3.5"
+                style={{
+                  background: selectedBadge.earned
+                    ? selectedBadge.gradient
+                    : (isDark ? '#1C1C22' : '#E2E8F0'),
+                  boxShadow: selectedBadge.earned && isDark ? selectedBadge.glow : 'none',
+                  border: selectedBadge.earned
+                    ? '3px solid rgba(255, 255, 255, 0.25)'
+                    : `2px dashed ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}`,
+                  filter: selectedBadge.earned ? 'none' : 'grayscale(1)',
+                }}
+              >
+                <span
+                  className="material-symbols-outlined text-4xl"
+                  style={{
+                    color: selectedBadge.earned ? '#FFFFFF' : textSec,
+                    fontVariationSettings: selectedBadge.earned ? "'FILL' 1" : "'FILL' 0",
+                  }}
+                >
+                  {selectedBadge.icon}
+                </span>
+                {selectedBadge.earned ? (
+                  <div
+                    className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 border-2 flex items-center justify-center text-white"
+                    style={{ borderColor: isDark ? '#141419' : '#FFFFFF' }}
+                  >
+                    <span className="material-symbols-outlined text-xs font-bold">check</span>
+                  </div>
+                ) : (
+                  <div
+                    className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 flex items-center justify-center text-zinc-400"
+                    style={{
+                      background: isDark ? '#27272A' : '#CBD5E1',
+                      borderColor: isDark ? '#141419' : '#FFFFFF',
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-xs">lock</span>
+                  </div>
+                )}
+              </div>
+
+              <span
+                className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-1"
+                style={{ background: 'rgba(99,102,241,0.12)', color: selectedBadge.badgeColor }}
+              >
+                {selectedBadge.category}
+              </span>
+              <h3 className="text-lg font-bold" style={{ color: textPri }}>
+                {selectedBadge.title}
+              </h3>
+              <p className="text-xs font-medium mt-0.5 mb-2.5" style={{ color: textSec }}>
+                {selectedBadge.subtitle}
+              </p>
+
+              <p className="text-xs leading-relaxed mb-4 px-2" style={{ color: textSec }}>
+                {selectedBadge.description}
+              </p>
+
+              {/* Progress Box */}
+              <div
+                className="p-3.5 rounded-2xl mb-4 border text-left"
+                style={{ background: surfaceLo, borderColor: border }}
+              >
+                <div className="flex justify-between items-center text-xs mb-1.5 font-medium">
+                  <span style={{ color: textSec }}>Progress</span>
+                  <span style={{ color: selectedBadge.earned ? '#22C55E' : textPri, fontWeight: 700 }}>
+                    {selectedBadge.earned ? 'Completed' : selectedBadge.metricText}
+                  </span>
+                </div>
+                <div
+                  className="w-full h-2 rounded-full overflow-hidden"
+                  style={{ background: isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0' }}
+                >
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(100, Math.max(0, Math.round((selectedBadge.current / selectedBadge.target) * 100)))}%`,
+                      background: selectedBadge.earned
+                        ? 'linear-gradient(90deg, #22C55E, #10B981)'
+                        : selectedBadge.badgeColor,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedBadge(null)}
+                className="w-full py-2.5 rounded-xl text-xs font-semibold cursor-pointer transition-all hover:opacity-90"
+                style={{
+                  background: selectedBadge.earned ? selectedBadge.gradient : '#6366F1',
+                  color: '#FFFFFF',
+                }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
     </DashboardLayout>
