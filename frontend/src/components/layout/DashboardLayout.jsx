@@ -3,7 +3,7 @@ import Sidebar    from '../Sidebar.jsx';
 import Header     from '../Header.jsx';
 import ChatDrawer from '../chat/ChatDrawer.jsx';
 
-function DashboardLayout({ children, theme, toggleTheme }) {
+function DashboardLayout({ children, theme, toggleTheme, hideHeader = false, noPadding = false }) {
   const isDark = theme === 'dark';
   const [chatFriend, setChatFriend] = useState(null);
 
@@ -23,13 +23,15 @@ function DashboardLayout({ children, theme, toggleTheme }) {
       <Sidebar isDark={isDark} onOpenChat={(friend) => setChatFriend(friend)} />
 
       <div className="flex-grow flex flex-col min-h-screen overflow-x-hidden">
-        <div className="main-container flex flex-col flex-grow">
-          <Header
-            theme={theme}
-            toggleTheme={toggleTheme}
-            onOpenChat={(friend) => setChatFriend(friend)}
-          />
-          <main className="w-full px-6 py-6 flex-grow page-enter">
+        <div className="main-container flex flex-col flex-grow min-h-screen">
+          {!hideHeader && (
+            <Header
+              theme={theme}
+              toggleTheme={toggleTheme}
+              onOpenChat={(friend) => setChatFriend(friend)}
+            />
+          )}
+          <main className={`w-full flex-grow page-enter ${noPadding ? 'p-0' : 'px-6 py-6'}`}>
             {children}
           </main>
         </div>
