@@ -19,15 +19,15 @@ function AnalyzeCard({ lcUsername, cfUsername, lcError, cfError, generalError, l
 
   return (
     <section className="flex-1 flex items-center justify-center p-6 md:p-12 relative z-10">
-      {/* Soft ambient purple glow behind card */}
-      <div className="absolute right-0 bottom-0 w-[500px] h-[500px] bg-purple-500/18 dark:bg-purple-600/24 blur-[120px] rounded-full pointer-events-none -z-10" />
+      {/* Soft ambient purple glow behind card — subtle so stars remain crisp on pitch black */}
+      <div className="absolute right-0 bottom-0 w-[500px] h-[500px] bg-purple-500/18 dark:bg-purple-600/10 blur-[150px] rounded-full pointer-events-none -z-10" />
 
       {/* Floating card with sleek ambient purple underglow */}
       <div className="relative w-full max-w-md p-10 rounded-2xl transition-all duration-300 hover:scale-[1.01]
-        bg-white/95 dark:bg-[#141417]/90 backdrop-blur-xl
-        border border-gray-200/80 dark:border-white/10
+        bg-white/95 dark:bg-[#08080A]/85 backdrop-blur-xl
+        border border-gray-200/80 dark:border-white/[0.08]
         shadow-[0_20px_50px_-10px_rgba(168,85,247,0.20),0_4px_20px_-2px_rgba(0,0,0,0.05)]
-        dark:shadow-[0_20px_60px_-12px_rgba(168,85,247,0.35),0_10px_30px_-5px_rgba(0,0,0,0.8)]">
+        dark:shadow-[0_20px_60px_-12px_rgba(168,85,247,0.25),0_10px_30px_-5px_rgba(0,0,0,0.9)]">
 
         {/* Card Header */}
         <div className="mb-10 text-center">

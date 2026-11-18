@@ -59,14 +59,14 @@ function GraphConstellationBackground({ isDark }) {
     window.addEventListener('mouseleave', handleMouseLeave);
 
     // =========================================================================
-    // 1. DARK MODE: Cosmic Starfield (Exact original code - 100% preserved)
+    // 1. DARK MODE: Cosmic Starfield on Pitch Black Canvas
     // =========================================================================
-    const STAR_COUNT = width > 1024 ? 75 : 45;
+    const STAR_COUNT = width > 1024 ? 115 : 65;
     const stars = [];
 
     if (isDark) {
       for (let i = 0; i < STAR_COUNT; i++) {
-        const isSparkle = i % 8 === 0;
+        const isSparkle = i % 7 === 0;
         const x = Math.random() * width;
         const y = Math.random() * height;
 
@@ -83,20 +83,22 @@ function GraphConstellationBackground({ isDark }) {
           twinklePhase: Math.random() * Math.PI * 2,
           driftSpeedX: (Math.random() - 0.5) * 0.2,
           driftSpeedY: (Math.random() - 0.5) * 0.2,
-          colorIdx: Math.floor(Math.random() * 3),
+          colorIdx: Math.floor(Math.random() * 5),
         });
       }
     }
 
     const drawSparkle = (cx, cy, radius, alpha, color) => {
       ctx.save();
-      ctx.beginPath();
       ctx.translate(cx, cy);
       ctx.fillStyle = color;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = color;
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
       const r = radius;
       const inner = radius * 0.22;
+      ctx.beginPath();
       ctx.moveTo(0, -r);
       ctx.quadraticCurveTo(0, -inner, inner, 0);
       ctx.quadraticCurveTo(0, inner, 0, r);
@@ -104,6 +106,14 @@ function GraphConstellationBackground({ isDark }) {
       ctx.quadraticCurveTo(0, -inner, 0, -r);
       ctx.closePath();
       ctx.fill();
+
+      // Clean bright center
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(0.6, inner * 0.5), 0, Math.PI * 2);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.globalAlpha = Math.min(1.0, alpha * 1.3);
+      ctx.fill();
+
       ctx.restore();
     };
 
@@ -174,8 +184,12 @@ function GraphConstellationBackground({ isDark }) {
       }
 
       if (isDark) {
+        // ── Render Pitch Black Base ──────────────────────────────────────────
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, width, height);
+
         // ── Render Dark Mode Starfield ───────────────────────────────────────
-        const colors = ['#FFFFFF', '#C084FC', '#818CF8'];
+        const colors = ['#FFFFFF', '#FFFFFF', '#F8FAFC', '#E0E7FF', '#C084FC'];
 
         stars.forEach(star => {
           star.baseX += star.driftSpeedX;
@@ -203,11 +217,11 @@ function GraphConstellationBackground({ isDark }) {
           star.y += (star.baseY - star.y) * 0.04 + star.vy;
 
           const twinkle = 0.5 + 0.5 * Math.sin(time * star.twinkleSpeed + star.twinklePhase);
-          const alpha = 0.35 + twinkle * 0.55;
+          const alpha = 0.45 + twinkle * 0.55;
           const color = colors[star.colorIdx];
 
           if (star.isSparkle) {
-            const currentSize = star.size * (0.8 + twinkle * 0.35);
+            const currentSize = star.size * (0.85 + twinkle * 0.35);
             drawSparkle(star.x, star.y, currentSize, alpha, color);
           } else {
             ctx.save();
@@ -215,16 +229,16 @@ function GraphConstellationBackground({ isDark }) {
             const r = Math.max(0.8, star.size * (0.85 + twinkle * 0.25));
             ctx.arc(star.x, star.y, r, 0, Math.PI * 2);
             ctx.fillStyle = color;
-            ctx.shadowBlur = 6;
+            ctx.shadowBlur = 8;
             ctx.shadowColor = color;
             ctx.globalAlpha = alpha;
             ctx.fill();
 
-            if (r > 1.4) {
+            if (r > 1.2) {
               ctx.beginPath();
-              ctx.arc(star.x, star.y, r * 0.45, 0, Math.PI * 2);
+              ctx.arc(star.x, star.y, r * 0.5, 0, Math.PI * 2);
               ctx.fillStyle = '#FFFFFF';
-              ctx.globalAlpha = Math.min(1.0, alpha * 1.2);
+              ctx.globalAlpha = Math.min(1.0, alpha * 1.3);
               ctx.fill();
             }
             ctx.restore();

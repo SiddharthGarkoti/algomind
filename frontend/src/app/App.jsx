@@ -35,7 +35,7 @@ function SmartRoot(props) {
   const { isAuthenticated, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0A0A0B]">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#000000]">
         <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );

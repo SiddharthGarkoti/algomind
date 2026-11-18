@@ -110,26 +110,27 @@ function LoginPage({ isDark, toggleTheme }) {
   };
 
   return (
-    <div className="login-page min-h-screen flex flex-col font-body overflow-x-hidden selection:bg-purple-500/30 bg-[#F8F9FE] dark:bg-[#0A0A0C] text-gray-900 dark:text-gray-200 transition-colors duration-300 relative">
+    <div
+      className="login-page min-h-screen flex flex-col font-body overflow-x-hidden selection:bg-purple-500/30 bg-[#F8F9FE] dark:bg-[#000000] text-gray-900 dark:text-gray-200 transition-colors duration-300 relative"
+      style={{ backgroundColor: isDark ? '#000000' : undefined }}
+    >
 
-      {/* High-tech engineering dot-matrix background mesh — adds rich texture in both light and dark mode */}
+      {/* Engineering dot-matrix background mesh — only active in light mode so dark mode is pitch black */}
       <div
-        className="fixed inset-0 pointer-events-none -z-10 opacity-70 dark:opacity-40"
+        className="fixed inset-0 pointer-events-none -z-10 opacity-70 dark:hidden"
         style={{
-          backgroundImage: isDark
-            ? 'radial-gradient(rgba(168, 85, 247, 0.16) 1.2px, transparent 1.2px)'
-            : 'radial-gradient(rgba(99, 102, 241, 0.18) 1.2px, transparent 1.2px)',
+          backgroundImage: 'radial-gradient(rgba(99, 102, 241, 0.18) 1.2px, transparent 1.2px)',
           backgroundSize: '28px 28px',
           maskImage: 'radial-gradient(ellipse at 50% 45%, black 45%, transparent 85%)',
           WebkitMaskImage: 'radial-gradient(ellipse at 50% 45%, black 45%, transparent 85%)',
         }}
       />
 
-      {/* Ambient lighting pools */}
-      <div className="fixed -top-24 -right-24 w-[600px] h-[600px] bg-gradient-to-bl from-purple-500/20 via-indigo-500/15 to-transparent blur-[140px] pointer-events-none -z-20" />
-      <div className="fixed -bottom-24 -left-24 w-[600px] h-[600px] bg-gradient-to-tr from-indigo-500/18 via-cyan-500/12 to-transparent blur-[140px] pointer-events-none -z-20" />
+      {/* Ambient lighting pools — light mode only so dark mode stays pure pitch black */}
+      <div className="fixed -top-24 -right-24 w-[600px] h-[600px] bg-gradient-to-bl from-purple-500/20 via-indigo-500/15 to-transparent blur-[140px] pointer-events-none -z-20 dark:hidden" />
+      <div className="fixed -bottom-24 -left-24 w-[600px] h-[600px] bg-gradient-to-tr from-indigo-500/18 via-cyan-500/12 to-transparent blur-[140px] pointer-events-none -z-20 dark:hidden" />
 
-      {/* 3D Holographic Cube & Constellation — full viewport coverage */}
+      {/* Cosmic Starfield (dark) / Liquid Aurora (light) — full viewport coverage */}
       <GraphConstellationBackground isDark={isDark} />
 
       <Navbar isDark={isDark} toggleTheme={toggleTheme} onSignIn={() => setIsModalOpen(true)} />
@@ -152,7 +153,7 @@ function LoginPage({ isDark, toggleTheme }) {
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-gray-200/60 dark:border-white/5 bg-white/70 dark:bg-black/30 backdrop-blur-md relative z-10">
+      <footer className="w-full border-t border-gray-200/60 dark:border-white/5 bg-white/70 dark:bg-black/60 backdrop-blur-md relative z-10">
         <div className="flex flex-col md:flex-row justify-between items-center px-8 py-8 w-full max-w-7xl mx-auto gap-4">
           <p className="font-inter text-[12px] uppercase tracking-widest text-gray-500 dark:text-gray-500 font-medium">
             © AlgoMind
