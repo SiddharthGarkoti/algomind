@@ -325,7 +325,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
         if platform_streak > 0:
             user.streak = max(user.streak, platform_streak)
-        elif last_date != today:
+        elif not user.platform_profiles.exists() and last_date != today:
             yesterday   = today - timezone.timedelta(days=1)
             user.streak = (user.streak + 1) if last_date == yesterday else 1
 

@@ -7,12 +7,13 @@ function AICoach({ isDark }) {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
-  const surface  = isDark ? 'rgba(99,102,241,0.06)' : 'linear-gradient(180deg, #F3F4FF 0%, #EEF2FF 100%)';
-  const border   = isDark ? 'rgba(99,102,241,0.2)' : '#E0E7FF';
-  const textPri  = isDark ? '#e3e2e5' : '#1e1b4b';
-  const textSec  = isDark ? '#908fa0' : '#4338CA';
-  const btnBg    = isDark ? 'rgba(255,255,255,0.05)' : '#E5E7EB';
-  const btnColor = isDark ? '#e3e2e5' : '#111827';
+  const surface   = isDark ? 'rgba(255, 255, 255, 0.035)' : 'rgba(255, 255, 255, 0.85)';
+  const border    = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)';
+  const textPri   = isDark ? '#F8FAFC' : '#0F172A';
+  const textSec   = isDark ? '#94A3B8' : '#64748B';
+  const btnBg     = isDark ? 'rgba(255, 255, 255, 0.03)' : '#F1F5F9';
+  const btnBorder = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)';
+  const btnColor  = isDark ? '#E2E8F0' : '#1E293B';
 
   const [analysis, setAnalysis] = useState(null);
   const [loading,  setLoading]  = useState(true);
@@ -49,51 +50,50 @@ function AICoach({ isDark }) {
 
   return (
     <div
-      className="ai-mentor-card rounded-xl p-5 relative overflow-hidden shrink-0"
-      style={{ background: surface, border: `1px solid ${border}`, boxShadow: isDark ? '0 0 30px rgba(99,102,241,0.06)' : '0 4px 12px rgba(99,102,241,0.08)' }}
+      className="ai-mentor-card rounded-2xl p-5 relative overflow-hidden shrink-0 border backdrop-blur-xl"
+      style={{
+        background: surface,
+        borderColor: border,
+        boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 16px -4px rgba(0,0,0,0.06)'
+      }}
     >
-      {/* Left accent bar */}
-      <div className="absolute left-0 top-4 bottom-4 w-1 rounded-r" style={{ background: 'linear-gradient(180deg, #6366F1, #8B5CF6)' }} />
-      {/* Ambient glow */}
-      <div className="absolute -top-10 -right-10 w-24 h-24 rounded-full blur-[30px]" style={{ background: 'rgba(99,102,241,0.12)' }} />
-
       {/* Header */}
-      <div className="flex items-center gap-3 mb-4 relative z-10 pl-3">
-        <div className="w-8 h-8 rounded-full flex items-center justify-center"
-          style={{ background: 'rgba(99,102,241,0.15)', color: '#6366F1' }}>
+      <div className="flex items-center gap-2.5 mb-4 relative z-10">
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>
           <span className="material-symbols-outlined text-lg">smart_toy</span>
         </div>
         <div>
-          <h4 className="text-sm font-headline font-bold ai-mentor-card-h4" style={{ color: isDark ? '#e3e2e5' : '#4338CA' }}>AI Coach</h4>
-          <p className="text-[10px] font-semibold tracking-wider uppercase tag" style={{ color: isDark ? '#c0c1ff' : '#4F46E5' }}>
-            {loading ? 'Loading…' : `${specialist} Specialist`}
+          <h4 className="text-sm font-semibold tracking-tight" style={{ color: textPri }}>AI Coach</h4>
+          <p className="text-[11px] font-medium" style={{ color: '#818CF8' }}>
+            {loading ? 'Evaluating…' : `${specialist} Specialist`}
           </p>
         </div>
       </div>
 
       {loading ? (
-        <div className="space-y-3 mb-5 relative z-10 pl-3">
-          {[1,2,3].map(i => (
-            <div key={i} className="space-y-1">
-              <div className="h-2 w-16 rounded animate-pulse" style={{ background: 'rgba(99,102,241,0.15)' }} />
-              <div className="h-3 w-full rounded animate-pulse" style={{ background: 'rgba(99,102,241,0.1)' }} />
+        <div className="space-y-3 mb-4 relative z-10">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="space-y-1.5">
+              <div className="h-2 w-16 rounded animate-pulse" style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
+              <div className="h-3.5 w-full rounded animate-pulse" style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }} />
             </div>
           ))}
         </div>
       ) : (
         <>
           {/* Insight blocks */}
-          <div className="space-y-4 mb-5 relative z-10 pl-3">
+          <div className="space-y-3 mb-4 relative z-10">
             {blocks.map(({ label, color, text }) => (
               <div key={label} className="space-y-1">
-                <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color }}>{label}</p>
-                <p className="text-[11px] leading-relaxed" style={{ color: textPri }}>{text}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color }}>{label}</p>
+                <p className="text-xs leading-relaxed" style={{ color: textPri }}>{text}</p>
               </div>
             ))}
             {direction && (
-              <div className="p-2.5 rounded-r-lg" style={{ background: 'rgba(99,102,241,0.08)', borderLeft: '2px solid #6366F1' }}>
-                <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: '#6366F1' }}>Direction</p>
-                <p className="text-[11px] leading-tight font-medium" style={{ color: textPri }}>
+              <div className="p-3 rounded-xl mt-2" style={{ background: isDark ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.05)', border: `1px solid ${isDark ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.12)'}` }}>
+                <p className="text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: '#818CF8' }}>Next Focus</p>
+                <p className="text-xs leading-snug font-medium" style={{ color: textPri }}>
                   {direction}
                 </p>
               </div>
@@ -103,7 +103,7 @@ function AICoach({ isDark }) {
       )}
 
       {/* Actions */}
-      <div className="space-y-2 relative z-10 pl-3">
+      <div className="space-y-2 relative z-10">
         {[
           { label: 'Explain this weakness',  path: '/chatbot?mode=analysis'  },
           { label: 'Give me a strategy',     path: '/chatbot?mode=strategy'  },
@@ -111,12 +111,12 @@ function AICoach({ isDark }) {
         ].map(({ label, path }) => (
           <button
             key={label}
-            className="w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-between hover:opacity-90 ai-mentor-button"
-            style={{ background: btnBg, color: btnColor, border: `1px solid ${border}` }}
+            className="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-between hover:bg-white/[0.05] active:scale-[0.99] cursor-pointer"
+            style={{ background: btnBg, color: btnColor, border: `1px solid ${btnBorder}` }}
             onClick={() => navigate(path)}
           >
             <span>{label}</span>
-            <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            <span className="material-symbols-outlined text-xs opacity-60">arrow_forward</span>
           </button>
         ))}
       </div>

@@ -6,6 +6,7 @@ import Header     from '../../components/Header.jsx';
 import TaskCard   from '../../components/TaskCard.jsx';
 import RightPanel from '../../components/RightPanel.jsx';
 import ChatDrawer from '../../components/chat/ChatDrawer.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
 
 /* ── Curated LeetCode problems per topic slug ─────────────────────── */
@@ -184,6 +185,7 @@ const DIFF_COLOR = { easy: '#22C55E', medium: '#6366F1', hard: '#EF4444' };
 
 function Dashboard({ theme, toggleTheme }) {
   const navigate = useNavigate();
+  const { user, updateUser } = useAuth();
   const isDark = theme === 'dark';
 
   const [chatFriend, setChatFriend] = useState(null);
@@ -201,8 +203,21 @@ function Dashboard({ theme, toggleTheme }) {
         ]);
 
         if (analyticsData.status === 'fulfilled') {
-          setPlatforms(analyticsData.value?.platforms ?? []);
-          setSummary(analyticsData.value?.summary ?? null);
+          const platList = analyticsData.value?.platforms ?? [];
+          const summ     = analyticsData.value?.summary ?? null;
+          setPlatforms(platList);
+          setSummary(summ);
+
+          const maxStreak = Math.max(
+            summ?.streak ?? 0,
+            ...platList.map(p => p.stats?.streak ?? 0)
+          );
+          if (maxStreak > 0) {
+            localStorage.setItem('algomind_streak_cache', String(maxStreak));
+            if (maxStreak > (user?.streak ?? 0)) {
+              updateUser({ streak: maxStreak });
+            }
+          }
         }
         if (weakData.status === 'fulfilled') {
           setWeakAreas(weakData.value?.weak_areas ?? []);
@@ -212,7 +227,7 @@ function Dashboard({ theme, toggleTheme }) {
       }
     };
     fetchAll();
-  }, []);
+  }, [user?.streak, updateUser]);
 
   const handleOpenChat = (friend) => setChatFriend(friend);
 
@@ -254,13 +269,13 @@ function Dashboard({ theme, toggleTheme }) {
   })();
 
   const bg       = isDark
-    ? 'radial-gradient(ellipse at 10% 10%, rgba(99,102,241,0.08) 0%, transparent 40%), #0A0A0B'
-    : 'linear-gradient(180deg,#EEF2FF 0%,#F8FAFC 100%)';
-  const surface   = isDark ? '#1b1c1e' : '#FFFFFF';
-  const surfaceLo = isDark ? '#1F2022' : '#F8FAFC';
-  const border    = isDark ? 'rgba(70,69,84,0.12)' : 'rgba(0,0,0,0.07)';
-  const textPri   = isDark ? '#e3e2e5' : '#0F172A';
-  const textSec   = isDark ? '#908fa0' : '#64748B';
+    ? 'radial-gradient(ellipse at 15% 15%, rgba(99,102,241,0.06) 0%, transparent 45%), #0A0A0C'
+    : 'linear-gradient(180deg,#F8FAFC 0%,#EEF2FF 100%)';
+  const surface   = isDark ? 'rgba(255, 255, 255, 0.035)' : 'rgba(255, 255, 255, 0.85)';
+  const surfaceLo = isDark ? 'rgba(255, 255, 255, 0.02)'  : 'rgba(241, 245, 249, 0.6)';
+  const border    = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)';
+  const textPri   = isDark ? '#F8FAFC' : '#0F172A';
+  const textSec   = isDark ? '#94A3B8' : '#64748B';
 
   /* Mastery overview — filter out any residual *broken tags */
   const skills = weakAreas
@@ -297,45 +312,48 @@ function Dashboard({ theme, toggleTheme }) {
             {/* Left Column */}
             <div className="flex-grow flex flex-col gap-6 min-w-0">
 
-              {/* Summary Stats Bar — only when platforms connected or loading */}
+              {/* Summary Stats Strip — Unified Apple-style card */}
               {(loading || (summary && summary.platforms_connected > 0)) && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
-                  {[
-                    { label: 'Problems Solved', value: summary?.total_problems_solved ?? 0, icon: 'check_circle', color: '#818CF8' },
-                    { label: 'Contests',         value: summary?.total_contests ?? 0,        icon: 'emoji_events',  color: '#A855F7' },
-                    { label: 'Avg Rating',       value: summary?.average_rating ?? 0,        icon: 'star',          color: '#C084FC' },
-                    { label: 'Platforms',        value: summary?.platforms_connected ?? 0,   icon: 'link',          color: '#6366F1' },
-                  ].map(({ label, value, icon, color }) => (
-                    <div key={label} className="rounded-2xl p-4 flex items-center gap-3.5 transition-all"
-                      style={{ background: surface, border: `1px solid ${border}`,
-                        boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.2)' : '0 2px 12px -4px rgba(0,0,0,0.06)' }}>
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: `${color}18`, color }}>
-                        <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+                <div className="rounded-2xl p-5 border backdrop-blur-xl shrink-0"
+                  style={{ background: surface, borderColor: border, boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 20px -2px rgba(0,0,0,0.05)' }}>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 divide-y md:divide-y-0 md:divide-x"
+                    style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
+                    {[
+                      { label: 'Problems Solved', value: summary?.total_problems_solved ?? 0, icon: 'check_circle', color: '#818CF8' },
+                      { label: 'Contests',         value: summary?.total_contests ?? 0,        icon: 'emoji_events',  color: '#A855F7' },
+                      { label: 'Avg Rating',       value: summary?.average_rating ?? 0,        icon: 'star',          color: '#C084FC' },
+                      { label: 'Platforms',        value: summary?.platforms_connected ?? 0,   icon: 'link',          color: '#6366F1' },
+                    ].map(({ label, value, icon, color }, idx) => (
+                      <div key={label} className={`flex items-center gap-3.5 ${idx > 0 ? 'md:pl-6 pt-3 md:pt-0' : ''}`}>
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: `${color}18`, color }}>
+                          <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium" style={{ color: textSec }}>{label}</p>
+                          {loading
+                            ? <div className="h-6 w-16 rounded animate-pulse mt-1" style={{ background: surfaceLo }} />
+                            : <p className="text-xl font-bold tracking-tight mt-0.5" style={{ color: textPri }}>
+                                {value > 0 ? value.toLocaleString() : (label === 'Avg Rating' ? '—' : value)}
+                              </p>
+                          }
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium truncate" style={{ color: textSec }}>{label}</p>
-                        {loading
-                          ? <div className="h-6 w-16 rounded animate-pulse mt-1" style={{ background: surfaceLo }} />
-                          : <p className="text-xl font-bold tracking-tight mt-0.5" style={{ color: textPri }}>
-                              {value > 0 ? value.toLocaleString() : (label === 'Avg Rating' ? '—' : value)}
-                            </p>
-                        }
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {/* Priority Action Point */}
-              <section className="insight-banner relative overflow-hidden rounded-2xl p-6 sm:p-7 shrink-0"
-                style={{ background: isDark ? surfaceLo : '#FFFFFF', border: `1px solid ${border}`,
-                  boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.2)' : '0 4px 20px -4px rgba(0,0,0,0.06)' }}>
-                <div className="accent-line" />
-                <div className="absolute top-0 right-0 w-1/2 h-full opacity-40 pointer-events-none"
-                  style={{ background: 'radial-gradient(circle at 100% 50%, rgba(99,102,241,0.18) 0%, transparent 60%)' }} />
-
-                <div className="relative z-10 pl-2 sm:pl-3">
+              {/* Priority Action Point — Apple Hero Card */}
+              <section className="relative overflow-hidden rounded-2xl p-6 sm:p-7 border backdrop-blur-xl shrink-0"
+                style={{
+                  background: isDark
+                    ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.03) 100%), rgba(255, 255, 255, 0.02)'
+                    : 'linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(168, 85, 247, 0.02) 100%), #FFFFFF',
+                  borderColor: isDark ? 'rgba(168, 85, 247, 0.2)' : 'rgba(99, 102, 241, 0.15)',
+                  boxShadow: isDark ? '0 4px 24px -2px rgba(0,0,0,0.3)' : '0 4px 20px -4px rgba(0,0,0,0.06)'
+                }}>
+                <div className="relative z-10">
                   {loading ? (
                     <div className="space-y-3">
                       <div className="h-4 rounded-full w-32 animate-pulse" style={{ background: surfaceLo }} />
@@ -350,13 +368,11 @@ function Dashboard({ theme, toggleTheme }) {
                       </div>
                       <h1 className="font-headline font-bold leading-snug max-w-2xl"
                         style={{ fontSize: '1.25rem', color: textPri }}>
-                        Your weakest area is{' '}
-                        <span className="px-2 py-0.5 rounded-lg" style={{ background: 'rgba(99,102,241,0.15)', color: '#818CF8' }}>
+                        Strengthen your understanding of{' '}
+                        <span className="px-2 py-0.5 rounded-lg font-bold" style={{ background: 'rgba(99,102,241,0.15)', color: '#818CF8' }}>
                           {topWeak.topic_name}
                         </span>
-                        {' '}— only{' '}
-                        <span className="font-bold" style={{ color: '#A855F7' }}>{topWeak.problems_solved} problem{topWeak.problems_solved !== 1 ? 's' : ''}</span>
-                        {' '}solved so far.
+                        {' '}— {topWeak.problems_solved} problem{topWeak.problems_solved !== 1 ? 's' : ''} solved so far.
                       </h1>
                       <div className="flex items-center gap-3 mt-5 flex-wrap">
                         <button
@@ -368,7 +384,7 @@ function Dashboard({ theme, toggleTheme }) {
                         </button>
                         <button
                           className="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80 cursor-pointer"
-                          style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9', color: textPri, border: `1px solid ${border}` }}
+                          style={{ background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9', color: textPri, border: `1px solid ${border}` }}
                           onClick={() => navigate('/analytics')}>
                           View Full Analysis
                         </button>
@@ -400,11 +416,11 @@ function Dashboard({ theme, toggleTheme }) {
                       <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full mb-3"
                         style={{ background: 'rgba(168,85,247,0.12)', color: '#A855F7' }}>
                         <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings:"'FILL' 1" }}>check_circle</span>
-                        Consistent Trajectory
+                        Consistent Performance
                       </div>
                       <h1 className="font-headline font-bold leading-snug max-w-2xl"
                         style={{ fontSize: '1.25rem', color: textPri }}>
-                        Solid progress! Keep solving problems to expand your mastery breakdown.
+                        Solid progress across your connected profiles. Keep solving to advance your mastery breakdown.
                       </h1>
                       <div className="flex items-center gap-3 mt-4">
                         <button
@@ -420,62 +436,88 @@ function Dashboard({ theme, toggleTheme }) {
                 </div>
               </section>
 
-              {/* Recommended Tasks */}
-              <div className="space-y-4">
-                <div className="flex items-end justify-between">
+              {/* Recommended Problems — Apple Grouped Container */}
+              <div className="space-y-3">
+                <div className="flex items-end justify-between px-1">
                   <div>
-                    <h2 className="text-lg font-headline font-bold" style={{ color: textPri }}>Recommended Problems</h2>
-                    <p className="text-sm font-normal mt-0.5" style={{ color: textSec }}>
+                    <h2 className="text-base font-semibold tracking-tight" style={{ color: textPri }}>Recommended Problems</h2>
+                    <p className="text-xs font-normal mt-0.5" style={{ color: textSec }}>
                       {hasWeak
-                        ? `Targeted practice for your weak topics — solve on LeetCode / Codeforces`
+                        ? `Targeted practice for ${topWeak.topic_name} and your current focus areas`
                         : 'Curated problems to accelerate your algorithmic pattern recognition'}
                     </p>
                   </div>
                   <button
-                    className="px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 active:scale-95 flex items-center gap-2 cursor-pointer shrink-0"
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90 active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0"
                     style={{ background: '#6366F1', color: '#FFFFFF' }}
                     onClick={() => navigate('/plan-view')}>
                     <span>Start Daily Plan</span>
-                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                    <span className="material-symbols-outlined text-xs">arrow_forward</span>
                   </button>
                 </div>
 
-                {loading ? (
-                  <div className="space-y-2.5">
-                    {[1,2,3].map(i => (
-                      <div key={i} className="h-16 rounded-2xl animate-pulse" style={{ background: surface }} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {recommendedTasks.map((task, i) => (
-                      <div key={i} className={`task-card-anim stagger-${i + 1}`}>
-                        <TaskCard
-                          title={task.title}
-                          difficulty={task.difficulty}
-                          category={task.category}
-                          icon={task.icon}
-                          iconColor={task.iconColor}
-                          diffBg={`${task.diffColor}18`}
-                          diffColor={task.diffColor}
-                          href={task.href}
-                          platform={task.platform}
-                          isDark={isDark}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="rounded-2xl overflow-hidden border backdrop-blur-xl"
+                  style={{ background: surface, borderColor: border, boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
+                  {loading ? (
+                    <div className="p-5 space-y-3">
+                      {[1, 2, 3].map(i => (
+                        <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: surfaceLo }} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="divide-y" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+                      {recommendedTasks.map((task, i) => (
+                        <div key={i} className="p-4 sm:px-5 flex items-center justify-between transition-colors hover:bg-white/[0.02] group">
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                              style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818CF8' }}>
+                              <span className="material-symbols-outlined text-lg">{task.icon || 'code'}</span>
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-semibold truncate group-hover:text-indigo-400 transition-colors" style={{ color: textPri }}>
+                                {task.title}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-xs px-2 py-0.5 rounded font-medium"
+                                  style={{
+                                    background: task.difficulty.toLowerCase() === 'easy' ? 'rgba(99, 102, 241, 0.12)'
+                                      : task.difficulty.toLowerCase() === 'medium' ? 'rgba(168, 85, 247, 0.12)' : 'rgba(192, 132, 252, 0.12)',
+                                    color: task.difficulty.toLowerCase() === 'easy' ? '#818CF8'
+                                      : task.difficulty.toLowerCase() === 'medium' ? '#A855F7' : '#C084FC',
+                                  }}>
+                                  {task.difficulty}
+                                </span>
+                                <span className="text-xs" style={{ color: textSec }}>{task.category}</span>
+                                {task.platform && (
+                                  <span className="text-xs px-1.5 py-0.5 rounded capitalize" style={{ background: 'rgba(255,255,255,0.05)', color: textSec }}>
+                                    {task.platform}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => window.open(task.href, '_blank', 'noopener noreferrer')}
+                            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all hover:opacity-90 active:scale-95 cursor-pointer shrink-0 ml-3"
+                            style={{ background: '#6366F1', color: '#FFFFFF' }}>
+                            <span>Solve</span>
+                            <span className="material-symbols-outlined text-xs">open_in_new</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Mastery Overview */}
+              {/* Mastery Overview — Apple Card */}
               {skills.length > 0 && (
-                <div className="p-6 rounded-2xl"
-                  style={{ background: surface, border: `1px solid ${border}`, boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.2)' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
+                <div className="p-6 rounded-2xl border backdrop-blur-xl"
+                  style={{ background: surface, borderColor: border, boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
                   <div className="flex items-center justify-between mb-5">
                     <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>Mastery Overview</h3>
                     <span className="text-xs font-medium cursor-pointer hover:underline" style={{ color: '#818CF8' }} onClick={() => navigate('/analytics')}>
-                      View Breakdown →
+                      Full Analysis →
                     </span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 max-w-4xl">

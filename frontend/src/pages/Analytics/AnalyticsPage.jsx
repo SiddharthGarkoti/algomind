@@ -48,7 +48,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
   const textPri = isDark ? '#e3e2e5' : '#0F172A';
   const textSec = isDark ? '#908fa0' : '#64748B';
 
-  const { user, isGuest } = useAuth();
+  const { user, isGuest, updateUser } = useAuth();
 
   const [solvedTab,    setSolvedTab]    = useState('total');
   const [platforms,    setPlatforms]    = useState(null);   // null = loading
@@ -63,8 +63,21 @@ function AnalyticsPage({ theme, toggleTheme }) {
   useEffect(() => {
     api.get('/analytics/dashboard/')
       .then(d => {
-        setPlatforms(d.platforms ?? []);
-        setSummary(d.summary ?? {});
+        const platList = d.platforms ?? [];
+        const summ = d.summary ?? {};
+        setPlatforms(platList);
+        setSummary(summ);
+
+        const maxStreak = Math.max(
+          summ?.streak ?? 0,
+          ...platList.map(p => p.stats?.streak ?? 0)
+        );
+        if (maxStreak > 0) {
+          localStorage.setItem('algomind_streak_cache', String(maxStreak));
+          if (maxStreak > (user?.streak ?? 0)) {
+            updateUser({ streak: maxStreak });
+          }
+        }
       })
       .catch(() => setPlatforms([]));
 
