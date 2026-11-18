@@ -183,10 +183,50 @@ function getProblemsForTopic(slug) {
 const DIFF_ICON  = { easy: 'account_tree', medium: 'route', hard: 'psychology' };
 const DIFF_COLOR = { easy: '#22C55E', medium: '#6366F1', hard: '#EF4444' };
 
+function getTimeOfDayGreeting(username) {
+  let displayName = 'Engineer';
+  if (username) {
+    const raw = username.split('_')[0].split('.')[0];
+    displayName = raw.charAt(0).toUpperCase() + raw.slice(1);
+  }
+
+  const hour = new Date().getHours();
+
+  if (hour >= 23 || hour < 5) {
+    return {
+      title: `Still up, ${displayName}?`,
+      quote: 'The world sleeps. Engineers like you use the quiet to get ahead.',
+    };
+  }
+  if (hour >= 5 && hour < 9) {
+    return {
+      title: `Early start, ${displayName}?`,
+      quote: 'The morning is calm and clear. Perfect for tackling the hardest problem on your list.',
+    };
+  }
+  if (hour >= 9 && hour < 12) {
+    return {
+      title: `Good morning, ${displayName}.`,
+      quote: 'High focus, high momentum. Keep breaking down complex patterns into simple steps.',
+    };
+  }
+  if (hour >= 12 && hour < 17) {
+    return {
+      title: `Good afternoon, ${displayName}.`,
+      quote: 'Stay sharp. One clean solution at a time — quality and invariant thinking over speed.',
+    };
+  }
+  return {
+    title: `Good evening, ${displayName}.`,
+    quote: 'Wrap up your day with a solid win. Review edge cases and refine your algorithmic intuition.',
+  };
+}
+
 function Dashboard({ theme, toggleTheme }) {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const isDark = theme === 'dark';
+  const greeting = getTimeOfDayGreeting(user?.username);
 
   const [chatFriend, setChatFriend] = useState(null);
   const [weakAreas,  setWeakAreas]  = useState([]);
@@ -301,37 +341,15 @@ function Dashboard({ theme, toggleTheme }) {
             {/* Left Column */}
             <div className="flex-grow flex flex-col gap-6 min-w-0">
 
-              {/* Summary Stats Strip — Unified Apple-style card */}
-              {(loading || (summary && summary.platforms_connected > 0)) && (
-                <div className="rounded-2xl p-5 border backdrop-blur-xl shrink-0"
-                  style={{ background: surface, borderColor: border, boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 20px -2px rgba(0,0,0,0.05)' }}>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 divide-y md:divide-y-0 md:divide-x"
-                    style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
-                    {[
-                      { label: 'Problems Solved', value: summary?.total_problems_solved ?? 0, icon: 'check_circle', color: '#818CF8' },
-                      { label: 'Contests',         value: summary?.total_contests ?? 0,        icon: 'emoji_events',  color: '#A855F7' },
-                      { label: 'Avg Rating',       value: summary?.average_rating ?? 0,        icon: 'star',          color: '#C084FC' },
-                      { label: 'Platforms',        value: summary?.platforms_connected ?? 0,   icon: 'link',          color: '#6366F1' },
-                    ].map(({ label, value, icon, color }, idx) => (
-                      <div key={label} className={`flex items-center gap-3.5 ${idx > 0 ? 'md:pl-6 pt-3 md:pt-0' : ''}`}>
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                          style={{ background: `${color}18`, color }}>
-                          <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium" style={{ color: textSec }}>{label}</p>
-                          {loading
-                            ? <div className="h-6 w-16 rounded animate-pulse mt-1" style={{ background: surfaceLo }} />
-                            : <p className="text-xl font-bold tracking-tight mt-0.5" style={{ color: textPri }}>
-                                {value > 0 ? value.toLocaleString() : (label === 'Avg Rating' ? '—' : value)}
-                              </p>
-                          }
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Dynamic Time-of-Day Greeting & Quote */}
+              <div className="pt-1 pb-1">
+                <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight" style={{ color: textPri }}>
+                  {greeting.title}
+                </h1>
+                <p className="text-sm sm:text-base font-normal mt-1.5 leading-relaxed" style={{ color: textSec }}>
+                  {greeting.quote}
+                </p>
+              </div>
 
               {/* Priority Action Point — Apple Hero Card */}
               <section className="relative overflow-hidden rounded-2xl p-6 sm:p-7 border backdrop-blur-xl shrink-0"
@@ -454,9 +472,17 @@ function Dashboard({ theme, toggleTheme }) {
                       ))}
                     </div>
                   ) : (
-                    <div className="divide-y" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
+                    <div className="flex flex-col">
                       {recommendedTasks.map((task, i) => (
-                        <div key={i} className="p-4 sm:px-5 flex items-center justify-between transition-colors hover:bg-white/[0.02] group">
+                        <div
+                          key={i}
+                          className={`p-4 sm:px-5 flex items-center justify-between transition-colors hover:bg-white/[0.02] group ${
+                            i < recommendedTasks.length - 1 ? 'border-b' : ''
+                          }`}
+                          style={{
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
+                          }}
+                        >
                           <div className="flex items-center gap-3.5 min-w-0">
                             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
                               style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818CF8' }}>
@@ -478,7 +504,7 @@ function Dashboard({ theme, toggleTheme }) {
                                 </span>
                                 <span className="text-xs" style={{ color: textSec }}>{task.category}</span>
                                 {task.platform && (
-                                  <span className="text-xs px-1.5 py-0.5 rounded capitalize" style={{ background: 'rgba(255,255,255,0.05)', color: textSec }}>
+                                  <span className="text-xs px-1.5 py-0.5 rounded capitalize" style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', color: textSec }}>
                                     {task.platform}
                                   </span>
                                 )}
