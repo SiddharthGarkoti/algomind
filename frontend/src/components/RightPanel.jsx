@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import AICoach from './AICoach.jsx';
 
 /* Compute the next milestone above the current solved count */
@@ -10,17 +9,13 @@ function nextMilestone(solved) {
 }
 
 function RightPanel({ isDark, summary, weakAreas, loading }) {
-  const navigate  = useNavigate();
   const surface   = isDark ? 'rgba(255, 255, 255, 0.035)' : 'rgba(255, 255, 255, 0.85)';
   const surfaceLo = isDark ? 'rgba(255, 255, 255, 0.02)'  : 'rgba(241, 245, 249, 0.6)';
   const border    = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.07)';
   const textPri   = isDark ? '#F8FAFC' : '#0F172A';
   const textSec   = isDark ? '#94A3B8' : '#64748B';
 
-  const hasSummary    = !!summary;
   const totalSolved   = summary?.total_problems_solved ?? 0;
-  const totalContests = summary?.total_contests ?? 0;
-  const avgRating     = summary?.average_rating ?? 0;
   const connected     = summary?.platforms_connected ?? 0;
 
   const { target, prev, left } = nextMilestone(totalSolved);
@@ -36,65 +31,6 @@ function RightPanel({ isDark, summary, weakAreas, loading }) {
 
       {/* AI Coach */}
       <AICoach isDark={isDark} />
-
-      {/* Platform Summary Stats */}
-      <div className="rounded-2xl p-5 flex flex-col shrink-0 border backdrop-blur-xl"
-        style={{ background: surface, borderColor: border, boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
-        <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>
-            <span className="material-symbols-outlined text-lg">leaderboard</span>
-          </div>
-          <h3 className="text-sm font-semibold tracking-tight" style={{ color: textPri }}>Platform Overview</h3>
-        </div>
-
-        {loading ? (
-          <div className="space-y-2">
-            {[1,2,3].map(i => (
-              <div key={i} className="h-8 rounded-lg animate-pulse" style={{ background: surfaceLo }} />
-            ))}
-          </div>
-        ) : !hasSummary || connected === 0 ? (
-          <div className="text-center py-2">
-            <p className="text-xs mb-3" style={{ color: textSec }}>
-              Connect a platform to see your real stats.
-            </p>
-            <button
-              className="w-full py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90 cursor-pointer"
-              style={{ background: '#6366F1', color: '#fff' }}
-              onClick={() => navigate('/settings')}>
-              Connect Platform
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-2.5 mb-3">
-              <div className="p-3 rounded-xl" style={{ background: surfaceLo }}>
-                <p className="text-xs mb-0.5" style={{ color: textSec }}>Problems</p>
-                <p className="text-base font-bold" style={{ color: textPri }}>{totalSolved.toLocaleString()}</p>
-              </div>
-              <div className="p-3 rounded-xl" style={{ background: surfaceLo }}>
-                <p className="text-xs mb-0.5" style={{ color: textSec }}>Contests</p>
-                <p className="text-base font-bold" style={{ color: textPri }}>{totalContests}</p>
-              </div>
-              <div className="p-3 rounded-xl" style={{ background: surfaceLo }}>
-                <p className="text-xs mb-0.5" style={{ color: textSec }}>Avg Rating</p>
-                <p className="text-base font-bold" style={{ color: '#818CF8' }}>{avgRating > 0 ? avgRating : '—'}</p>
-              </div>
-              <div className="p-3 rounded-xl" style={{ background: surfaceLo }}>
-                <p className="text-xs mb-0.5" style={{ color: textSec }}>Platforms</p>
-                <p className="text-base font-bold" style={{ color: '#A855F7' }}>{connected}</p>
-              </div>
-            </div>
-            <button
-              className="w-full py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90 cursor-pointer"
-              style={{ background: '#6366F1', color: '#FFFFFF' }}
-              onClick={() => navigate('/analytics')}>
-              View Full Analytics
-            </button>
-          </>
-        )}
-      </div>
 
       {/* Next Milestone */}
       <div className="rounded-2xl p-5 flex flex-col shrink-0 border backdrop-blur-xl"
