@@ -71,6 +71,7 @@ def fetch_leetcode(handle: str) -> dict:
         userCalendar {
           streak
           totalActiveDays
+          submissionCalendar
         }
         submitStats {
           acSubmissionNum {
@@ -110,7 +111,50 @@ def fetch_leetcode(handle: str) -> dict:
 
         # --- streak info ---
         calendar_info = user.get('userCalendar') or {}
-        streak        = int(calendar_info.get('streak') or 0)
+        lc_api_streak = int(calendar_info.get('streak') or 0)
+
+        # Parse submissionCalendar for exact current & max streaks
+        sub_cal_str = calendar_info.get('submissionCalendar')
+        calc_current = 0
+        calc_max = lc_api_streak
+        if sub_cal_str:
+            try:
+                import json
+                sub_cal = json.loads(sub_cal_str)
+                active_dates = sorted(list(set([
+                    datetime.fromtimestamp(int(ts), tz=timezone.utc).date()
+                    for ts in sub_cal.keys()
+                ])))
+                if active_dates:
+                    # Max contiguous days
+                    curr = 0
+                    m_streak = 0
+                    prev_d = None
+                    for d in active_dates:
+                        if prev_d and (d - prev_d).days == 1:
+                            curr += 1
+                        else:
+                            curr = 1
+                        if curr > m_streak:
+                            m_streak = curr
+                        prev_d = d
+                    calc_max = max(calc_max, m_streak)
+
+                    # Current contiguous days from today or yesterday
+                    today_utc = datetime.now(timezone.utc).date()
+                    active_set = set(active_dates)
+                    check_d = today_utc
+                    if check_d not in active_set:
+                        check_d = today_utc - timedelta(days=1)
+                    while check_d in active_set:
+                        calc_current += 1
+                        check_d -= timedelta(days=1)
+            except Exception:
+                calc_current = lc_api_streak
+        else:
+            calc_current = lc_api_streak
+
+        final_max_streak = max(calc_max, calc_current, lc_api_streak)
 
         # --- contest info ---
         contest_info = data.get('userContestRanking') or {}
@@ -131,7 +175,8 @@ def fetch_leetcode(handle: str) -> dict:
 
         return {
             'rating':          rating,
-            'streak':          streak,
+            'streak':          calc_current,
+            'max_streak':      final_max_streak,
             'problems_solved': total_solved,
             'contests':        contests,
             'easy_solved':     easy_solved,
@@ -206,13 +251,28 @@ def fetch_codeforces(handle: str) -> dict:
                             if tag and not tag.startswith('*'):
                                 topic_map[tag] = topic_map.get(tag, 0) + 1
 
-        cf_streak = 0
+        # Current streak
+        cf_current_streak = 0
         check_date = datetime.now(timezone.utc).date()
         if check_date not in solve_dates:
             check_date -= timedelta(days=1)
         while check_date in solve_dates:
-            cf_streak += 1
+            cf_current_streak += 1
             check_date -= timedelta(days=1)
+
+        # Max streak
+        cf_max_streak = 0
+        curr = 0
+        prev_d = None
+        for d in sorted(list(solve_dates)):
+            if prev_d and (d - prev_d).days == 1:
+                curr += 1
+            else:
+                curr = 1
+            if curr > cf_max_streak:
+                cf_max_streak = curr
+            prev_d = d
+        cf_max_streak = max(cf_max_streak, cf_current_streak)
 
         # Classify by problem rating
         easy_solved = medium_solved = hard_solved = 0
@@ -247,7 +307,8 @@ def fetch_codeforces(handle: str) -> dict:
 
         return {
             'rating':          rating,
-            'streak':          cf_streak,
+            'streak':          cf_current_streak,
+            'max_streak':      cf_max_streak,
             'problems_solved': len(seen_problems),
             'contests':        contests,
             'easy_solved':     easy_solved,

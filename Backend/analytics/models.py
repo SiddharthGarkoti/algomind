@@ -27,6 +27,7 @@ class PlatformStats(models.Model):
     profile         = models.OneToOneField(PlatformProfile, on_delete=models.CASCADE, related_name='stats')
     rating          = models.IntegerField(default=0)
     streak          = models.PositiveIntegerField(default=0)
+    max_streak      = models.PositiveIntegerField(default=0)
     problems_solved = models.PositiveIntegerField(default=0)
     contests        = models.PositiveIntegerField(default=0)
     easy_solved     = models.PositiveIntegerField(default=0)

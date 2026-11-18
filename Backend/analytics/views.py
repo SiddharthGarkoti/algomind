@@ -162,16 +162,18 @@ class DashboardView(APIView):
             .prefetch_related('topic_stats')
         )
 
-        # Auto-sync streak if any connected platform has streak == 0
+        # Auto-sync streak if any connected platform has streak == 0 or max_streak == 0
         needs_re_eval = False
         for p in profiles:
-            if hasattr(p, 'stats') and p.stats and p.stats.streak == 0:
+            if hasattr(p, 'stats') and p.stats and (p.stats.streak == 0 or getattr(p.stats, 'max_streak', 0) == 0):
                 try:
                     raw = fetch_stats(p.platform_name, p.handle)
                     st = raw.get('streak', 0)
-                    if st > 0:
+                    mst = raw.get('max_streak', st)
+                    if st > 0 or mst > 0:
                         p.stats.streak = st
-                        p.stats.save(update_fields=['streak'])
+                        p.stats.max_streak = mst
+                        p.stats.save(update_fields=['streak', 'max_streak'])
                         needs_re_eval = True
                 except Exception:
                     pass
@@ -194,11 +196,12 @@ class DashboardView(APIView):
             sum(p['stats']['rating'] for p in rated_platforms) // len(rated_platforms)
             if rated_platforms else 0
         )
-        platform_streaks = [p['stats'].get('streak', 0) for p in data if p.get('stats')]
-        max_platform_streak = max(platform_streaks) if platform_streaks else 0
-        total_streak = max(max_platform_streak, request.user.streak)
-        if total_streak > request.user.streak:
-            request.user.streak = total_streak
+        platform_current_streaks = [p['stats'].get('streak', 0) for p in data if p.get('stats')]
+        platform_max_streaks     = [p['stats'].get('max_streak', p['stats'].get('streak', 0)) for p in data if p.get('stats')]
+        total_current_streak = max(platform_current_streaks) if platform_current_streaks else request.user.streak
+        total_max_streak     = max(platform_max_streaks) if platform_max_streaks else max(total_current_streak, request.user.streak)
+        if total_max_streak > request.user.streak:
+            request.user.streak = total_max_streak
             request.user.save(update_fields=['streak'])
 
         return Response({
@@ -208,7 +211,9 @@ class DashboardView(APIView):
                 'total_contests':        total_contests,
                 'average_rating':        avg_rating,
                 'platforms_connected':   len(data),
-                'streak':                total_streak,
+                'streak':                total_max_streak,
+                'max_streak':            total_max_streak,
+                'current_streak':        total_current_streak,
             },
         })
 

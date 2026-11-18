@@ -43,7 +43,7 @@ function PublicProfilePage({ theme, toggleTheme }) {
 
         {!loading && notFound && (
           <div className="rounded-2xl p-10 text-center" style={{ background: surface, border: `1px solid ${border}` }}>
-            <p className="text-4xl mb-4">🔍</p>
+            <span className="material-symbols-outlined text-4xl mb-4 block" style={{ color: textSec }}>search</span>
             <h2 className="text-lg font-bold mb-2" style={{ color: textPri }}>User not found</h2>
             <p className="text-sm mb-5" style={{ color: textSec }}>No user with the username <strong>{username}</strong> exists.</p>
             <button

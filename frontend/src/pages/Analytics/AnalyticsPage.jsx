@@ -102,32 +102,41 @@ function AnalyticsPage({ theme, toggleTheme }) {
 
   /* Build solved stats for current tab */
   const statsFor = (platformName) => {
-    const maxPlatformStreak = platforms?.reduce((max, p) => Math.max(max, p.stats?.streak ?? 0), 0) ?? 0;
-    const bestStreak = summary?.streak || maxPlatformStreak || user?.streak || 0;
+    const maxPlatformStreak = platforms?.reduce((max, p) => Math.max(max, p.stats?.max_streak ?? p.stats?.streak ?? 0), 0) ?? 0;
+    const currentPlatformStreak = platforms?.reduce((max, p) => Math.max(max, p.stats?.streak ?? 0), 0) ?? 0;
+    const bestMaxStreak = summary?.max_streak || summary?.streak || maxPlatformStreak || user?.streak || 0;
+    const bestCurrentStreak = summary?.current_streak ?? currentPlatformStreak ?? 0;
+
     if (platformName === 'total') {
       return {
-        easy:   summary?.easy_solved   ?? platforms?.reduce((s,p)=>s+(p.stats?.easy_solved??0),0) ?? 0,
-        medium: summary?.medium_solved ?? platforms?.reduce((s,p)=>s+(p.stats?.medium_solved??0),0) ?? 0,
-        hard:   summary?.hard_solved   ?? platforms?.reduce((s,p)=>s+(p.stats?.hard_solved??0),0) ?? 0,
-        total:  summary?.total_problems_solved ?? 0,
-        rating: summary?.average_rating ?? 0,
-        streak: bestStreak,
-        url:    null,
+        easy:          summary?.easy_solved   ?? platforms?.reduce((s,p)=>s+(p.stats?.easy_solved??0),0) ?? 0,
+        medium:        summary?.medium_solved ?? platforms?.reduce((s,p)=>s+(p.stats?.medium_solved??0),0) ?? 0,
+        hard:          summary?.hard_solved   ?? platforms?.reduce((s,p)=>s+(p.stats?.hard_solved??0),0) ?? 0,
+        total:         summary?.total_problems_solved ?? 0,
+        rating:        summary?.average_rating ?? 0,
+        currentStreak: bestCurrentStreak,
+        maxStreak:     bestMaxStreak,
+        streak:        bestMaxStreak,
+        url:           null,
       };
     }
     const p = platforms?.find(pl => pl.platform_name === platformName);
     const s = p?.stats ?? {};
+    const cStreak = s.streak ?? 0;
+    const mStreak = s.max_streak || s.streak || 0;
     return {
-      easy:   s.easy_solved   ?? 0,
-      medium: s.medium_solved ?? 0,
-      hard:   s.hard_solved   ?? 0,
-      total:  s.problems_solved ?? 0,
-      rating: s.rating ?? 0,
-      streak: (s.streak && s.streak > 0) ? s.streak : bestStreak,
-      url:    platformName === 'leetcode'   ? `https://leetcode.com/${p?.handle ?? ''}`
-            : platformName === 'codeforces' ? `https://codeforces.com/profile/${p?.handle ?? ''}`
-            : null,
-      handle: p?.handle,
+      easy:          s.easy_solved   ?? 0,
+      medium:        s.medium_solved ?? 0,
+      hard:          s.hard_solved   ?? 0,
+      total:         s.problems_solved ?? 0,
+      rating:        s.rating ?? 0,
+      currentStreak: cStreak,
+      maxStreak:     mStreak,
+      streak:        mStreak,
+      url:           platformName === 'leetcode'   ? `https://leetcode.com/${p?.handle ?? ''}`
+                   : platformName === 'codeforces' ? `https://codeforces.com/profile/${p?.handle ?? ''}`
+                   : null,
+      handle:        p?.handle,
     };
   };
 
@@ -257,9 +266,14 @@ function AnalyticsPage({ theme, toggleTheme }) {
                 </div>
 
                 <div className="mt-5 pt-4 flex items-center gap-4 flex-wrap" style={{ borderTop: `1px solid ${border}` }}>
-                  <div className="flex items-center gap-1.5">
-                    <span>🔥</span>
-                    <span className="text-sm font-bold tracking-tight" style={{ color: textPri }}>{currentStats.streak}d streak</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>Current Streak</span>
+                    <span className="text-sm font-bold tracking-tight" style={{ color: textPri }}>{currentStats.currentStreak}d</span>
+                  </div>
+                  <div className="h-3 w-px" style={{ background: border }} />
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded" style={{ background: 'rgba(168,85,247,0.12)', color: '#A855F7' }}>Max Streak</span>
+                    <span className="text-sm font-bold tracking-tight" style={{ color: textPri }}>{currentStats.maxStreak}d</span>
                   </div>
                   <div className="h-3 w-px" style={{ background: border }} />
                   <span className="text-xs font-medium" style={{ color: textSec }}>Contest Rating: {currentStats.rating > 0 ? currentStats.rating : 'Unrated'}</span>
@@ -294,16 +308,17 @@ function AnalyticsPage({ theme, toggleTheme }) {
                             </button>
                           </div>
                         </div>
-                        <div className="grid grid-cols-4 gap-2 text-center">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
                           {[
-                            { label: 'Solved', val: s.problems_solved ?? 0 },
-                            { label: 'Streak', val: `${(s.streak && s.streak > 0) ? s.streak : (summary?.streak || user?.streak || 0)}d` },
-                            { label: 'Contests', val: s.contests ?? 0 },
-                            { label: 'Rating', val: s.rating ?? 0 },
-                          ].map(({ label, val }) => (
-                            <div key={label}>
-                              <p className="text-xl font-headline font-bold" style={{ color: '#A855F7' }}>{val}</p>
-                              <p className="text-xs uppercase tracking-wider mt-0.5" style={{ color: textSec }}>{label}</p>
+                            { label: 'Solved',         val: s.problems_solved ?? 0, color: textPri },
+                            { label: 'Current Streak', val: `${s.streak ?? 0}d`, color: '#818CF8' },
+                            { label: 'Max Streak',     val: `${s.max_streak || s.streak || 0}d`, color: '#A855F7' },
+                            { label: 'Contests',       val: s.contests ?? 0, color: textPri },
+                            { label: 'Rating',         val: s.rating > 0 ? s.rating : '—', color: '#C084FC' },
+                          ].map(({ label, val, color }) => (
+                            <div key={label} className="p-2.5 rounded-xl" style={{ background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
+                              <p className="text-lg font-headline font-bold" style={{ color }}>{val}</p>
+                              <p className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: textSec }}>{label}</p>
                             </div>
                           ))}
                         </div>
