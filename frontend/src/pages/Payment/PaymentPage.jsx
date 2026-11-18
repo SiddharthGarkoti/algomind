@@ -273,7 +273,7 @@ function PaymentPage({ isDark, toggleTheme }) {
               borderRadius: '12px', padding: '12px 20px', fontSize: '14px',
               fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
             }}>
-              Test Rynox ⚡
+              Test MILO
             </button>
           </div>
         </div>
@@ -476,8 +476,8 @@ function PaymentPage({ isDark, toggleTheme }) {
             <p style={{ fontSize: '12px', color: planMeta.color, fontWeight: 600, marginBottom: '2px' }}>{planMeta.label} unlocks</p>
             <p style={{ fontSize: '11px', color: textSec, lineHeight: 1.5 }}>
               {planId === 'plus'
-                ? 'Rynox AI mentor · Study materials · Contest entries'
-                : 'Full Rynox AI access · Mock tests · Unlimited challenges'}
+                ? 'MILO AI mentor · Study materials · Contest entries'
+                : 'Full MILO AI access · Mock tests · Unlimited challenges'}
             </p>
           </div>
         </div>
@@ -504,9 +504,9 @@ function PaymentPage({ isDark, toggleTheme }) {
               background: 'rgba(245, 158, 11, 0.15)',
               border: '1px solid rgba(245, 158, 11, 0.3)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '28px', marginBottom: '16px',
+              marginBottom: '16px',
             }}>
-              🧪
+              <span className="material-symbols-outlined" style={{ color: '#F59E0B', fontSize: '28px' }}>science</span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -538,8 +538,8 @@ function PaymentPage({ isDark, toggleTheme }) {
               </p>
               <p style={{ fontSize: '11px', color: textSec, margin: 0, lineHeight: 1.5, whiteSpace: 'pre-line' }}>
                 {planId === 'pro'
-                  ? '✓ Full Socratic Rynox with formal invariants & stress-test edge cases\n✓ Extended contest duration (up to 180m) & 10 questions\n✓ Pro badge across profile, header & community'
-                  : '✓ Enhanced Socratic Rynox diagnostics\n✓ Study materials access & 8 questions / contest\n✓ Plus badge across profile & header'}
+                  ? '✓ Full Socratic MILO with formal invariants & stress-test edge cases\n✓ Extended contest duration (up to 180m) & 10 questions\n✓ Pro badge across profile, header & community'
+                  : '✓ Enhanced Socratic MILO diagnostics\n✓ Study materials access & 8 questions / contest\n✓ Plus badge across profile & header'}
               </p>
             </div>
 

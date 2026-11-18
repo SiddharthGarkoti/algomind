@@ -143,7 +143,7 @@ def call_ai(request_type: str, user_input: str, problem=None) -> str:
 
     return PLACEHOLDER_RESPONSES.get(
         request_type,
-        "Rynox is not configured yet. Add GEMINI_API_KEY or GROQ_API_KEY to Backend/.env to enable it.",
+        "MILO is not configured yet. Add GEMINI_API_KEY or GROQ_API_KEY to Backend/.env to enable it.",
     )
 
 

@@ -59,12 +59,12 @@ function AICoach({ isDark }) {
     >
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-4 relative z-10">
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-          style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>
-          <span className="material-symbols-outlined text-lg">smart_toy</span>
+        <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}>
+          <img src="/milo.png" alt="MILO" className="w-full h-full object-cover" />
         </div>
         <div>
-          <h4 className="text-sm font-semibold tracking-tight" style={{ color: textPri }}>Rynox</h4>
+          <h4 className="text-sm font-semibold tracking-tight" style={{ color: textPri }}>MILO</h4>
           <p className="text-[11px] font-medium" style={{ color: '#818CF8' }}>
             {loading ? 'Evaluating…' : `${specialist} Specialist`}
           </p>

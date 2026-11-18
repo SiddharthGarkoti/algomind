@@ -102,9 +102,9 @@ The companion browser extension enforces contest integrity during live ranked se
 
 ---
 
-## 🤖 AlgoMind Socratic AI Engine & DSA Mentor (Rynox)
+## 🤖 AlgoMind Socratic AI Engine & DSA Mentor (MILO)
 
-AlgoMind avoids generic code completion. Instead, its algorithmic mentor, **Rynox**, uses strict system constraints to reinforce student problem-solving:
+AlgoMind avoids generic code completion. Instead, its algorithmic mentor, **MILO**, uses strict system constraints to reinforce student problem-solving:
 
 ```
                        ┌─────────────────────────────────────────┐
@@ -153,7 +153,7 @@ flowchart TD
     E -->|Structured Growth| G[Generate Adaptive AI Study Plan]
     F --> H[Write Code with Custom stdin Input]
     H --> I[Encounter Blocker / Edge Case Failure]
-    I --> J[Consult Rynox (AI Mentor)\nHints & Complexity Insights]
+    I --> J[Consult MILO (AI Mentor)\nHints & Complexity Insights]
     J --> H
     H --> K[Submit & Earn Rating Points]
     G --> L[Complete Daily Milestones]
@@ -164,7 +164,7 @@ flowchart TD
 1. **Onboarding & Handle Linking**: The learner signs in via email OTP or GitHub/Google OAuth. They connect their public LeetCode and Codeforces handles. AlgoMind validates the profiles and crawls solved problem distributions.
 2. **Skill Gap Diagnostics**: The analytics dashboard categorizes problems into core algorithm tags (Graphs, DP, Binary Search, Greedy, Trees, Arrays). A radar chart exposes topic weaknesses.
 3. **Adaptive Goal Track**: The learner selects an intensity (*Light* 1–2 problems/day, *Balanced* 3–4 problems/day, or *Intense* 5+ problems/day). The AI plan generator constructs a personalized roadmap.
-4. **Arena IDE & Socratic Guidance**: While coding in the Arena IDE, the student executes testcases with custom `stdin`. When stuck, they query Rynox (Socratic AI Mentor) for hints or bug explanations without having the solution spoiled.
+4. **Arena IDE & Socratic Guidance**: While coding in the Arena IDE, the student executes testcases with custom `stdin`. When stuck, they query MILO (Socratic AI Mentor) for hints or bug explanations without having the solution spoiled.
 5. **Rating Progression**: Verified submissions award rating points, contributing to level progression (`User.award_rating()`).
 
 ---

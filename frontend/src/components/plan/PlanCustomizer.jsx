@@ -63,8 +63,10 @@ function PlanCustomizer({
               background: isDark ? 'rgba(99,102,241,0.07)' : 'rgba(99,102,241,0.05)',
               border: '1px solid rgba(99,102,241,0.18)',
             }}>
-            <span className="material-symbols-outlined shrink-0 mt-0.5"
-              style={{ color: '#6366F1', fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+            <div className="w-6 h-6 rounded-lg overflow-hidden shrink-0 mt-0.5 border"
+              style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
+              <img src="/milo.png" alt="MILO" className="w-full h-full object-cover" />
+            </div>
             {aiLoading ? (
               <div className="space-y-2 flex-grow">
                 <div className="h-3 rounded-full w-3/4 animate-pulse" style={{ background: isDark ? '#292a2c' : '#E2E8F0' }} />
@@ -72,7 +74,7 @@ function PlanCustomizer({
               </div>
             ) : (
               <div className="flex-grow">
-                <p className="text-xs font-bold mb-1" style={{ color: '#6366F1' }}>Rynox</p>
+                <p className="text-xs font-bold mb-1" style={{ color: '#6366F1' }}>MILO</p>
                 <p className="text-[12px] leading-relaxed" style={{ color: textSec }}>{aiPlan.message}</p>
                 {aiPlan.daily_goal && (
                   <p className="mt-2 text-[11px] font-bold" style={{ color: textPri }}>
@@ -163,7 +165,7 @@ function PlanCustomizer({
           className="inline-flex items-center gap-1.5 text-[11px] font-bold hover:opacity-75 transition-opacity"
           style={{ color: '#6366F1' }}>
           <span className="material-symbols-outlined" style={{ fontSize: '13px', fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-          Ask Rynox
+          Ask MILO
         </button>
       </div>
     </section>

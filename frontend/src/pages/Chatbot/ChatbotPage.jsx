@@ -24,7 +24,7 @@ function ChatbotPage({ theme, toggleTheme }) {
     'Asymptotic state space of BFS vs DFS',
   ] : SUGGESTIONS;
   const [messages, setMessages] = useState([
-    { from: 'bot', text: "I'm Rynox, your AI DSA mentor! I can help explain algorithms, debug your thinking, or suggest problems to practice. What would you like to learn today?", time: 'Just now' },
+    { from: 'bot', text: "I'm MILO, your AI DSA mentor! I can help explain algorithms, debug your thinking, or suggest problems to practice. What would you like to learn today?", time: 'Just now' },
   ]);
   const [input,        setInput]        = useState('');
   const [sending,      setSending]      = useState(false);
@@ -96,22 +96,14 @@ function ChatbotPage({ theme, toggleTheme }) {
         <div className="flex items-center justify-between gap-4 rounded-2xl p-4"
           style={{ background: surface, border: `1px solid ${border}` }}>
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-              style={{
-                background: isPro
-                  ? 'linear-gradient(135deg, #A78BFA, #7C3AED)'
-                  : isPlus
-                    ? 'linear-gradient(135deg, #6366F1, #4F46E5)'
-                    : 'linear-gradient(135deg, #6366F1, #A855F7)'
-              }}>
-              <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>
-                {isPro ? 'workspace_premium' : 'auto_awesome'}
-              </span>
+            <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center shrink-0 border"
+              style={{ borderColor: 'rgba(99,102,241,0.3)' }}>
+              <img src="/milo.png" alt="MILO" className="w-full h-full object-cover" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-headline font-bold text-base" style={{ color: textPri }}>
-                  {isPro ? 'Rynox Pro' : isPlus ? 'Rynox Plus' : 'Rynox'}
+                  {isPro ? 'MILO Pro' : isPlus ? 'MILO Plus' : 'MILO'}
                 </h1>
                 <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider"
                   style={isPro
@@ -149,9 +141,9 @@ function ChatbotPage({ theme, toggleTheme }) {
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'} gap-3`}>
               {msg.from === 'bot' && (
-                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-1"
-                  style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)' }}>
-                  <span className="material-symbols-outlined text-white text-sm">smart_toy</span>
+                <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center shrink-0 mt-1 border"
+                  style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
+                  <img src="/milo.png" alt="MILO" className="w-full h-full object-cover" />
                 </div>
               )}
               <div className="max-w-[80%]">
@@ -175,9 +167,9 @@ function ChatbotPage({ theme, toggleTheme }) {
           {/* Typing indicator while waiting for backend response */}
           {sending && (
             <div className="flex justify-start gap-3">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-1"
-                style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)' }}>
-                <span className="material-symbols-outlined text-white text-sm">smart_toy</span>
+              <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center shrink-0 mt-1 border"
+                style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
+                <img src="/milo.png" alt="MILO" className="w-full h-full object-cover" />
               </div>
               <div className="px-4 py-3 rounded-2xl text-sm flex gap-1 items-center"
                 style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9', border: `1px solid ${border}` }}>
@@ -275,8 +267,8 @@ function ChatbotPage({ theme, toggleTheme }) {
                 <span className="material-symbols-outlined text-white">lock</span>
               </div>
               <div className="text-center">
-                <p className="text-sm font-bold" style={{ color: textPri }}>Sign in to use Rynox</p>
-                <p className="text-[11px] mt-0.5" style={{ color: textSec }}>Create a free account to chat with Rynox</p>
+                <p className="text-sm font-bold" style={{ color: textPri }}>Sign in to use MILO</p>
+                <p className="text-[11px] mt-0.5" style={{ color: textSec }}>Create a free account to chat with MILO</p>
               </div>
               <button
                 onClick={() => setModalOpen(true)}

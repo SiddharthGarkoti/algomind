@@ -145,7 +145,7 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
 
           {NAV_BOTTOM.map(item => <NavItem key={item.path} {...item} />)}
 
-          {/* Rynox (AI Mentor) */}
+          {/* MILO (AI Mentor) */}
           <NavLink to="/chatbot"
             className="nav-item"
             style={({ isActive }) => ({
@@ -153,10 +153,10 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
               color: isActive ? (isDark ? '#FFFFFF' : '#4F46E5') : '#A5B4FC',
             })}
           >
-            <div className="icon-container">
-              <span className="material-symbols-outlined !text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+            <div className="icon-container flex items-center justify-center">
+              <img src="/milo.png" alt="MILO" className="w-5 h-5 rounded-md object-cover" />
             </div>
-            <div className="text-[13px] font-semibold sidebar-content-text">Rynox</div>
+            <div className="text-[13px] font-semibold sidebar-content-text">MILO</div>
           </NavLink>
         </div>
       </nav>

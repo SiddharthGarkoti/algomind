@@ -13,7 +13,7 @@ const PLANS = [
     accentColor: '#64748B',
     features: [
       { text: 'Chat with friends', included: true },
-      { text: 'Basic Rynox AI mentor', included: true },
+      { text: 'Basic MILO AI mentor', included: true },
       { text: 'Limited challenge set', included: true },
       { text: 'Limited personalization', included: true },
       { text: 'Study material access', included: false },
@@ -33,7 +33,7 @@ const PLANS = [
     features: [
       { text: 'Everything in Basic', included: true },
       { text: 'Media sharing up to 3 MB', included: true },
-      { text: 'Advanced Rynox AI mentor (limited)', included: true },
+      { text: 'Advanced MILO AI mentor (limited)', included: true },
       { text: 'Study material access', included: true },
       { text: 'Increased challenge tokens', included: true },
       { text: '2 free contest entries / month', included: true, note: 'Weekly contests only' },
@@ -51,7 +51,7 @@ const PLANS = [
     features: [
       { text: 'Everything in Plus', included: true },
       { text: 'Media sharing 20+ MB', included: true, note: 'Better quality' },
-      { text: 'Full advanced Rynox AI access', included: true, note: 'More tokens' },
+      { text: 'Full advanced MILO AI access', included: true, note: 'More tokens' },
       { text: 'Mock & aptitude tests', included: true },
       { text: 'Unlimited challenges', included: true },
       { text: 'All affiliated contest entries', included: true, note: 'Monthly cap applies' },
