@@ -273,7 +273,7 @@ function PaymentPage({ isDark, toggleTheme }) {
               borderRadius: '12px', padding: '12px 20px', fontSize: '14px',
               fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
             }}>
-              Test AI Mentor ⚡
+              Test Rynox ⚡
             </button>
           </div>
         </div>
@@ -476,8 +476,8 @@ function PaymentPage({ isDark, toggleTheme }) {
             <p style={{ fontSize: '12px', color: planMeta.color, fontWeight: 600, marginBottom: '2px' }}>{planMeta.label} unlocks</p>
             <p style={{ fontSize: '11px', color: textSec, lineHeight: 1.5 }}>
               {planId === 'plus'
-                ? 'AI mentor · Study materials · Contest entries'
-                : 'Full AI access · Mock tests · Unlimited challenges'}
+                ? 'Rynox AI mentor · Study materials · Contest entries'
+                : 'Full Rynox AI access · Mock tests · Unlimited challenges'}
             </p>
           </div>
         </div>
@@ -538,8 +538,8 @@ function PaymentPage({ isDark, toggleTheme }) {
               </p>
               <p style={{ fontSize: '11px', color: textSec, margin: 0, lineHeight: 1.5, whiteSpace: 'pre-line' }}>
                 {planId === 'pro'
-                  ? '✓ Full Socratic AI with formal invariants & stress-test edge cases\n✓ Extended contest duration (up to 180m) & 10 questions\n✓ Pro badge across profile, header & community'
-                  : '✓ Enhanced Socratic AI mentor diagnostics\n✓ Study materials access & 8 questions / contest\n✓ Plus badge across profile & header'}
+                  ? '✓ Full Socratic Rynox with formal invariants & stress-test edge cases\n✓ Extended contest duration (up to 180m) & 10 questions\n✓ Pro badge across profile, header & community'
+                  : '✓ Enhanced Socratic Rynox diagnostics\n✓ Study materials access & 8 questions / contest\n✓ Plus badge across profile & header'}
               </p>
             </div>
 

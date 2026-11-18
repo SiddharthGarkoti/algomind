@@ -242,7 +242,7 @@ function PlanPage({ isDark, toggleTheme }) {
                 </span>
                 <div>
                   <p className="font-semibold text-sm text-gray-900 dark:text-white">Login to use all features</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Save progress, track streaks & use AI coach</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Save progress, track streaks & use Rynox</p>
                 </div>
               </button>
 

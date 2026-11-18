@@ -1222,7 +1222,7 @@ function PlanViewPage({ theme, toggleTheme }) {
             <span className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)' }}>
               <span className="material-symbols-outlined" style={{ fontSize: '15px', fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
             </span>
-            Explore more with AI Mentor
+            Explore more with Rynox
             <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>arrow_forward</span>
           </button>
         </section>

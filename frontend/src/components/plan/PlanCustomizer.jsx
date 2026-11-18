@@ -72,7 +72,7 @@ function PlanCustomizer({
               </div>
             ) : (
               <div className="flex-grow">
-                <p className="text-xs font-bold mb-1" style={{ color: '#6366F1' }}>AI Coach</p>
+                <p className="text-xs font-bold mb-1" style={{ color: '#6366F1' }}>Rynox</p>
                 <p className="text-[12px] leading-relaxed" style={{ color: textSec }}>{aiPlan.message}</p>
                 {aiPlan.daily_goal && (
                   <p className="mt-2 text-[11px] font-bold" style={{ color: textPri }}>
@@ -163,7 +163,7 @@ function PlanCustomizer({
           className="inline-flex items-center gap-1.5 text-[11px] font-bold hover:opacity-75 transition-opacity"
           style={{ color: '#6366F1' }}>
           <span className="material-symbols-outlined" style={{ fontSize: '13px', fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-          Ask AI Mentor
+          Ask Rynox
         </button>
       </div>
     </section>

@@ -24,7 +24,7 @@ function ChatbotPage({ theme, toggleTheme }) {
     'Asymptotic state space of BFS vs DFS',
   ] : SUGGESTIONS;
   const [messages, setMessages] = useState([
-    { from: 'bot', text: "I'm your AI Mentor! I can help explain algorithms, debug your thinking, or suggest problems to practice. What would you like to learn today?", time: 'Just now' },
+    { from: 'bot', text: "I'm Rynox, your AI DSA mentor! I can help explain algorithms, debug your thinking, or suggest problems to practice. What would you like to learn today?", time: 'Just now' },
   ]);
   const [input,        setInput]        = useState('');
   const [sending,      setSending]      = useState(false);
@@ -111,7 +111,7 @@ function ChatbotPage({ theme, toggleTheme }) {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-headline font-bold text-base" style={{ color: textPri }}>
-                  {isPro ? 'AlgoMind Pro Mentor' : isPlus ? 'AlgoMind Plus Mentor' : 'AI Mentor'}
+                  {isPro ? 'Rynox Pro' : isPlus ? 'Rynox Plus' : 'Rynox'}
                 </h1>
                 <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider"
                   style={isPro
@@ -275,8 +275,8 @@ function ChatbotPage({ theme, toggleTheme }) {
                 <span className="material-symbols-outlined text-white">lock</span>
               </div>
               <div className="text-center">
-                <p className="text-sm font-bold" style={{ color: textPri }}>Sign in to use AI Mentor</p>
-                <p className="text-[11px] mt-0.5" style={{ color: textSec }}>Create a free account to chat with your AI tutor</p>
+                <p className="text-sm font-bold" style={{ color: textPri }}>Sign in to use Rynox</p>
+                <p className="text-[11px] mt-0.5" style={{ color: textSec }}>Create a free account to chat with Rynox</p>
               </div>
               <button
                 onClick={() => setModalOpen(true)}

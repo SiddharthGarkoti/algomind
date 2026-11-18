@@ -64,7 +64,7 @@ function AICoach({ isDark }) {
           <span className="material-symbols-outlined text-lg">smart_toy</span>
         </div>
         <div>
-          <h4 className="text-sm font-semibold tracking-tight" style={{ color: textPri }}>AI Coach</h4>
+          <h4 className="text-sm font-semibold tracking-tight" style={{ color: textPri }}>Rynox</h4>
           <p className="text-[11px] font-medium" style={{ color: '#818CF8' }}>
             {loading ? 'Evaluating…' : `${specialist} Specialist`}
           </p>

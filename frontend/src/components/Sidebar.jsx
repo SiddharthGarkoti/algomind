@@ -145,7 +145,7 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
 
           {NAV_BOTTOM.map(item => <NavItem key={item.path} {...item} />)}
 
-          {/* AI Mentor */}
+          {/* Rynox (AI Mentor) */}
           <NavLink to="/chatbot"
             className="nav-item"
             style={({ isActive }) => ({
@@ -156,7 +156,7 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
             <div className="icon-container">
               <span className="material-symbols-outlined !text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
             </div>
-            <div className="text-[13px] font-semibold sidebar-content-text">AI Mentor</div>
+            <div className="text-[13px] font-semibold sidebar-content-text">Rynox</div>
           </NavLink>
         </div>
       </nav>
