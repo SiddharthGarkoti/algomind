@@ -341,174 +341,109 @@ function Dashboard({ theme, toggleTheme }) {
             {/* Left Column */}
             <div className="flex-grow flex flex-col gap-6 min-w-0">
 
-              {/* Dynamic Time-of-Day Greeting & Session Header */}
-              <div className="pt-1 pb-1 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight" style={{ color: textPri }}>
-                    {greeting.title}
-                  </h1>
-                  <p className="text-xs sm:text-sm font-normal mt-1 leading-relaxed" style={{ color: textSec }}>
-                    {greeting.quote}
-                  </p>
-                </div>
-                {user?.streak > 0 && (
-                  <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border shrink-0 self-start sm:self-auto"
-                    style={{ background: 'rgba(99,102,241,0.08)', borderColor: 'rgba(99,102,241,0.25)', color: '#818CF8' }}>
-                    <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
-                    <span className="text-xs font-bold">{user.streak} Day Streak</span>
-                  </div>
-                )}
+              {/* Dynamic Time-of-Day Greeting & Quote */}
+              <div className="pt-1 pb-1">
+                <h1 className="text-2xl sm:text-3xl font-bold font-headline tracking-tight" style={{ color: textPri }}>
+                  {greeting.title}
+                </h1>
+                <p className="text-sm sm:text-base font-normal mt-1.5 leading-relaxed" style={{ color: textSec }}>
+                  {greeting.quote}
+                </p>
               </div>
 
-              {/* ── Primary Hero Action: Continue on Plan ── */}
-              <section className="relative overflow-hidden rounded-2xl p-6 sm:p-7 border backdrop-blur-xl shrink-0 transition-all"
+              {/* Priority Action Point — Apple Hero Card */}
+              <section className="relative overflow-hidden rounded-2xl p-6 sm:p-7 border backdrop-blur-xl shrink-0"
                 style={{
                   background: isDark
-                    ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(168, 85, 247, 0.05) 100%), rgba(255, 255, 255, 0.02)'
-                    : 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.03) 100%), #FFFFFF',
-                  borderColor: isDark ? 'rgba(99, 102, 241, 0.25)' : 'rgba(99, 102, 241, 0.15)',
-                  boxShadow: isDark ? '0 8px 32px -4px rgba(0,0,0,0.4)' : '0 8px 24px -4px rgba(99,102,241,0.08)'
+                    ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.03) 100%), rgba(255, 255, 255, 0.02)'
+                    : 'linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(168, 85, 247, 0.02) 100%), #FFFFFF',
+                  borderColor: isDark ? 'rgba(168, 85, 247, 0.2)' : 'rgba(99, 102, 241, 0.15)',
+                  boxShadow: isDark ? '0 4px 24px -2px rgba(0,0,0,0.3)' : '0 4px 20px -4px rgba(0,0,0,0.06)'
                 }}>
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
-                  <div className="max-w-2xl">
-                    <div className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full mb-3"
-                      style={{ background: 'rgba(99,102,241,0.15)', color: '#818CF8' }}>
-                      <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>flag</span>
-                      <span>Structured Learning Path</span>
+                <div className="relative z-10">
+                  {loading ? (
+                    <div className="space-y-3">
+                      <div className="h-4 rounded-full w-32 animate-pulse" style={{ background: surfaceLo }} />
+                      <div className="h-6 rounded-full w-3/4 animate-pulse" style={{ background: surfaceLo }} />
                     </div>
-                    <h2 className="text-xl sm:text-2xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>
-                      Continue Your Algorithmic Plan
-                    </h2>
-                    <p className="text-xs sm:text-sm mt-1.5 leading-relaxed" style={{ color: textSec }}>
-                      {hasWeak
-                        ? `Targeting ${topWeak.topic_name} — continue through your personalized curriculum sequence with verified test cases.`
-                        : 'Follow your personalized curriculum progression with concept theory and mandatory platform verification.'}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3 shrink-0">
-                    <button
-                      onClick={() => navigate('/plan-view')}
-                      className="px-5 py-3 rounded-xl text-xs font-bold flex items-center gap-2 transition-all hover:opacity-90 active:scale-95 cursor-pointer shadow-lg"
-                      style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)', color: '#FFFFFF' }}>
-                      <span className="material-symbols-outlined text-sm">play_arrow</span>
-                      <span>Continue on Plan</span>
-                      <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                    </button>
-                  </div>
+                  ) : hasWeak ? (
+                    <>
+                      <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full mb-3"
+                        style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>
+                        <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
+                        Priority Focus Area
+                      </div>
+                      <h1 className="font-headline font-bold leading-snug max-w-2xl"
+                        style={{ fontSize: '1.25rem', color: textPri }}>
+                        Strengthen your understanding of{' '}
+                        <span className="px-2 py-0.5 rounded-lg font-bold" style={{ background: 'rgba(99,102,241,0.15)', color: '#818CF8' }}>
+                          {topWeak.topic_name}
+                        </span>
+                        {' '}— {topWeak.problems_solved} problem{topWeak.problems_solved !== 1 ? 's' : ''} solved so far.
+                      </h1>
+                      <div className="flex items-center gap-3 mt-5 flex-wrap">
+                        <button
+                          className="px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all hover:opacity-90 active:scale-95 cursor-pointer"
+                          style={{ background: '#6366F1', color: '#fff' }}
+                          onClick={() => window.open(`https://leetcode.com/tag/${topWeak.topic_slug}/`, '_blank', 'noopener noreferrer')}>
+                          <span className="material-symbols-outlined text-sm">open_in_new</span>
+                          Solve {topWeak.topic_name} on LeetCode
+                        </button>
+                        <button
+                          className="px-4 py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-80 cursor-pointer"
+                          style={{ background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9', color: textPri, border: `1px solid ${border}` }}
+                          onClick={() => navigate('/analytics')}>
+                          View Full Analysis
+                        </button>
+                      </div>
+                    </>
+                  ) : platforms.length === 0 ? (
+                    <>
+                      <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full mb-3"
+                        style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>
+                        <span className="material-symbols-outlined text-sm">link</span>
+                        Get Started
+                      </div>
+                      <h1 className="font-headline font-bold leading-snug max-w-2xl"
+                        style={{ fontSize: '1.25rem', color: textPri }}>
+                        Connect your LeetCode or Codeforces account to get personalised insights.
+                      </h1>
+                      <div className="flex items-center gap-3 mt-4">
+                        <button
+                          className="px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all hover:opacity-90 cursor-pointer"
+                          style={{ background: '#6366F1', color: '#fff' }}
+                          onClick={() => navigate('/settings')}>
+                          <span className="material-symbols-outlined text-sm">settings</span>
+                          Connect Platforms
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full mb-3"
+                        style={{ background: 'rgba(168,85,247,0.12)', color: '#A855F7' }}>
+                        <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                        Consistent Performance
+                      </div>
+                      <h1 className="font-headline font-bold leading-snug max-w-2xl"
+                        style={{ fontSize: '1.25rem', color: textPri }}>
+                        Solid progress across your connected profiles. Keep solving to advance your mastery breakdown.
+                      </h1>
+                      <div className="flex items-center gap-3 mt-4">
+                        <button
+                          className="px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all hover:opacity-90 cursor-pointer"
+                          style={{ background: '#6366F1', color: '#fff' }}
+                          onClick={() => window.open('https://leetcode.com/problemset/', '_blank', 'noopener noreferrer')}>
+                          <span className="material-symbols-outlined text-sm">open_in_new</span>
+                          Solve on LeetCode
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </section>
 
-              {/* ── Flowing 3-Card Pathway Grid: AI, Analysis, Arena/Study ── */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                
-                {/* 1. Navigate to AI (Ask Milo) */}
-                <div
-                  onClick={() => navigate('/chatbot')}
-                  className="rounded-2xl p-5 border backdrop-blur-xl transition-all duration-200 hover:scale-[1.01] hover:border-purple-500/40 cursor-pointer flex flex-col justify-between"
-                  style={{
-                    background: isDark ? 'rgba(255, 255, 255, 0.025)' : '#FFFFFF',
-                    borderColor: border,
-                    boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.25)' : '0 4px 16px -4px rgba(0,0,0,0.05)'
-                  }}>
-                  <div>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-                      style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#C084FC' }}>
-                      <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-                    </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: '#C084FC' }}>
-                      Intelligent Mentor
-                    </span>
-                    <h3 className="text-base font-bold mb-1.5" style={{ color: textPri }}>
-                      Ask Milo AI
-                    </h3>
-                    <p className="text-xs leading-relaxed" style={{ color: textSec }}>
-                      Get instant conceptual breakdowns, step-by-step guidance, and time/space complexity intuition.
-                    </p>
-                  </div>
-
-                  <div className="pt-4 mt-4 border-t flex items-center justify-between" style={{ borderColor: border }}>
-                    <span className="text-xs font-semibold" style={{ color: textSec }}>Interactive Chat</span>
-                    <span className="text-xs font-bold flex items-center gap-1" style={{ color: '#C084FC' }}>
-                      <span>Ask Milo</span>
-                      <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* 2. Check Your Analysis */}
-                <div
-                  onClick={() => navigate('/analytics')}
-                  className="rounded-2xl p-5 border backdrop-blur-xl transition-all duration-200 hover:scale-[1.01] hover:border-indigo-500/40 cursor-pointer flex flex-col justify-between"
-                  style={{
-                    background: isDark ? 'rgba(255, 255, 255, 0.025)' : '#FFFFFF',
-                    borderColor: border,
-                    boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.25)' : '0 4px 16px -4px rgba(0,0,0,0.05)'
-                  }}>
-                  <div>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-                      style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#818CF8' }}>
-                      <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>query_stats</span>
-                    </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: '#818CF8' }}>
-                      Metrics & Progression
-                    </span>
-                    <h3 className="text-base font-bold mb-1.5" style={{ color: textPri }}>
-                      Check Analysis
-                    </h3>
-                    <p className="text-xs leading-relaxed" style={{ color: textSec }}>
-                      Review verified LeetCode stats, contest rating, and your 4-tier topic mastery roadmap.
-                    </p>
-                  </div>
-
-                  <div className="pt-4 mt-4 border-t flex items-center justify-between" style={{ borderColor: border }}>
-                    <span className="text-xs font-semibold" style={{ color: textSec }}>
-                      {summary?.total_problems_solved ? `${summary.total_problems_solved} Solved` : 'Track Progress'}
-                    </span>
-                    <span className="text-xs font-bold flex items-center gap-1" style={{ color: '#818CF8' }}>
-                      <span>View Analytics</span>
-                      <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* 3. Study Material & Arena Test / Assignment */}
-                <div
-                  onClick={() => navigate('/arena')}
-                  className="rounded-2xl p-5 border backdrop-blur-xl transition-all duration-200 hover:scale-[1.01] hover:border-emerald-500/40 cursor-pointer flex flex-col justify-between"
-                  style={{
-                    background: isDark ? 'rgba(255, 255, 255, 0.025)' : '#FFFFFF',
-                    borderColor: border,
-                    boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.25)' : '0 4px 16px -4px rgba(0,0,0,0.05)'
-                  }}>
-                  <div>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
-                      style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#22C55E' }}>
-                      <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>terminal</span>
-                    </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider block mb-1" style={{ color: '#22C55E' }}>
-                      Multi-Language Engine
-                    </span>
-                    <h3 className="text-base font-bold mb-1.5" style={{ color: textPri }}>
-                      Arena & Study Material
-                    </h3>
-                    <p className="text-xs leading-relaxed" style={{ color: textSec }}>
-                      Practice in-place with C++, Java, Python, SQL, and LLD simulations, or study structured guides.
-                    </p>
-                  </div>
-
-                  <div className="pt-4 mt-4 border-t flex items-center justify-between" style={{ borderColor: border }}>
-                    <span className="text-xs font-semibold text-emerald-400">Live Code Runner</span>
-                    <span className="text-xs font-bold flex items-center gap-1" style={{ color: '#22C55E' }}>
-                      <span>Try Arena Test</span>
-                      <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                    </span>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* ── Recommended Problems ── */}
+              {/* Recommended Problems — Apple Grouped Container */}
               <div className="space-y-3">
                 <div className="flex items-end justify-between px-1">
                   <div>
@@ -589,12 +524,12 @@ function Dashboard({ theme, toggleTheme }) {
                 </div>
               </div>
 
-              {/* ── Curriculum Mastery Snapshot ── */}
+              {/* Mastery Overview — Apple Card */}
               {skills.length > 0 && (
                 <div className="p-6 rounded-2xl border backdrop-blur-xl"
                   style={{ background: surface, borderColor: border, boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
                   <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>Curriculum Mastery Overview</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>Mastery Overview</h3>
                     <span className="text-xs font-medium cursor-pointer hover:underline" style={{ color: '#818CF8' }} onClick={() => navigate('/analytics')}>
                       Full Analysis →
                     </span>
@@ -603,8 +538,8 @@ function Dashboard({ theme, toggleTheme }) {
                     {skills.map((skill, i) => (
                       <div key={skill.id}
                         className={`space-y-2.5 page-enter stagger-${i + 1} cursor-pointer group`}
-                        onClick={() => navigate(`/plan-view?topic=${skill.topicSlug}&action=teach`)}
-                        title={`Practice ${skill.name}`}>
+                        onClick={() => window.open(`https://leetcode.com/tag/${skill.topicSlug}/`, '_blank', 'noopener noreferrer')}
+                        title={`Practice ${skill.name} on LeetCode`}>
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-semibold flex items-center gap-2 group-hover:text-indigo-400 transition-colors" style={{ color: textPri }}>
                             {skill.name}

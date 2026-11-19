@@ -30,8 +30,8 @@ const CURRICULUM_CATALOG = [
 
 /* ── Helper to determine mastery tier ── */
 function getMasteryTier(solved) {
-  if (solved >= 40) return { key: 'mastered', label: 'Mastered', color: '#22C55E', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.25)', next: null };
-  if (solved >= 20) return { key: 'proficient', label: 'Proficient', color: '#C084FC', bg: 'rgba(192,132,252,0.12)', border: 'rgba(192,132,252,0.25)', next: 40 };
+  if (solved >= 40) return { key: 'mastered', label: 'Mastered', color: '#C084FC', bg: 'rgba(192,132,252,0.12)', border: 'rgba(192,132,252,0.25)', next: null };
+  if (solved >= 20) return { key: 'proficient', label: 'Proficient', color: '#A855F7', bg: 'rgba(168,85,247,0.12)', border: 'rgba(168,85,247,0.25)', next: 40 };
   if (solved >= 5)  return { key: 'intermediate', label: 'Intermediate', color: '#818CF8', bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.25)', next: 20 };
   return { key: 'novice', label: 'Novice', color: '#94A3B8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.25)', next: 5 };
 }
@@ -92,9 +92,9 @@ function AnalyticsPage({ theme, toggleTheme }) {
   const [showSignIn,     setShowSignIn]     = useState(false);
 
   // Curriculum & Mastery State
-  const [selectedTopic,  setSelectedTopic]  = useState(null);
-  const [tierFilter,     setTierFilter]     = useState('all');
-  const [showAllTopics,  setShowAllTopics]  = useState(false);
+  const [selectedTopic,   setSelectedTopic]   = useState(null);
+  const [showAllMastered, setShowAllMastered] = useState(false);
+  const [showAllNovice,   setShowAllNovice]   = useState(false);
 
   const hasRealData = platforms !== null && platforms.length > 0;
 
@@ -193,16 +193,17 @@ function AnalyticsPage({ theme, toggleTheme }) {
     }).sort((a, b) => b.problems_solved - a.problems_solved);
   }, [rawTopics]);
 
-  /* Filter by tier */
-  const filteredCurriculum = useMemo(() => {
-    let list = mergedCurriculum;
-    if (tierFilter !== 'all') {
-      list = list.filter(t => t.tier.key === tierFilter);
-    }
-    return list;
-  }, [mergedCurriculum, tierFilter]);
+  /* Split curriculum into Mastered/Proficient vs Novice/Intermediate */
+  const masteredTopics = useMemo(() => {
+    return mergedCurriculum.filter(t => t.problems_solved >= 20 || t.tier.key === 'mastered' || t.tier.key === 'proficient');
+  }, [mergedCurriculum]);
 
-  const displayedTopics = showAllTopics ? filteredCurriculum : filteredCurriculum.slice(0, 8);
+  const noviceTopics = useMemo(() => {
+    return mergedCurriculum.filter(t => t.problems_solved < 20 || t.tier.key === 'novice' || t.tier.key === 'intermediate');
+  }, [mergedCurriculum]);
+
+  const displayedMastered = showAllMastered ? masteredTopics : masteredTopics.slice(0, 5);
+  const displayedNovice   = showAllNovice ? noviceTopics : noviceTopics.slice(0, 5);
 
   const availablePlatforms = [
     { key: 'total',      label: 'Total'    },
@@ -395,106 +396,216 @@ function AnalyticsPage({ theme, toggleTheme }) {
               </div>
             </div>
 
-            {/* ── Row 2: Curriculum Topic Mastery (Replaces Weak Areas with Novice/Intermediate/Proficient/Mastered) ── */}
-            <div className="rounded-2xl p-6" style={{ background: surface, border: `1px solid ${border}` }}>
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            {/* ── Row 2: Curriculum Topic Mastery (Two-Column Mastered vs Novice/Intermediate) ── */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h2 className="text-base font-headline font-bold" style={{ color: textPri }}>Curriculum Mastery Breakdown</h2>
+                  <h2 className="text-xl font-headline font-bold tracking-tight" style={{ color: textPri }}>
+                    Curriculum & Topic Mastery
+                  </h2>
                   <p className="text-xs mt-0.5" style={{ color: textSec }}>
-                    Structured mastery progression evaluated directly against your verified problems solved.
+                    Track your mastered algorithmic foundations alongside beginner and intermediate focus areas.
                   </p>
                 </div>
+              </div>
 
-                {/* Filter and Show All toggles */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: surfLow, border: `1px solid ${border}` }}>
-                    {[
-                      { key: 'all',          label: 'All Topics' },
-                      { key: 'mastered',     label: 'Mastered (40+)' },
-                      { key: 'proficient',   label: 'Proficient (20-39)' },
-                      { key: 'intermediate', label: 'Intermediate (5-19)' },
-                      { key: 'novice',       label: 'Novice (<5)' },
-                    ].map(f => (
-                      <button
-                        key={f.key}
-                        onClick={() => setTierFilter(f.key)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer"
-                        style={tierFilter === f.key ? { background: '#6366F1', color: '#fff' } : { color: textSec }}>
-                        {f.label}
-                      </button>
-                    ))}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                {/* ── Left Side: Mastered Topics ── */}
+                <div className="rounded-2xl p-6 flex flex-col justify-between"
+                  style={{
+                    background: surface,
+                    border: `1px solid ${border}`,
+                    boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 20px -2px rgba(0,0,0,0.04)',
+                  }}>
+                  <div>
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b" style={{ borderColor: border }}>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: isDark ? 'rgba(168,85,247,0.15)' : 'rgba(168,85,247,0.1)' }}>
+                          <span className="material-symbols-outlined text-base" style={{ color: '#C084FC' }}>verified</span>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-headline font-bold" style={{ color: textPri }}>
+                            Mastered Topics
+                          </h3>
+                          <p className="text-[11px]" style={{ color: textSec }}>
+                            Demonstrated algorithmic depth
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                        style={{
+                          background: isDark ? 'rgba(168,85,247,0.12)' : 'rgba(168,85,247,0.08)',
+                          color: isDark ? '#D8B4FE' : '#7E22CE',
+                          border: `1px solid ${isDark ? 'rgba(168,85,247,0.25)' : 'rgba(168,85,247,0.2)'}`,
+                        }}>
+                        {masteredTopics.length} Mastered
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {displayedMastered.map(t => (
+                        <div
+                          key={t.slug}
+                          onClick={() => setSelectedTopic(t)}
+                          className="group p-3.5 rounded-xl transition-all duration-200 hover:scale-[1.008] cursor-pointer flex items-center justify-between gap-3 border"
+                          style={{
+                            background: surfLow,
+                            borderColor: border,
+                          }}>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="text-sm font-bold truncate group-hover:text-purple-400 transition-colors" style={{ color: textPri }}>
+                                {t.name}
+                              </h4>
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded"
+                                style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', color: textSec }}>
+                                {t.category}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs" style={{ color: textSec }}>
+                              <span className="font-semibold" style={{ color: isDark ? '#E2E8F0' : '#1E293B' }}>
+                                {t.problems_solved} solved
+                              </span>
+                              <span>·</span>
+                              <span>Level: {t.level}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                              style={{
+                                background: t.tier.bg,
+                                color: t.tier.color,
+                                border: `1px solid ${t.tier.border}`,
+                              }}>
+                              {t.tier.label}
+                            </span>
+                            <span className="material-symbols-outlined text-sm transition-transform duration-200 group-hover:translate-x-1"
+                              style={{ color: textSec }}>
+                              arrow_forward
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+
+                      {masteredTopics.length === 0 && (
+                        <div className="text-center py-10" style={{ color: textSec }}>
+                          <p className="text-xs">Solve 20+ problems in foundational areas to unlock Mastered status.</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <button
-                    onClick={() => setShowAllTopics(prev => !prev)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                    style={{ background: showAllTopics ? 'rgba(99,102,241,0.15)' : surfLow, color: '#818CF8', border: `1px solid ${border}` }}>
-                    <span className="material-symbols-outlined text-xs">{showAllTopics ? 'unfold_less' : 'unfold_more'}</span>
-                    {showAllTopics ? 'Show Priority' : `Show All (${filteredCurriculum.length})`}
-                  </button>
+                  {masteredTopics.length > 5 && (
+                    <button
+                      onClick={() => setShowAllMastered(prev => !prev)}
+                      className="w-full mt-4 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:opacity-90 active:scale-[0.99]"
+                      style={{ background: surfLow, color: textPri, border: `1px solid ${border}` }}>
+                      <span>{showAllMastered ? 'Show Less' : `Show More Mastered (${masteredTopics.length})`}</span>
+                      <span className="material-symbols-outlined text-sm">{showAllMastered ? 'expand_less' : 'expand_more'}</span>
+                    </button>
+                  )}
                 </div>
-              </div>
 
-              {/* Grid of Topics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {displayedTopics.map(t => {
-                  const maxTarget = t.tier.next || 50;
-                  const pct = Math.min(100, Math.round((t.problems_solved / maxTarget) * 100));
-
-                  return (
-                    <div
-                      key={t.slug}
-                      onClick={() => setSelectedTopic(t)}
-                      className="rounded-xl p-4 transition-all duration-200 hover:scale-[1.01] hover:border-indigo-500/40 cursor-pointer flex flex-col justify-between"
-                      style={{ background: surfLow, border: `1px solid ${border}` }}>
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
-                            style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', color: textSec }}>
-                            {t.category}
-                          </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
-                            style={{ background: t.tier.bg, color: t.tier.color, borderColor: t.tier.border }}>
-                            {t.tier.label}
-                          </span>
+                {/* ── Right Side: Novice & Intermediate (Focus Areas) ── */}
+                <div className="rounded-2xl p-6 flex flex-col justify-between"
+                  style={{
+                    background: surface,
+                    border: `1px solid ${border}`,
+                    boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 20px -2px rgba(0,0,0,0.04)',
+                  }}>
+                  <div>
+                    <div className="flex items-center justify-between mb-4 pb-3 border-b" style={{ borderColor: border }}>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: isDark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.1)' }}>
+                          <span className="material-symbols-outlined text-base" style={{ color: '#818CF8' }}>target</span>
                         </div>
-
-                        <h3 className="text-sm font-bold truncate mb-1" style={{ color: textPri }}>
-                          {t.name}
-                        </h3>
-
-                        <div className="flex items-center justify-between text-xs mb-2">
-                          <span style={{ color: textSec }}>{t.problems_solved} solved</span>
-                          <span className="text-[11px] font-semibold" style={{ color: t.tier.color }}>
-                            {t.tier.next ? `${t.tier.next - t.problems_solved} to ${t.tier.next >= 40 ? 'Master' : 'Next Tier'}` : 'Fully Mastered'}
-                          </span>
-                        </div>
-
-                        <div className="h-1.5 w-full rounded-full overflow-hidden mb-3" style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
-                          <div className="h-full rounded-full transition-all duration-700"
-                            style={{ width: `${pct}%`, background: t.tier.color }} />
+                        <div>
+                          <h3 className="text-sm font-headline font-bold" style={{ color: textPri }}>
+                            Novice & Intermediate
+                          </h3>
+                          <p className="text-[11px]" style={{ color: textSec }}>
+                            Areas to practice and develop
+                          </p>
                         </div>
                       </div>
-
-                      <div className="pt-2 border-t flex items-center justify-between" style={{ borderColor: border }}>
-                        <span className="text-[11px]" style={{ color: textSec }}>
-                          Level: <strong style={{ color: textPri }}>{t.level}</strong>
-                        </span>
-                        <span className="text-xs font-semibold flex items-center gap-1" style={{ color: '#818CF8' }}>
-                          <span>Details</span>
-                          <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                        </span>
-                      </div>
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                        style={{
+                          background: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)',
+                          color: isDark ? '#A5B4FC' : '#4338CA',
+                          border: `1px solid ${isDark ? 'rgba(99,102,241,0.25)' : 'rgba(99,102,241,0.2)'}`,
+                        }}>
+                        {noviceTopics.length} Focus Areas
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
 
-              {displayedTopics.length === 0 && (
-                <div className="text-center py-10" style={{ color: textSec }}>
-                  <p className="text-sm">No topics match the selected tier filter.</p>
+                    <div className="space-y-2.5">
+                      {displayedNovice.map(t => (
+                        <div
+                          key={t.slug}
+                          onClick={() => setSelectedTopic(t)}
+                          className="group p-3.5 rounded-xl transition-all duration-200 hover:scale-[1.008] cursor-pointer flex items-center justify-between gap-3 border"
+                          style={{
+                            background: surfLow,
+                            borderColor: border,
+                          }}>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="text-sm font-bold truncate group-hover:text-indigo-400 transition-colors" style={{ color: textPri }}>
+                                {t.name}
+                              </h4>
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded"
+                                style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', color: textSec }}>
+                                {t.category}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs" style={{ color: textSec }}>
+                              <span className="font-semibold" style={{ color: isDark ? '#E2E8F0' : '#1E293B' }}>
+                                {t.problems_solved} solved
+                              </span>
+                              <span>·</span>
+                              <span>Requires {t.minPreReq}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                              style={{
+                                background: t.tier.bg,
+                                color: t.tier.color,
+                                border: `1px solid ${t.tier.border}`,
+                              }}>
+                              {t.tier.label}
+                            </span>
+                            <span className="material-symbols-outlined text-sm transition-transform duration-200 group-hover:translate-x-1"
+                              style={{ color: textSec }}>
+                              arrow_forward
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+
+                      {noviceTopics.length === 0 && (
+                        <div className="text-center py-10" style={{ color: textSec }}>
+                          <p className="text-xs">Outstanding! All curriculum topics have reached advanced proficiency.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {noviceTopics.length > 5 && (
+                    <button
+                      onClick={() => setShowAllNovice(prev => !prev)}
+                      className="w-full mt-4 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:opacity-90 active:scale-[0.99]"
+                      style={{ background: surfLow, color: textPri, border: `1px solid ${border}` }}>
+                      <span>{showAllNovice ? 'Show Less' : `Show More Focus Areas (${noviceTopics.length})`}</span>
+                      <span className="material-symbols-outlined text-sm">{showAllNovice ? 'expand_less' : 'expand_more'}</span>
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             {/* ── Row 3: Recent Submissions ── */}
