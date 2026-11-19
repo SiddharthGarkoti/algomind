@@ -21,27 +21,28 @@ function loadNotifSettings() {
 
 /* ── Modern Apple/Fluent Toggle Switch (Zero Emojis) ── */
 function ToggleSwitch({ checked, onChange, label, description, disabled = false, isDark, textPri, textSec }) {
+  const isOn = Boolean(checked);
   return (
-    <div className="flex items-center justify-between py-3.5 px-4 rounded-xl transition-colors hover:bg-black/5 dark:hover:bg-white/5">
-      <div className="pr-4">
+    <div className="flex items-center justify-between py-3.5 px-4 transition-colors hover:bg-black/5 dark:hover:bg-white/5">
+      <div className="pr-4 select-none">
         <p className="text-sm font-medium" style={{ color: textPri }}>{label}</p>
         {description && <p className="text-xs mt-0.5 leading-relaxed" style={{ color: textSec }}>{description}</p>}
       </div>
       <button
         type="button"
         role="switch"
-        aria-checked={checked}
+        aria-checked={isOn}
         disabled={disabled}
-        onClick={() => !disabled && onChange(!checked)}
-        className="w-11 h-6 rounded-full relative shrink-0 transition-colors duration-200 focus:outline-none cursor-pointer disabled:opacity-40"
+        onClick={() => !disabled && onChange(!isOn)}
+        className="w-12 h-6 rounded-full relative shrink-0 transition-colors duration-200 focus:outline-none cursor-pointer disabled:opacity-40"
         style={{
-          background: checked ? '#6366F1' : (isDark ? '#3E3F44' : '#CBD5E1')
+          background: isOn ? '#6366F1' : (isDark ? '#3E3F44' : '#CBD5E1')
         }}
       >
         <span
-          className="w-5 h-5 rounded-full bg-white absolute top-0.5 shadow-sm transition-transform duration-200"
+          className="w-5 h-5 rounded-full bg-white absolute top-0.5 shadow-sm transition-all duration-200"
           style={{
-            transform: checked ? 'translateX(22px)' : 'translateX(2px)'
+            left: isOn ? '26px' : '2px'
           }}
         />
       </button>
@@ -333,29 +334,13 @@ export default function SettingsPage({ theme, toggleTheme }) {
     <DashboardLayout theme={theme} toggleTheme={toggleTheme}>
       <div className="max-w-6xl mx-auto space-y-6 pb-16">
         {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b" style={{ borderColor: border }}>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-headline font-bold tracking-tight" style={{ color: textPri }}>
-              Settings
-            </h1>
-            <p className="text-xs sm:text-sm mt-0.5" style={{ color: textSec }}>
-              Configure your preferences, account details, and developer environment
-            </p>
-          </div>
-          {/* Quick link to plans */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg" style={{ background: planBadgeBg, color: planBadgeColor }}>
-              {planLabel}
-            </span>
-            <button
-              onClick={() => navigate('/plans')}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-semibold hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer"
-              style={{ background: '#6366F1', color: '#FFFFFF' }}
-            >
-              <span className="material-symbols-outlined text-sm">workspace_premium</span>
-              <span>Manage Plan</span>
-            </button>
-          </div>
+        <div className="pb-2 border-b" style={{ borderColor: border }}>
+          <h1 className="text-2xl sm:text-3xl font-headline font-bold tracking-tight" style={{ color: textPri }}>
+            Settings
+          </h1>
+          <p className="text-xs sm:text-sm mt-0.5" style={{ color: textSec }}>
+            Configure your preferences, account details, and developer environment
+          </p>
         </div>
 
         {/* Apple/Fluent Split-View: Nav Sidebar + Content */}
