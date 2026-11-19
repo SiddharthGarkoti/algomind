@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
@@ -778,6 +778,71 @@ const DEFAULT_QUEUE = ['dp-1', 'arrays-1', 'graphs-1', 'bsearch-1', 'twoptr-1', 
 const TOPIC_MAP = Object.fromEntries(ALL_TOPICS.map(t => [t.id, t]));
 const DIFF_COLOR = { Easy: '#22C55E', Medium: '#F59E0B', Hard: '#EF4444' };
 
+/* ── Canonical Pedagogical Order & Prerequisite Validation ── */
+const CANONICAL_ORDER = [
+  'arrays-1', 'twoptr-1', 'stack-1', 'hash-1', 'bsearch-1', 'sort-1', 'll-1',
+  'trees-1', 'backtrack-1', 'greedy-1', 'graphs-1', 'dp-1', 'bits-1', 'math-1',
+  'arrays-2', 'twoptr-2', 'stack-2', 'hash-2', 'bsearch-2', 'sort-2', 'll-2',
+  'trees-2', 'backtrack-2', 'greedy-2', 'graphs-2', 'dp-2', 'bits-2', 'math-2',
+  'dp-3'
+];
+
+const PREREQUISITE_RULES = [
+  { child: 'dp-1', parent: 'arrays-1', reason: 'Arrays & index manipulation are required before DP state recurrences.' },
+  { child: 'dp-2', parent: 'dp-1', reason: 'Foundation DP must be mastered before tackling 2D grid and Knapsack DP.' },
+  { child: 'dp-3', parent: 'dp-2', reason: '2D DP is a prerequisite for advanced State Machine and Tree DP.' },
+  { child: 'graphs-1', parent: 'trees-1', reason: 'Tree traversals build the recursive intuitions needed for general graph traversal.' },
+  { child: 'graphs-2', parent: 'graphs-1', reason: 'Basic BFS/DFS is required before shortest path algorithms like Dijkstra.' },
+  { child: 'trees-2', parent: 'trees-1', reason: 'Binary tree foundations are required before advanced BST and Trie structures.' },
+  { child: 'bsearch-2', parent: 'bsearch-1', reason: 'Standard binary search must be mastered before binary search on answer spaces.' },
+  { child: 'arrays-2', parent: 'arrays-1', reason: 'Foundation array techniques are required for complex interval manipulations.' },
+  { child: 'twoptr-2', parent: 'twoptr-1', reason: 'Basic two pointers is required before monotonic deque sliding window.' },
+  { child: 'stack-2', parent: 'stack-1', reason: 'Basic stack matching is required before expression evaluation calculators.' },
+  { child: 'hash-2', parent: 'hash-1', reason: 'Hash table foundations must be solidified before composite LRU cache design.' },
+  { child: 'sort-2', parent: 'sort-1', reason: 'Basic merge/quick sort concepts are needed before QuickSelect and custom comparators.' },
+  { child: 'll-2', parent: 'll-1', reason: 'Pointer updates in simple lists are required before hard linked list operations.' },
+  { child: 'bits-2', parent: 'bits-1', reason: 'Bitwise primitives are required before complex bitmask DP states.' },
+  { child: 'greedy-2', parent: 'greedy-1', reason: 'Basic greedy choices are required before interval and heap-based greedy patterns.' },
+  { child: 'backtrack-2', parent: 'backtrack-1', reason: 'Standard recursive backtracking is required before advanced branch pruning.' },
+  { child: 'math-2', parent: 'math-1', reason: 'Number theory basics are required before advanced combinatorics and geometry.' },
+];
+
+function validatePlanOrder(queue) {
+  const warnings = [];
+  const posMap = new Map();
+  queue.forEach((id, idx) => posMap.set(id, idx));
+
+  for (const rule of PREREQUISITE_RULES) {
+    if (posMap.has(rule.child) && posMap.has(rule.parent)) {
+      const childPos = posMap.get(rule.child);
+      const parentPos = posMap.get(rule.parent);
+      if (childPos < parentPos) {
+        const childName = TOPIC_MAP[rule.child]?.name || rule.child;
+        const parentName = TOPIC_MAP[rule.parent]?.name || rule.parent;
+        warnings.push({
+          child: rule.child,
+          parent: rule.parent,
+          message: `"${childName}" is scheduled before prerequisite "${parentName}".`,
+          reason: rule.reason,
+          recommendation: `Move "${parentName}" ahead of "${childName}".`
+        });
+      }
+    }
+  }
+  return warnings;
+}
+
+function autoReformQueue(queue) {
+  return [...queue].sort((a, b) => {
+    const idxA = CANONICAL_ORDER.indexOf(a);
+    const idxB = CANONICAL_ORDER.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return 0;
+  });
+}
+
 /* ── localStorage helpers ── */
 function loadProgress(userId) {
   try {
@@ -990,6 +1055,17 @@ function PlanViewPage({ theme, toggleTheme }) {
   const [toast,         setToast]         = useState(null);
   const [loadingTopics, setLoadingTopics] = useState(true);
 
+  // URL parameters & Teaching Mode
+  const [searchParams]  = useSearchParams();
+  const topicParam      = searchParams.get('topic');
+  const actionParam     = searchParams.get('action');
+
+  // Plan Customization & Drawer
+  const [editPlanOpen,  setEditPlanOpen]  = useState(false);
+  const [draftQueue,    setDraftQueue]    = useState([]);
+  const [selectedToAdd, setSelectedToAdd] = useState('');
+  const [teachingMode,  setTeachingMode]  = useState(false);
+
   /* ── Load or build progress from backend + localStorage ── */
   useEffect(() => {
     const init = async () => {
@@ -1037,6 +1113,92 @@ function PlanViewPage({ theme, toggleTheme }) {
       verified:   [...verified],
     });
   }, [topicQueue, currentIdx, completedSet, done, verified, userId]);
+
+  /* ── Handle incoming query parameters from Analytics or Dashboard ── */
+  useEffect(() => {
+    if (!topicParam || topicQueue.length === 0) return;
+    const clean = topicParam.toLowerCase().trim();
+    const targetId = SLUG_TO_ID[clean] || clean;
+    if (!TOPIC_MAP[targetId]) return;
+
+    const foundIdx = topicQueue.indexOf(targetId);
+    if (foundIdx !== -1) {
+      setCurrentIdx(foundIdx);
+    } else {
+      setTopicQueue(prev => [targetId, ...prev]);
+      setCurrentIdx(0);
+    }
+
+    if (actionParam === 'teach' || topicParam) {
+      setTeachingMode(true);
+      setTimeout(() => {
+        const el = document.getElementById('core-concept-heading');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+      }, 150);
+    }
+  }, [topicParam, actionParam, topicQueue.length]);
+
+  /* ── Plan Customizer Handlers ── */
+  const openPlanEditor = () => {
+    setDraftQueue([...topicQueue]);
+    setEditPlanOpen(true);
+  };
+
+  const moveUp = (idx) => {
+    if (idx <= 0) return;
+    setDraftQueue(prev => {
+      const copy = [...prev];
+      const temp = copy[idx];
+      copy[idx] = copy[idx - 1];
+      copy[idx - 1] = temp;
+      return copy;
+    });
+  };
+
+  const moveDown = (idx) => {
+    setDraftQueue(prev => {
+      if (idx >= prev.length - 1) return prev;
+      const copy = [...prev];
+      const temp = copy[idx];
+      copy[idx] = copy[idx + 1];
+      copy[idx + 1] = temp;
+      return copy;
+    });
+  };
+
+  const removeTopic = (id) => {
+    setDraftQueue(prev => {
+      if (prev.length <= 1) return prev;
+      return prev.filter(t => t !== id);
+    });
+  };
+
+  const addTopicToPlan = () => {
+    if (!selectedToAdd) return;
+    if (draftQueue.includes(selectedToAdd)) return;
+    setDraftQueue(prev => [...prev, selectedToAdd]);
+    setSelectedToAdd('');
+  };
+
+  const handleAutoReform = () => {
+    setDraftQueue(prev => autoReformQueue(prev));
+  };
+
+  const saveCustomPlan = () => {
+    if (draftQueue.length === 0) return;
+    setTopicQueue(draftQueue);
+    const newIdx = draftQueue.indexOf(topicId);
+    setCurrentIdx(newIdx !== -1 ? newIdx : 0);
+    saveProgress(userId, {
+      queue: draftQueue,
+      currentIdx: newIdx !== -1 ? newIdx : 0,
+      completed: [...completedSet],
+      done: [...done],
+      verified: [...verified],
+    });
+    setEditPlanOpen(false);
+    setToast({ msg: 'Learning plan sequence updated!', ok: true });
+  };
 
   /* ── Derived ── */
   const topicId = topicQueue[currentIdx] ?? topicQueue[0] ?? DEFAULT_QUEUE[0];
@@ -1140,57 +1302,108 @@ function PlanViewPage({ theme, toggleTheme }) {
     <DashboardLayout theme={theme} toggleTheme={toggleTheme}>
       <div className="max-w-3xl mx-auto pb-20">
 
-        {/* ── Topic strip ── */}
-        <div className="flex items-center gap-2 mb-8 flex-wrap">
-          {/* Completed count badge */}
-          {completedSet.size > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold"
-              style={{ background: 'rgba(34,197,94,0.1)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.2)' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '12px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-              {completedSet.size} done
-            </div>
-          )}
-          {stripIds.map((id, i) => {
-            const t = TOPIC_MAP[id];
-            if (!t) return null;
-            const isActive = id === topicId;
-            const isPast   = completedSet.has(id);
-            return (
-              <button
-                key={id}
-                onClick={() => {
-                  const realIdx = topicQueue.indexOf(id);
-                  if (realIdx !== -1 && realIdx <= currentIdx) setCurrentIdx(realIdx);
-                }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all"
-                style={{
-                  background: isActive ? '#6366F1' : isPast ? (isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)') : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
-                  color: isActive ? '#fff' : isPast ? '#6366F1' : textSec,
-                  border: `1px solid ${isActive ? 'transparent' : isPast ? 'rgba(99,102,241,0.25)' : border}`,
-                  boxShadow: isActive ? '0 4px 14px -4px rgba(99,102,241,0.55)' : 'none',
-                  opacity: i > 0 && !isActive ? 0.6 : 1,
-                }}
-              >
-                {isPast && <span className="material-symbols-outlined" style={{ fontSize: '13px', fontVariationSettings: "'FILL' 1", color: '#6366F1' }}>check_circle</span>}
-                <span className="opacity-50 mr-0.5">
-                  {isPast ? 'Done ·' : `Priority ${currentIdx + i + 1} ·`}
-                </span>
-                {t.name}
-                {t.level !== 'Foundation' && (
-                  <span className="text-[8px] px-1.5 py-0.5 rounded-full ml-1"
-                    style={{ background: t.level === 'Expert' ? 'rgba(239,68,68,0.15)' : 'rgba(168,85,247,0.15)', color: t.level === 'Expert' ? '#EF4444' : '#A855F7' }}>
-                    {t.level}
+        {/* ── Topic strip & Edit Plan Trigger ── */}
+        <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Completed count badge */}
+            {completedSet.size > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold"
+                style={{ background: 'rgba(34,197,94,0.1)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.2)' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '12px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                {completedSet.size} done
+              </div>
+            )}
+            {stripIds.map((id, i) => {
+              const t = TOPIC_MAP[id];
+              if (!t) return null;
+              const isActive = id === topicId;
+              const isPast   = completedSet.has(id);
+              return (
+                <button
+                  key={id}
+                  onClick={() => {
+                    const realIdx = topicQueue.indexOf(id);
+                    if (realIdx !== -1 && realIdx <= currentIdx) setCurrentIdx(realIdx);
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer"
+                  style={{
+                    background: isActive ? '#6366F1' : isPast ? (isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)') : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
+                    color: isActive ? '#fff' : isPast ? '#6366F1' : textSec,
+                    border: `1px solid ${isActive ? 'transparent' : isPast ? 'rgba(99,102,241,0.25)' : border}`,
+                    boxShadow: isActive ? '0 4px 14px -4px rgba(99,102,241,0.55)' : 'none',
+                    opacity: i > 0 && !isActive ? 0.6 : 1,
+                  }}
+                >
+                  {isPast && <span className="material-symbols-outlined" style={{ fontSize: '13px', fontVariationSettings: "'FILL' 1", color: '#6366F1' }}>check_circle</span>}
+                  <span className="opacity-50 mr-0.5">
+                    {isPast ? 'Done ·' : `Priority ${currentIdx + i + 1} ·`}
                   </span>
-                )}
-              </button>
-            );
-          })}
-          {topicQueue.length > currentIdx + 5 && (
-            <span className="text-[10px] px-2 py-1 rounded-full" style={{ color: textSec, border: `1px dashed ${border}` }}>
-              +{topicQueue.length - currentIdx - 5} more
-            </span>
-          )}
+                  {t.name}
+                  {t.level !== 'Foundation' && (
+                    <span className="text-[8px] px-1.5 py-0.5 rounded-full ml-1"
+                      style={{ background: t.level === 'Expert' ? 'rgba(239,68,68,0.15)' : 'rgba(168,85,247,0.15)', color: t.level === 'Expert' ? '#EF4444' : '#A855F7' }}>
+                      {t.level}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            {topicQueue.length > currentIdx + 5 && (
+              <span className="text-[10px] px-2 py-1 rounded-full" style={{ color: textSec, border: `1px dashed ${border}` }}>
+                +{topicQueue.length - currentIdx - 5} more
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={openPlanEditor}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all hover:opacity-85 cursor-pointer ml-auto"
+            style={{ background: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)', color: '#818CF8', border: '1px solid rgba(99,102,241,0.25)' }}>
+            <span className="material-symbols-outlined text-sm">tune</span>
+            <span>Edit Plan</span>
+          </button>
         </div>
+
+        {/* ── Active Teaching Session Banner (when routed from Analytics or user requested) ── */}
+        {teachingMode && (
+          <div className="rounded-2xl p-5 mb-8 border backdrop-blur-xl animate-fade-in"
+            style={{
+              background: isDark ? 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.06))' : 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(168,85,247,0.04))',
+              borderColor: isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)',
+            }}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm" style={{ color: '#818CF8' }}>school</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#818CF8' }}>
+                  Guided Teaching Session
+                </span>
+              </div>
+              <button
+                onClick={() => setTeachingMode(false)}
+                className="text-[10px] font-semibold px-2 py-0.5 rounded-md hover:opacity-75 transition-opacity cursor-pointer"
+                style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', color: textSec }}>
+                Dismiss
+              </button>
+            </div>
+            <h3 className="text-base font-bold mb-1" style={{ color: textPri }}>
+              Mastering {topic.name}
+            </h3>
+            <p className="text-xs leading-relaxed" style={{ color: textSec }}>
+              Absorb the fundamental concept, state representation, and invariants below before proceeding with the mandatory verified practice set.
+            </p>
+
+            {/* Prerequisite warning if high level */}
+            {(topic.level === 'Advanced' || topic.level === 'Expert' || topic.id === 'dp-1' || topic.id === 'graphs-1') && !completedSet.has('arrays-1') && (
+              <div className="mt-3.5 p-3 rounded-xl border flex items-start gap-2.5"
+                style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)' }}>
+                <span className="material-symbols-outlined text-base shrink-0 mt-0.5" style={{ color: '#EF4444' }}>warning</span>
+                <div className="text-xs" style={{ color: textPri }}>
+                  <strong style={{ color: '#EF4444' }}>Prerequisite Advisory:</strong> {topic.name} is classified as {topic.level}. We recommend solidifying basic data structures (Arrays, Recursion, Two Pointers) before tackling these advanced patterns.
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Theory ── */}
         <section className="mb-12">
@@ -1332,6 +1545,163 @@ function PlanViewPage({ theme, toggleTheme }) {
         </div>
 
       </div>
+
+      {/* ── Edit Plan Side Panel Drawer ── */}
+      {editPlanOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div
+            className="w-full max-w-md h-full flex flex-col p-6 shadow-2xl relative border-l overflow-y-auto"
+            style={{ background: isDark ? '#141416' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+            
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between pb-4 border-b" style={{ borderColor: border }}>
+              <div>
+                <h3 className="text-base font-headline font-bold" style={{ color: textPri }}>Customize Learning Path</h3>
+                <p className="text-xs mt-0.5" style={{ color: textSec }}>Reorder topics or modify your structured sequence</p>
+              </div>
+              <button
+                onClick={() => setEditPlanOpen(false)}
+                className="p-1.5 rounded-xl hover:opacity-75 cursor-pointer"
+                style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', color: textSec }}>
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            {/* Live Customization Warnings & Suggestions */}
+            {(() => {
+              const warnings = validatePlanOrder(draftQueue);
+              if (warnings.length === 0) return null;
+              return (
+                <div className="my-4 p-4 rounded-xl border"
+                  style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)' }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-base" style={{ color: '#EF4444' }}>warning</span>
+                    <h4 className="text-xs font-bold uppercase tracking-wider" style={{ color: '#EF4444' }}>
+                      Customization Warning: Prerequisite Conflict
+                    </h4>
+                  </div>
+                  <div className="space-y-2 mb-3">
+                    {warnings.slice(0, 3).map((w, idx) => (
+                      <div key={idx} className="text-xs leading-relaxed" style={{ color: textPri }}>
+                        <p className="font-semibold text-rose-300">• {w.message}</p>
+                        <p className="text-[11px] opacity-80 mt-0.5">{w.reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleAutoReform}
+                    className="w-full py-2 px-3 rounded-lg text-xs font-bold transition-all hover:opacity-90 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                    style={{ background: '#6366F1', color: '#fff' }}>
+                    <span className="material-symbols-outlined text-sm">auto_fix_high</span>
+                    <span>Auto-Reform to Optimal Order</span>
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* List of Topics in Draft Queue */}
+            <div className="flex-grow my-4 space-y-2 overflow-y-auto pr-1">
+              <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: textSec }}>
+                Current Priority Sequence ({draftQueue.length} Topics)
+              </p>
+              {draftQueue.map((id, idx) => {
+                const t = TOPIC_MAP[id];
+                if (!t) return null;
+                return (
+                  <div
+                    key={id}
+                    className="flex items-center justify-between p-3 rounded-xl border transition-all"
+                    style={{ background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderColor: border }}>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-xs font-mono font-bold w-5 shrink-0" style={{ color: '#818CF8' }}>
+                        {idx + 1}.
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold truncate" style={{ color: textPri }}>{t.name}</p>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded"
+                          style={{ background: t.level === 'Expert' ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.15)', color: t.level === 'Expert' ? '#EF4444' : '#818CF8' }}>
+                          {t.level}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <button
+                        onClick={() => moveUp(idx)}
+                        disabled={idx === 0}
+                        className="p-1 rounded hover:opacity-75 disabled:opacity-20 cursor-pointer"
+                        title="Move Up"
+                        style={{ color: textPri }}>
+                        <span className="material-symbols-outlined text-sm">arrow_upward</span>
+                      </button>
+                      <button
+                        onClick={() => moveDown(idx)}
+                        disabled={idx === draftQueue.length - 1}
+                        className="p-1 rounded hover:opacity-75 disabled:opacity-20 cursor-pointer"
+                        title="Move Down"
+                        style={{ color: textPri }}>
+                        <span className="material-symbols-outlined text-sm">arrow_downward</span>
+                      </button>
+                      <button
+                        onClick={() => removeTopic(id)}
+                        disabled={draftQueue.length <= 1}
+                        className="p-1 rounded hover:opacity-75 disabled:opacity-20 cursor-pointer text-red-400"
+                        title="Remove from Plan">
+                        <span className="material-symbols-outlined text-sm">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add Topic Dropdown */}
+            <div className="pt-3 border-t space-y-2" style={{ borderColor: border }}>
+              <label className="text-[11px] font-bold uppercase tracking-wider block" style={{ color: textSec }}>
+                Add Topic to Curriculum
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={selectedToAdd}
+                  onChange={(e) => setSelectedToAdd(e.target.value)}
+                  className="flex-grow text-xs rounded-xl px-3 py-2 border outline-none cursor-pointer"
+                  style={{ background: isDark ? '#1e1f23' : '#F8FAFC', borderColor: border, color: textPri }}>
+                  <option value="">Select a topic to add…</option>
+                  {ALL_TOPICS.filter(t => !draftQueue.includes(t.id)).map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.level})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={addTopicToPlan}
+                  disabled={!selectedToAdd}
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 disabled:opacity-40 cursor-pointer shrink-0"
+                  style={{ background: '#6366F1', color: '#fff' }}>
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 pt-4 mt-4 border-t" style={{ borderColor: border }}>
+              <button
+                onClick={() => setEditPlanOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold hover:opacity-80 cursor-pointer"
+                style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', color: textSec }}>
+                Cancel
+              </button>
+              <button
+                onClick={saveCustomPlan}
+                className="px-5 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 active:scale-95 cursor-pointer shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)', color: '#fff' }}>
+                Save & Apply Plan
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && <Toast msg={toast.msg} ok={toast.ok} onDone={() => setToast(null)} />}

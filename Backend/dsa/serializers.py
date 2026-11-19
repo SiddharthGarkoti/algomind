@@ -51,3 +51,5 @@ class SubmissionCreateSerializer(serializers.ModelSerializer):
 class CodeExecutionSerializer(serializers.Serializer):
     code = serializers.CharField()
     stdin = serializers.CharField(required=False, allow_blank=True, default='')
+    language = serializers.CharField(required=False, allow_blank=True, default='cpp')
+    schema = serializers.CharField(required=False, allow_blank=True, default='')

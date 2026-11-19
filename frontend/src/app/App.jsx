@@ -44,6 +44,10 @@ function SmartRoot(props) {
   return <LoginPage {...props} />;
 }
 
+// Shorthand route wrappers defined OUTSIDE component to preserve component reference across theme toggles
+const G = ({ children }) => <GuestOrAuthRoute>{children}</GuestOrAuthRoute>;
+const A = ({ children }) => <AuthOnlyRoute>{children}</AuthOnlyRoute>;
+
 function AppRoutes() {
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('theme');
@@ -68,10 +72,6 @@ function AppRoutes() {
 
   const thin = { isDark, toggleTheme };
   const dash = { theme: isDark ? 'dark' : 'light', toggleTheme };
-
-  // Shorthand wrappers
-  const G = ({ children }) => <GuestOrAuthRoute>{children}</GuestOrAuthRoute>;
-  const A = ({ children }) => <AuthOnlyRoute>{children}</AuthOnlyRoute>;
 
   return (
     <>

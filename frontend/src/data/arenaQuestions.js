@@ -1174,5 +1174,291 @@ public:
       spaceComplexity: 'O(1) excluding output',
       explanation: 'Sort the array. Fix each element and run a two-pointer scan to find matching complementary pairs, skipping duplicates.'
     }
+  },
+  {
+    id: 11,
+    number: 175,
+    title: 'Department Highest Salary (SQL)',
+    slug: 'department-highest-salary',
+    diff: 'Medium',
+    topic: 'SQL',
+    companies: ['Amazon', 'Google', 'Bloomberg', 'Microsoft', 'Oracle'],
+    statement: `Find employees who have the highest salary in each of the departments.
+Return the result table in any order.
+
+Table: Employee
++--------------+---------+
+| Column Name  | Type    |
++--------------+---------+
+| id           | int     |
+| name         | varchar |
+| salary       | int     |
+| departmentId | int     |
++--------------+---------+
+
+Table: Department
++-------------+---------+
+| Column Name | Type    |
++-------------+---------+
+| id          | int     |
+| name        | varchar |
++-------------+---------+`,
+    hints: [
+      'Use a subquery with MAX(salary) grouped by departmentId.',
+      'Alternatively, use the DENSE_RANK() window function partitioned by departmentId.',
+      'Join Employee with Department on Employee.departmentId = Department.id.'
+    ],
+    examples: [
+      {
+        input: 'Employee = [[1, "Joe", 70000, 1], [2, "Jim", 90000, 1], [3, "Henry", 80000, 2]], Department = [[1, "IT"], [2, "Sales"]]',
+        output: '+------------+----------+--------+\n| Department | Employee | Salary |\n+------------+----------+--------+\n| IT         | Jim      | 90000  |\n| Sales      | Henry    | 80000  |\n+------------+----------+--------+',
+        explanation: 'Jim has the highest salary in IT and Henry has the highest salary in Sales.'
+      }
+    ],
+    constraints: [
+      'id is the primary key column for each table.',
+      'departmentId is a foreign key of the ID from the Department table.'
+    ],
+    schema: `
+      CREATE TABLE IF NOT EXISTS Employee (id INT PRIMARY KEY, name VARCHAR(50), salary INT, departmentId INT);
+      INSERT OR IGNORE INTO Employee VALUES (1, 'Joe', 70000, 1);
+      INSERT OR IGNORE INTO Employee VALUES (2, 'Jim', 90000, 1);
+      INSERT OR IGNORE INTO Employee VALUES (3, 'Henry', 80000, 2);
+      INSERT OR IGNORE INTO Employee VALUES (4, 'Sam', 60000, 2);
+      INSERT OR IGNORE INTO Employee VALUES (5, 'Max', 90000, 1);
+
+      CREATE TABLE IF NOT EXISTS Department (id INT PRIMARY KEY, name VARCHAR(50));
+      INSERT OR IGNORE INTO Department VALUES (1, 'IT');
+      INSERT OR IGNORE INTO Department VALUES (2, 'Sales');
+    `,
+    starterCode: {
+      mysql: `-- MySQL Query
+SELECT d.name AS Department, e.name AS Employee, e.salary AS Salary
+FROM Employee e
+JOIN Department d ON e.departmentId = d.id
+WHERE (e.departmentId, e.salary) IN (
+    SELECT departmentId, MAX(salary)
+    FROM Employee
+    GROUP BY departmentId
+);`,
+      postgres: `-- PostgreSQL Query
+SELECT d.name AS Department, e.name AS Employee, e.salary AS Salary
+FROM Employee e
+JOIN Department d ON e.departmentId = d.id
+WHERE (e.departmentId, e.salary) IN (
+    SELECT departmentId, MAX(salary)
+    FROM Employee
+    GROUP BY departmentId
+);`,
+      oracle: `-- Oracle SQL Query
+SELECT d.name AS Department, e.name AS Employee, e.salary AS Salary
+FROM Employee e
+JOIN Department d ON e.departmentId = d.id
+WHERE (e.departmentId, e.salary) IN (
+    SELECT departmentId, MAX(salary)
+    FROM Employee
+    GROUP BY departmentId
+);`,
+      cpp: `// Write SQL query or C++ simulation`,
+      python: `# Python SQLite query solution
+import sqlite3
+def solve():
+    pass`
+    },
+    testCases: [
+      {
+        id: 1,
+        label: 'Case 1',
+        paramName: 'query',
+        inputValue: 'SELECT Department, Employee, Salary',
+        expectedOutput: 'Jim | 90000 | IT',
+        rawStdin: ''
+      }
+    ],
+    solution: {
+      approach: 'Window Function or Group By Subquery',
+      timeComplexity: 'O(N log N)',
+      spaceComplexity: 'O(N)',
+      explanation: 'Use a subquery to find the maximum salary for each departmentId, then filter Employee and join Department.'
+    }
+  },
+  {
+    id: 12,
+    number: 146,
+    title: 'LRU Cache (Low-Level Design)',
+    slug: 'lru-cache-lld',
+    diff: 'Medium',
+    topic: 'LLD',
+    companies: ['Google', 'Amazon', 'Microsoft', 'Uber', 'Apple'],
+    statement: `Design a data structure that follows the constraints of a Least Recently Used (LRU) cache.
+
+Implement the LRUCache class:
+• LRUCache(int capacity) Initialize the LRU cache with positive size capacity.
+• int get(int key) Return the value of the key if the key exists, otherwise return -1.
+• void put(int key, int value) Update the value of the key if the key exists. Otherwise, add the key-value pair to the cache. If the number of keys exceeds the capacity from this operation, evict the least recently used key.
+
+The functions get and put must each run in O(1) average time complexity.`,
+    hints: [
+      'Which data structure allows O(1) key lookups? A Hash Map.',
+      'Which data structure allows O(1) removals and insertions at boundaries? A Doubly Linked List.',
+      'Combine a Hash Map with a Doubly Linked List: the head holds the most recent, and tail holds least recent.'
+    ],
+    examples: [
+      {
+        input: '["LRUCache", "put", "put", "get", "put", "get", "put", "get", "get", "get"]\n[[2], [1, 1], [2, 2], [1], [3, 3], [2], [4, 4], [1], [3], [4]]',
+        output: '[null, null, null, 1, null, -1, null, -1, 3, 4]',
+        explanation: 'Cache evicts key 2 when key 3 is added, and evicts key 1 when key 4 is added.'
+      }
+    ],
+    constraints: [
+      '1 <= capacity <= 3000',
+      '0 <= key <= 10^4',
+      '0 <= value <= 10^5',
+      'At most 2 * 10^5 calls will be made to get and put.'
+    ],
+    starterCode: {
+      lld_python: `class Node:
+    def __init__(self, key: int, val: int):
+        self.key, self.val = key, val
+        self.prev = self.next = None
+
+class LRUCache:
+    def __init__(self, capacity: int):
+        self.cap = capacity
+        self.cache = {}
+        self.left, self.right = Node(0, 0), Node(0, 0)
+        self.left.next, self.right.prev = self.right, self.left
+
+    def _remove(self, node):
+        prev, nxt = node.prev, node.next
+        prev.next, nxt.prev = nxt, prev
+
+    def _insert(self, node):
+        prev, nxt = self.right.prev, self.right
+        prev.next = nxt.prev = node
+        node.next, node.prev = nxt, prev
+
+    def get(self, key: int) -> int:
+        if key in self.cache:
+            self._remove(self.cache[key])
+            self._insert(self.cache[key])
+            return self.cache[key].val
+        return -1
+
+    def put(self, key: int, value: int) -> None:
+        if key in self.cache:
+            self._remove(self.cache[key])
+        self.cache[key] = Node(key, value)
+        self._insert(self.cache[key])
+
+        if len(self.cache) > self.cap:
+            lru = self.left.next
+            self._remove(lru)
+            del self.cache[lru.key]`,
+      lld_java: `import java.util.*;
+
+class LRUCache {
+    class Node {
+        int key, val;
+        Node prev, next;
+        Node(int k, int v) { key = k; val = v; }
+    }
+
+    private Map<Integer, Node> map = new HashMap<>();
+    private int cap;
+    private Node head = new Node(0, 0), tail = new Node(0, 0);
+
+    public LRUCache(int capacity) {
+        this.cap = capacity;
+        head.next = tail;
+        tail.prev = head;
+    }
+
+    public int get(int key) {
+        if (!map.containsKey(key)) return -1;
+        Node node = map.get(key);
+        remove(node);
+        insert(node);
+        return node.val;
+    }
+
+    public void put(int key, int value) {
+        if (map.containsKey(key)) remove(map.get(key));
+        if (map.size() == cap) {
+            map.remove(head.next.key);
+            remove(head.next);
+        }
+        Node node = new Node(key, value);
+        insert(node);
+        map.put(key, node);
+    }
+
+    private void remove(Node node) {
+        node.prev.next = node.next;
+        node.next.prev = node.prev;
+    }
+
+    private void insert(Node node) {
+        node.prev = tail.prev;
+        node.next = tail;
+        tail.prev.next = node;
+        tail.prev = node;
+    }
+}`,
+      lld_cpp: `#include <unordered_map>
+#include <list>
+using namespace std;
+
+class LRUCache {
+    int capacity;
+    list<pair<int, int>> dll;
+    unordered_map<int, list<pair<int, int>>::iterator> cache;
+
+public:
+    LRUCache(int capacity) : capacity(capacity) {}
+
+    int get(int key) {
+        if (cache.find(key) == cache.end()) return -1;
+        dll.splice(dll.begin(), dll, cache[key]);
+        return cache[key]->second;
+    }
+
+    void put(int key, int value) {
+        if (cache.find(key) != cache.end()) {
+            dll.splice(dll.begin(), dll, cache[key]);
+            cache[key]->second = value;
+            return;
+        }
+        if (cache.size() == capacity) {
+            int d_key = dll.back().first;
+            dll.pop_back();
+            cache.erase(d_key);
+        }
+        dll.emplace_front(key, value);
+        cache[key] = dll.begin();
+    }
+};`,
+      python: `class LRUCache:
+    def __init__(self, capacity: int):
+        self.cap = capacity
+        self.cache = {}`,
+      cpp: `// C++ implementation`
+    },
+    testCases: [
+      {
+        id: 1,
+        label: 'Case 1',
+        paramName: 'operations',
+        inputValue: '["LRUCache", "put", "put", "get"]',
+        expectedOutput: '[null, null, null, 1]',
+        rawStdin: '["LRUCache", "put", "put", "get"]\n[[2], [1, 1], [2, 2], [1]]'
+      }
+    ],
+    solution: {
+      approach: 'Hash Map + Doubly Linked List',
+      timeComplexity: 'O(1) for both get and put',
+      spaceComplexity: 'O(capacity)',
+      explanation: 'Maintain a doubly linked list of key-value nodes ordered by recency. The hash map stores references to list nodes for O(1) lookup.'
+    }
   }
 ];

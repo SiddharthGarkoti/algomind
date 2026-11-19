@@ -5,7 +5,7 @@ import api from '../../utils/api.js';
 import ArenaIDE from '../../components/IDE/ArenaIDE.jsx';
 import { ARENA_QUESTIONS } from '../../data/arenaQuestions.js';
 
-const TOPICS = ['All', 'Arrays', 'Strings', 'Stack', 'Linked List', 'DP', 'Binary Search'];
+const TOPICS = ['All', 'Arrays', 'Strings', 'Stack', 'Linked List', 'DP', 'Binary Search', 'SQL', 'LLD'];
 const DIFFS  = ['All', 'Easy', 'Medium', 'Hard'];
 const DIFF_COLORS = { Easy: '#22C55E', Medium: '#F59E0B', Hard: '#EF4444' };
 
@@ -15,9 +15,28 @@ function ArenaPage({ theme, toggleTheme }) {
   const [topicFilter, setTopicFilter] = useState('All');
   const [diffFilter,  setDiffFilter]  = useState('All');
   const [search,      setSearch]      = useState('');
-  const [selected,    setSelected]    = useState(ARENA_QUESTIONS[0]);
-  const [showIDE,     setShowIDE]     = useState(false);
+  const [selected,    setSelected]    = useState(() => {
+    const savedId = sessionStorage.getItem('algomind_arena_selected_id');
+    if (savedId) {
+      const q = ARENA_QUESTIONS.find(item => String(item.id) === String(savedId));
+      if (q) return q;
+    }
+    return ARENA_QUESTIONS[0];
+  });
+  const [showIDE,     setShowIDE]     = useState(() => {
+    return sessionStorage.getItem('algomind_arena_show_ide') === 'true';
+  });
   const [solvedSlugs, setSolvedSlugs] = useState(new Set());
+
+  const handleSetShowIDE = (val) => {
+    setShowIDE(val);
+    sessionStorage.setItem('algomind_arena_show_ide', val ? 'true' : 'false');
+  };
+
+  const handleSetSelected = (q) => {
+    setSelected(q);
+    if (q?.id) sessionStorage.setItem('algomind_arena_selected_id', String(q.id));
+  };
 
   // Fetch verified solved statuses
   useEffect(() => {
@@ -54,8 +73,8 @@ function ArenaPage({ theme, toggleTheme }) {
         theme={theme} 
         toggleTheme={toggleTheme} 
         selected={selected}
-        setSelected={setSelected}
-        setShowIDE={setShowIDE} 
+        setSelected={handleSetSelected}
+        setShowIDE={handleSetShowIDE} 
       />
     );
   }
@@ -70,7 +89,7 @@ function ArenaPage({ theme, toggleTheme }) {
             <p className="text-sm mt-1" style={{ color: textSec }}>Interactive coding workspace with Socratic AI guidance</p>
           </div>
           <button
-            onClick={() => { setSelected(ARENA_QUESTIONS[0]); setShowIDE(true); }}
+            onClick={() => { handleSetSelected(ARENA_QUESTIONS[0]); handleSetShowIDE(true); }}
             className="px-4 py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-105 active:scale-95 flex items-center gap-2 shadow-lg"
             style={{
               background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
@@ -142,7 +161,7 @@ function ArenaPage({ theme, toggleTheme }) {
                 <button
                   className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-90 flex items-center gap-1.5"
                   style={{ background: '#6366F1', color: '#fff' }}
-                  onClick={() => { setSelected(q); setShowIDE(true); }}
+                  onClick={() => { handleSetSelected(q); handleSetShowIDE(true); }}
                 >
                   <span className="material-symbols-outlined text-xs">code</span>
                   <span>Solve in IDE</span>

@@ -12,16 +12,32 @@ const cleanBase = (API_BASE_URL || '').replace(/\/api\/?$/, '').replace(/\/$/, '
 const BASE = cleanBase ? `${cleanBase}/api` : '/api';
 
 
+// ── in-memory response cache ─────────────────────────────────────
+const apiCache = new Map();
+const DEFAULT_TTL_MS = 25000; // 25 seconds cache for analytics, dashboard, weak-areas
+
+export function clearApiCache(prefix = '') {
+  if (!prefix) {
+    apiCache.clear();
+  } else {
+    for (const key of apiCache.keys()) {
+      if (key.includes(prefix)) apiCache.delete(key);
+    }
+  }
+}
+
 // ── token helpers ────────────────────────────────────────────────
 export function getToken()        { return localStorage.getItem('access_token'); }
 export function getRefreshToken() { return localStorage.getItem('refresh_token'); }
 
 export function setTokens(access, refresh) {
+  clearApiCache();
   localStorage.setItem('access_token', access);
   if (refresh) localStorage.setItem('refresh_token', refresh);
 }
 
 export function clearTokens() {
+  clearApiCache();
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
 }
@@ -105,14 +121,48 @@ async function requestForm(path, formData, method = 'PATCH') {
   return body;
 }
 
-// ── public API ───────────────────────────────────────────────────
+// ── public API with smart TTL caching ────────────────────────────
 const api = {
-  get:       (path)            => request(path),
-  post:      (path, body)      => request(path, { method: 'POST',  body: JSON.stringify(body) }),
-  put:       (path, body)      => request(path, { method: 'PUT',   body: JSON.stringify(body) }),
-  patch:     (path, body)      => request(path, { method: 'PATCH', body: JSON.stringify(body) }),
-  delete:    (path)            => request(path, { method: 'DELETE' }),
-  patchForm: (path, formData)  => requestForm(path, formData, 'PATCH'),
+  get: async (path, options = {}) => {
+    const noCache = options?.noCache || false;
+    const ttl = options?.ttl || DEFAULT_TTL_MS;
+    const cacheKey = `${getToken() || 'anon'}:${path}`;
+
+    if (!noCache && apiCache.has(cacheKey)) {
+      const entry = apiCache.get(cacheKey);
+      if (Date.now() - entry.time < ttl) {
+        return entry.data;
+      }
+      apiCache.delete(cacheKey);
+    }
+
+    const data = await request(path, options);
+    if (!noCache && data !== null && data !== undefined) {
+      apiCache.set(cacheKey, { data, time: Date.now() });
+    }
+    return data;
+  },
+  post: async (path, body, options = {}) => {
+    clearApiCache();
+    return request(path, { ...options, method: 'POST', body: JSON.stringify(body) });
+  },
+  put: async (path, body, options = {}) => {
+    clearApiCache();
+    return request(path, { ...options, method: 'PUT', body: JSON.stringify(body) });
+  },
+  patch: async (path, body, options = {}) => {
+    clearApiCache();
+    return request(path, { ...options, method: 'PATCH', body: JSON.stringify(body) });
+  },
+  delete: async (path, options = {}) => {
+    clearApiCache();
+    return request(path, { ...options, method: 'DELETE' });
+  },
+  patchForm: async (path, formData) => {
+    clearApiCache();
+    return requestForm(path, formData, 'PATCH');
+  },
+  clearCache: clearApiCache,
   // expose token helpers so AuthContext can use them
   getToken,
   getRefreshToken,

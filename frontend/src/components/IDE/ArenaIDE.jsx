@@ -10,6 +10,12 @@ const LANGUAGE_CONFIG = {
   python: { label: 'Python 3', monacoLang: 'python', extension: 'py' },
   java: { label: 'Java', monacoLang: 'java', extension: 'java' },
   javascript: { label: 'JavaScript', monacoLang: 'javascript', extension: 'js' },
+  mysql: { label: 'MySQL', monacoLang: 'sql', extension: 'sql' },
+  postgres: { label: 'PostgreSQL', monacoLang: 'sql', extension: 'sql' },
+  oracle: { label: 'Oracle SQL', monacoLang: 'sql', extension: 'sql' },
+  lld_python: { label: 'LLD (Python OOP)', monacoLang: 'python', extension: 'py' },
+  lld_java: { label: 'LLD (Java Design)', monacoLang: 'java', extension: 'java' },
+  lld_cpp: { label: 'LLD (C++ System)', monacoLang: 'cpp', extension: 'cpp' },
 };
 
 function ArenaIDE({ theme, toggleTheme, selected, setSelected, setShowIDE }) {
@@ -23,9 +29,6 @@ function ArenaIDE({ theme, toggleTheme, selected, setSelected, setShowIDE }) {
   // Left panel active tab
   const [leftTab, setLeftTab] = useState('problem'); // 'problem', 'solution', 'submissions', 'peer'
   const [bookmarked, setBookmarked] = useState(false);
-  const [likes, setLikes] = useState(302);
-  const [liked, setLiked] = useState(false);
-  const [disliked, setDisliked] = useState(false);
   const [showHintModal, setShowHintModal] = useState(false);
   const [showCompanyModal, setShowCompanyModal] = useState(false);
 
@@ -108,7 +111,9 @@ function ArenaIDE({ theme, toggleTheme, selected, setSelected, setShowIDE }) {
       // Call backend execute-code
       const res = await api.post('/dsa/execute-code/', {
         code: activeCode,
-        stdin: activeStdin
+        stdin: activeStdin,
+        language: language,
+        schema: question.schema || '',
       });
 
       const actualOut = (res.program_output || res.stdout || currentCase?.expectedOutput || '').trim();
@@ -146,7 +151,9 @@ function ArenaIDE({ theme, toggleTheme, selected, setSelected, setShowIDE }) {
       const activeCode = codeMap[activeTab] || '';
       await api.post('/dsa/execute-code/', {
         code: activeCode,
-        stdin: question.testCases?.[0]?.rawStdin || ''
+        stdin: question.testCases?.[0]?.rawStdin || '',
+        language: language,
+        schema: question.schema || '',
       }).catch(() => {});
 
       const newSub = {
@@ -498,34 +505,12 @@ function ArenaIDE({ theme, toggleTheme, selected, setSelected, setShowIDE }) {
                   </div>
                 )}
 
-                {/* Bottom Toolbar */}
-                <div className="pt-4 border-t flex items-center justify-between text-xs" style={{ borderColor: border }}>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => { setLiked(!liked); setLikes(l => liked ? l - 1 : l + 1); }}
-                      className="flex items-center gap-1 transition-opacity hover:opacity-80"
-                      style={{ color: liked ? '#818CF8' : textSec }}
-                    >
-                      <span className="material-symbols-outlined text-sm">thumb_up</span>
-                      <span>{likes}</span>
-                    </button>
-                    <button
-                      onClick={() => setDisliked(!disliked)}
-                      className="flex items-center gap-1 transition-opacity hover:opacity-80"
-                      style={{ color: disliked ? '#EF4444' : textSec }}
-                    >
-                      <span className="material-symbols-outlined text-sm">thumb_down</span>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setShowMiloDrawer(true)} className="p-1 rounded hover:bg-white/10" title="Ask MILO">
-                      <span className="material-symbols-outlined text-sm" style={{ color: '#818CF8' }}>auto_awesome</span>
-                    </button>
-                    <button className="p-1 rounded hover:bg-white/10" title="Notes">
-                      <span className="material-symbols-outlined text-sm" style={{ color: textSec }}>edit_note</span>
-                    </button>
-                  </div>
+                {/* Bottom Toolbar — Clean problem notes action only */}
+                <div className="pt-3 border-t flex items-center justify-end text-xs" style={{ borderColor: border }}>
+                  <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer" title="Notes">
+                    <span className="material-symbols-outlined text-sm" style={{ color: textSec }}>edit_note</span>
+                    <span style={{ color: textSec }}>Scratchpad</span>
+                  </button>
                 </div>
               </>
             )}
@@ -705,25 +690,6 @@ function ArenaIDE({ theme, toggleTheme, selected, setSelected, setShowIDE }) {
                 automaticLayout: true
               }}
             />
-
-            {/* ── "Guide Me" Floating Button (Bottom-Right of Editor) ── */}
-            <div className="absolute right-4 bottom-4 z-20">
-              <button
-                onClick={() => setShowMiloDrawer(true)}
-                className="group flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg transition-all hover:scale-105 active:scale-95 backdrop-blur-md"
-                style={{
-                  background: isDark
-                    ? 'linear-gradient(135deg, rgba(99,102,241,0.9), rgba(168,85,247,0.9))'
-                    : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
-                  color: '#FFFFFF',
-                  boxShadow: '0 8px 24px -4px rgba(99, 102, 241, 0.5)'
-                }}
-              >
-                <img src="/milo.png" alt="MILO" className="w-5 h-5 rounded-lg object-cover ring-2 ring-white/20" />
-                <span>Guide Me</span>
-                <span className="material-symbols-outlined text-sm group-hover:rotate-12 transition-transform">auto_awesome</span>
-              </button>
-            </div>
           </div>
 
           {/* ── Test Case & Output Runner (Bottom Half) ──────────────────── */}

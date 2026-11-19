@@ -1,8 +1,40 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import SignInModal from '../../components/login/SignInModal.jsx';
 import api from '../../utils/api.js';
+
+/* ── Standard Curriculum Catalog with Prerequisites ── */
+const CURRICULUM_CATALOG = [
+  { slug: 'array', name: 'Arrays & Prefix Sum', category: 'Fundamentals', minPreReq: 'None', level: 'Foundation', keyConcepts: ['Index manipulation', 'Prefix sums', 'Kadane algorithm', 'In-place rotations'] },
+  { slug: 'string', name: 'Strings & Parsing', category: 'Fundamentals', minPreReq: 'None', level: 'Foundation', keyConcepts: ['Palindromes', 'Anagrams', 'Two-pointer scans', 'Substrings'] },
+  { slug: 'two-pointers', name: 'Two Pointers & Sliding Window', category: 'Techniques', minPreReq: 'Arrays', level: 'Foundation', keyConcepts: ['Opposite pointers', 'Dynamic sliding window', 'Monotonic deques'] },
+  { slug: 'binary-search', name: 'Binary Search', category: 'Techniques', minPreReq: 'Arrays', level: 'Foundation', keyConcepts: ['Search space division', 'Binary search on answer', 'Matrix search'] },
+  { slug: 'stack', name: 'Stack & Monotonic Stack', category: 'Data Structures', minPreReq: 'Arrays', level: 'Foundation', keyConcepts: ['Parentheses matching', 'Monotonic stack (O(n))', 'Expression evaluation'] },
+  { slug: 'hash-table', name: 'Hash Tables & Sets', category: 'Data Structures', minPreReq: 'Arrays', level: 'Foundation', keyConcepts: ['O(1) lookup', 'Frequency maps', 'Collision resolution', 'LRU Design'] },
+  { slug: 'linked-list', name: 'Linked Lists', category: 'Data Structures', minPreReq: 'None', level: 'Foundation', keyConcepts: ['Fast & slow pointers', 'List reversal', 'Merge operations', 'Cycle detection'] },
+  { slug: 'tree', name: 'Binary Trees & Traversals', category: 'Hierarchical', minPreReq: 'Recursion', level: 'Foundation', keyConcepts: ['DFS (pre/in/post-order)', 'BFS level-order', 'Lowest Common Ancestor'] },
+  { slug: 'binary-search-tree', name: 'Binary Search Trees (BST)', category: 'Hierarchical', minPreReq: 'Binary Trees', level: 'Intermediate', keyConcepts: ['Inorder sorted property', 'BST validation', 'Insertion & deletion'] },
+  { slug: 'sorting', name: 'Sorting & Divide and Conquer', category: 'Algorithms', minPreReq: 'Arrays', level: 'Foundation', keyConcepts: ['Merge Sort', 'QuickSelect O(n)', 'Custom comparators', 'Inversion counting'] },
+  { slug: 'greedy', name: 'Greedy Algorithms', category: 'Algorithms', minPreReq: 'Sorting', level: 'Intermediate', keyConcepts: ['Interval scheduling', 'Activity selection', 'Optimal local choices'] },
+  { slug: 'backtracking', name: 'Backtracking & Recursion', category: 'Algorithms', minPreReq: 'Recursion, Stack', level: 'Intermediate', keyConcepts: ['State exploration', 'Pruning branches', 'Permutations & Subsets'] },
+  { slug: 'dynamic-programming', name: 'Dynamic Programming', category: 'Advanced', minPreReq: 'Recursion, Arrays, Math', level: 'Advanced', keyConcepts: ['Overlapping subproblems', 'Optimal substructure', 'Memoization & Tabulation', '0/1 Knapsack'] },
+  { slug: 'graph', name: 'Graph Theory & BFS/DFS', category: 'Advanced', minPreReq: 'Trees, Queue, Stack', level: 'Advanced', keyConcepts: ['Adjacency lists', 'BFS shortest path', 'Cycle detection', 'Topological Sort'] },
+  { slug: 'shortest-path', name: 'Advanced Graphs (Dijkstra / MST)', category: 'Advanced', minPreReq: 'Graphs, Priority Queue', level: 'Advanced', keyConcepts: ['Dijkstra algorithm', 'Prim / Kruskal MST', 'Disjoint Set Union (DSU)'] },
+  { slug: 'bit-manipulation', name: 'Bit Manipulation & Bitmasks', category: 'Low Level', minPreReq: 'Math', level: 'Intermediate', keyConcepts: ['Bitwise operators', 'XOR cancellations', 'Bitmask DP states', 'Power of two tricks'] },
+  { slug: 'math', name: 'Math & Number Theory', category: 'Foundations', minPreReq: 'None', level: 'Foundation', keyConcepts: ['Prime sieves', 'GCD / Euclidean', 'Modular arithmetic', 'Combinatorics'] },
+  { slug: 'trie', name: 'Trie (Prefix Tree)', category: 'Advanced DS', minPreReq: 'Trees, Hash Tables', level: 'Advanced', keyConcepts: ['Prefix queries', 'Autocomplete models', 'Bitwise Trie for XOR'] },
+  { slug: 'segment-tree', name: 'Segment Tree & Fenwick (BIT)', category: 'Expert DS', minPreReq: 'Binary Search, Trees, Arrays', level: 'Expert', keyConcepts: ['Range query in O(log n)', 'Point / Range updates', 'Lazy propagation'] },
+];
+
+/* ── Helper to determine mastery tier ── */
+function getMasteryTier(solved) {
+  if (solved >= 40) return { key: 'mastered', label: 'Mastered', color: '#22C55E', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.25)', next: null };
+  if (solved >= 20) return { key: 'proficient', label: 'Proficient', color: '#C084FC', bg: 'rgba(192,132,252,0.12)', border: 'rgba(192,132,252,0.25)', next: 40 };
+  if (solved >= 5)  return { key: 'intermediate', label: 'Intermediate', color: '#818CF8', bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.25)', next: 20 };
+  return { key: 'novice', label: 'Novice', color: '#94A3B8', bg: 'rgba(148,163,184,0.12)', border: 'rgba(148,163,184,0.25)', next: 5 };
+}
 
 /* ── Donut SVG ── */
 function SolvedDonut({ easy, medium, hard, surfLow, textPri, textSec }) {
@@ -48,15 +80,21 @@ function AnalyticsPage({ theme, toggleTheme }) {
   const textPri = isDark ? '#e3e2e5' : '#0F172A';
   const textSec = isDark ? '#908fa0' : '#64748B';
 
+  const navigate = useNavigate();
   const { user, isGuest, updateUser } = useAuth();
 
-  const [solvedTab,    setSolvedTab]    = useState('total');
-  const [platforms,    setPlatforms]    = useState(null);   // null = loading
-  const [summary,      setSummary]      = useState(null);
-  const [topics,       setTopics]       = useState([]);
-  const [recentSubs,   setRecentSubs]   = useState([]);
-  const [refreshing,   setRefreshing]   = useState('');
-  const [showSignIn,   setShowSignIn]   = useState(false);
+  const [solvedTab,      setSolvedTab]      = useState('total');
+  const [platforms,      setPlatforms]      = useState(null);   // null = loading
+  const [summary,        setSummary]        = useState(null);
+  const [rawTopics,      setRawTopics]      = useState([]);
+  const [recentSubs,     setRecentSubs]     = useState([]);
+  const [refreshing,     setRefreshing]     = useState('');
+  const [showSignIn,     setShowSignIn]     = useState(false);
+
+  // Curriculum & Mastery State
+  const [selectedTopic,  setSelectedTopic]  = useState(null);
+  const [tierFilter,     setTierFilter]     = useState('all');
+  const [showAllTopics,  setShowAllTopics]  = useState(false);
 
   const hasRealData = platforms !== null && platforms.length > 0;
 
@@ -71,10 +109,9 @@ function AnalyticsPage({ theme, toggleTheme }) {
       .catch(() => setPlatforms([]));
 
     api.get('/analytics/weak-areas/')
-      .then(d => setTopics(d.weak_areas ?? []))
+      .then(d => setRawTopics(d.weak_areas ?? []))
       .catch(() => {});
 
-    // Real recent submissions from LeetCode + Codeforces
     api.get('/analytics/recent-submissions/')
       .then(d => setRecentSubs(d?.submissions ?? []))
       .catch(() => {});
@@ -131,11 +168,42 @@ function AnalyticsPage({ theme, toggleTheme }) {
 
   const currentStats = statsFor(solvedTab);
 
-  /* Topic classification */
-  const weakTopics     = topics.filter(t => t.status === 'weak');
-  const strengthTopics = topics.filter(t => t.status === 'strength');
+  /* Merge backend topics with full curriculum catalog */
+  const mergedCurriculum = useMemo(() => {
+    const solvedMap = new Map();
+    rawTopics.forEach(t => {
+      const slug = (t.topic_slug || '').toLowerCase();
+      solvedMap.set(slug, (solvedMap.get(slug) || 0) + (t.problems_solved || 0));
+    });
 
-  /* Which platform tabs exist */
+    return CURRICULUM_CATALOG.map(item => {
+      // Check direct slug or aliases
+      let solved = solvedMap.get(item.slug) || 0;
+      if (item.slug === 'array' && !solved) solved = solvedMap.get('arrays') || 0;
+      if (item.slug === 'string' && !solved) solved = solvedMap.get('strings') || 0;
+      if (item.slug === 'tree' && !solved) solved = solvedMap.get('trees') || 0;
+      if (item.slug === 'graph' && !solved) solved = solvedMap.get('graphs') || 0;
+
+      const tier = getMasteryTier(solved);
+      return {
+        ...item,
+        problems_solved: solved,
+        tier,
+      };
+    }).sort((a, b) => b.problems_solved - a.problems_solved);
+  }, [rawTopics]);
+
+  /* Filter by tier */
+  const filteredCurriculum = useMemo(() => {
+    let list = mergedCurriculum;
+    if (tierFilter !== 'all') {
+      list = list.filter(t => t.tier.key === tierFilter);
+    }
+    return list;
+  }, [mergedCurriculum, tierFilter]);
+
+  const displayedTopics = showAllTopics ? filteredCurriculum : filteredCurriculum.slice(0, 8);
+
   const availablePlatforms = [
     { key: 'total',      label: 'Total'    },
     ...(platforms ?? []).map(p => ({
@@ -144,13 +212,17 @@ function AnalyticsPage({ theme, toggleTheme }) {
     })),
   ];
 
+  /* Handler: Start / Continue Learning Topic */
+  const handleStartLearning = (topic) => {
+    navigate(`/plan-view?topic=${topic.slug}&action=teach`);
+  };
+
   return (
     <DashboardLayout theme={theme} toggleTheme={toggleTheme}>
-      <div className="space-y-6 max-w-6xl mx-auto">
-
+      <div className="space-y-7 max-w-6xl mx-auto pb-12">
         <div>
-          <h1 className="text-3xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>Analytics</h1>
-          <p className="text-sm mt-1" style={{ color: textSec }}>Your detailed performance breakdown</p>
+          <h1 className="text-3xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>Analytics & Mastery</h1>
+          <p className="text-sm mt-1" style={{ color: textSec }}>Deep dive into your algorithmic performance, platform verification, and curriculum progression</p>
         </div>
 
         {/* Loading skeleton */}
@@ -176,7 +248,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
             </div>
             <button
               onClick={() => setShowSignIn(true)}
-              className="shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90"
+              className="shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 cursor-pointer"
               style={{ background: '#6366F1', color: '#fff' }}>
               Sign In
             </button>
@@ -191,13 +263,13 @@ function AnalyticsPage({ theme, toggleTheme }) {
             <div>
               <p className="text-sm font-bold" style={{ color: textPri }}>No platforms connected yet</p>
               <p className="text-xs mt-0.5" style={{ color: textSec }}>
-                Go to the home page, enter your LeetCode or Codeforces username and click <strong>Analyze My Profile</strong>.
+                Go to the home page or settings, enter your LeetCode or Codeforces username and click <strong>Analyze My Profile</strong>.
               </p>
             </div>
           </div>
         )}
 
-        {platforms !== null && hasRealData && (
+        {platforms !== null && (
           <>
             {/* ── Row 1: Problems Solved + Connected Platforms ── */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -273,110 +345,159 @@ function AnalyticsPage({ theme, toggleTheme }) {
               <div className="rounded-2xl p-6" style={{ background: surface, border: `1px solid ${border}` }}>
                 <h2 className="text-sm font-headline font-bold mb-5" style={{ color: textPri }}>Connected Platforms</h2>
                 <div className="space-y-4">
-                  {platforms.map(p => {
-                    const s = p.stats ?? {};
-                    return (
-                      <div key={p.id} className="rounded-xl p-4 sm:p-5"
-                        style={{ background: surfLow, border: `1px solid ${border}` }}>
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <p className="text-sm font-bold capitalize" style={{ color: textPri }}>{p.platform_name}</p>
-                            <p className="text-xs" style={{ color: textSec }}>@{p.handle}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
-                              style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#C084FC', border: '1px solid rgba(168, 85, 247, 0.25)' }}>Connected</span>
-                            <button
-                              disabled={refreshing === p.platform_name}
-                              onClick={() => refreshPlatform(p.platform_name)}
-                              className="p-1.5 rounded-lg transition-all hover:opacity-70 disabled:opacity-40 cursor-pointer"
-                              style={{ background: 'rgba(99,102,241,0.1)' }}
-                              title="Refresh stats">
-                              <span className={`material-symbols-outlined text-sm ${refreshing === p.platform_name ? 'animate-spin' : ''}`}
-                                style={{ color: '#818CF8' }}>sync</span>
-                            </button>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                          {[
-                            { label: 'Solved',         val: s.problems_solved ?? 0, color: textPri },
-                            { label: 'Current Streak', val: `${s.streak ?? 0}d`, color: '#818CF8' },
-                            { label: 'Contests',       val: s.contests ?? 0, color: textPri },
-                            { label: 'Rating',         val: s.rating > 0 ? s.rating : '—', color: '#C084FC' },
-                          ].map(({ label, val, color }) => (
-                            <div key={label} className="p-2.5 rounded-xl" style={{ background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
-                              <p className="text-lg font-headline font-bold" style={{ color }}>{val}</p>
-                              <p className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: textSec }}>{label}</p>
+                  {(platforms ?? []).length === 0 ? (
+                    <div className="p-6 rounded-xl text-center" style={{ background: surfLow, border: `1px solid ${border}` }}>
+                      <p className="text-xs" style={{ color: textSec }}>No platforms connected yet. Connect in Settings or Home to sync data.</p>
+                    </div>
+                  ) : (
+                    platforms.map(p => {
+                      const s = p.stats ?? {};
+                      return (
+                        <div key={p.id} className="rounded-xl p-4 sm:p-5"
+                          style={{ background: surfLow, border: `1px solid ${border}` }}>
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <p className="text-sm font-bold capitalize" style={{ color: textPri }}>{p.platform_name}</p>
+                              <p className="text-xs" style={{ color: textSec }}>@{p.handle}</p>
                             </div>
-                          ))}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                                style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#C084FC', border: '1px solid rgba(168, 85, 247, 0.25)' }}>Connected</span>
+                              <button
+                                disabled={refreshing === p.platform_name}
+                                onClick={() => refreshPlatform(p.platform_name)}
+                                className="p-1.5 rounded-lg transition-all hover:opacity-70 disabled:opacity-40 cursor-pointer"
+                                style={{ background: 'rgba(99,102,241,0.1)' }}
+                                title="Refresh stats">
+                                <span className={`material-symbols-outlined text-sm ${refreshing === p.platform_name ? 'animate-spin' : ''}`}
+                                  style={{ color: '#818CF8' }}>sync</span>
+                              </button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                            {[
+                              { label: 'Solved',         val: s.problems_solved ?? 0, color: textPri },
+                              { label: 'Current Streak', val: `${s.streak ?? 0}d`, color: '#818CF8' },
+                              { label: 'Contests',       val: s.contests ?? 0, color: textPri },
+                              { label: 'Rating',         val: s.rating > 0 ? s.rating : '—', color: '#C084FC' },
+                            ].map(({ label, val, color }) => (
+                              <div key={label} className="p-2.5 rounded-xl" style={{ background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
+                                <p className="text-lg font-headline font-bold" style={{ color }}>{val}</p>
+                                <p className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: textSec }}>{label}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* ── Row 2: Topic Progress from real API ── */}
-            {topics.length > 0 && (
-              <div className="rounded-2xl p-6" style={{ background: surface, border: `1px solid ${border}` }}>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* ── Row 2: Curriculum Topic Mastery (Replaces Weak Areas with Novice/Intermediate/Proficient/Mastered) ── */}
+            <div className="rounded-2xl p-6" style={{ background: surface, border: `1px solid ${border}` }}>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-base font-headline font-bold" style={{ color: textPri }}>Curriculum Mastery Breakdown</h2>
+                  <p className="text-xs mt-0.5" style={{ color: textSec }}>
+                    Structured mastery progression evaluated directly against your verified problems solved.
+                  </p>
+                </div>
 
-                  {/* Weak areas */}
-                  <div>
-                    <h2 className="text-sm font-headline font-bold mb-1" style={{ color: textPri }}>Weak Areas</h2>
-                    <p className="text-xs mb-5" style={{ color: textSec }}>Topics with fewest problems solved — focus here</p>
-                    <div className="space-y-3">
-                      {weakTopics.slice(0, 8).map(t => {
-                        const max = Math.max(...topics.map(x => x.problems_solved), 1);
-                        const pct = Math.round((t.problems_solved / max) * 100);
-                        return (
-                          <div key={t.topic_slug}>
-                            <div className="flex justify-between text-xs mb-1">
-                              <span style={{ color: textPri, fontWeight: 600 }}>{t.topic_name}</span>
-                              <span style={{ color: textSec, fontWeight: 600 }}>{t.problems_solved} solved</span>
-                            </div>
-                            <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: surfLow }}>
-                              <div className="h-full rounded-full transition-all duration-700"
-                                style={{ width: `${pct}%`, background: 'rgba(168, 85, 247, 0.35)' }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                {/* Filter and Show All toggles */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1 p-1 rounded-xl" style={{ background: surfLow, border: `1px solid ${border}` }}>
+                    {[
+                      { key: 'all',          label: 'All Topics' },
+                      { key: 'mastered',     label: 'Mastered (40+)' },
+                      { key: 'proficient',   label: 'Proficient (20-39)' },
+                      { key: 'intermediate', label: 'Intermediate (5-19)' },
+                      { key: 'novice',       label: 'Novice (<5)' },
+                    ].map(f => (
+                      <button
+                        key={f.key}
+                        onClick={() => setTierFilter(f.key)}
+                        className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                        style={tierFilter === f.key ? { background: '#6366F1', color: '#fff' } : { color: textSec }}>
+                        {f.label}
+                      </button>
+                    ))}
                   </div>
 
-                  {/* Strengths */}
-                  <div>
-                    <h2 className="text-sm font-headline font-bold mb-1" style={{ color: textPri }}>Strengths</h2>
-                    <p className="text-xs mb-5" style={{ color: textSec }}>Topics you've mastered</p>
-                    <div className="space-y-3">
-                      {strengthTopics.slice(0, 5).map(t => {
-                        const max = Math.max(...topics.map(x => x.problems_solved), 1);
-                        const pct = Math.round((t.problems_solved / max) * 100);
-                        return (
-                          <div key={t.topic_slug}>
-                            <div className="flex justify-between text-xs mb-1">
-                              <span style={{ color: textPri, fontWeight: 600 }}>{t.topic_name}</span>
-                              <span style={{ color: '#C084FC', fontWeight: 600 }}>{t.problems_solved} solved</span>
-                            </div>
-                            <div className="h-2 w-full rounded-full overflow-hidden" style={{ background: surfLow }}>
-                              <div className="h-full rounded-full transition-all duration-700"
-                                style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #6366F1, #A855F7)' }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {strengthTopics.length === 0 && (
-                        <p className="text-xs py-4" style={{ color: textSec }}>Keep solving problems to build strengths!</p>
-                      )}
-                    </div>
-                  </div>
+                  <button
+                    onClick={() => setShowAllTopics(prev => !prev)}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    style={{ background: showAllTopics ? 'rgba(99,102,241,0.15)' : surfLow, color: '#818CF8', border: `1px solid ${border}` }}>
+                    <span className="material-symbols-outlined text-xs">{showAllTopics ? 'unfold_less' : 'unfold_more'}</span>
+                    {showAllTopics ? 'Show Priority' : `Show All (${filteredCurriculum.length})`}
+                  </button>
                 </div>
               </div>
-            )}
 
-            {/* ── Row 3: Recent Submissions (real from DSA app) ── */}
+              {/* Grid of Topics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {displayedTopics.map(t => {
+                  const maxTarget = t.tier.next || 50;
+                  const pct = Math.min(100, Math.round((t.problems_solved / maxTarget) * 100));
+
+                  return (
+                    <div
+                      key={t.slug}
+                      onClick={() => setSelectedTopic(t)}
+                      className="rounded-xl p-4 transition-all duration-200 hover:scale-[1.01] hover:border-indigo-500/40 cursor-pointer flex flex-col justify-between"
+                      style={{ background: surfLow, border: `1px solid ${border}` }}>
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
+                            style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', color: textSec }}>
+                            {t.category}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                            style={{ background: t.tier.bg, color: t.tier.color, borderColor: t.tier.border }}>
+                            {t.tier.label}
+                          </span>
+                        </div>
+
+                        <h3 className="text-sm font-bold truncate mb-1" style={{ color: textPri }}>
+                          {t.name}
+                        </h3>
+
+                        <div className="flex items-center justify-between text-xs mb-2">
+                          <span style={{ color: textSec }}>{t.problems_solved} solved</span>
+                          <span className="text-[11px] font-semibold" style={{ color: t.tier.color }}>
+                            {t.tier.next ? `${t.tier.next - t.problems_solved} to ${t.tier.next >= 40 ? 'Master' : 'Next Tier'}` : 'Fully Mastered'}
+                          </span>
+                        </div>
+
+                        <div className="h-1.5 w-full rounded-full overflow-hidden mb-3" style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
+                          <div className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${pct}%`, background: t.tier.color }} />
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t flex items-center justify-between" style={{ borderColor: border }}>
+                        <span className="text-[11px]" style={{ color: textSec }}>
+                          Level: <strong style={{ color: textPri }}>{t.level}</strong>
+                        </span>
+                        <span className="text-xs font-semibold flex items-center gap-1" style={{ color: '#818CF8' }}>
+                          <span>Details</span>
+                          <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {displayedTopics.length === 0 && (
+                <div className="text-center py-10" style={{ color: textSec }}>
+                  <p className="text-sm">No topics match the selected tier filter.</p>
+                </div>
+              )}
+            </div>
+
+            {/* ── Row 3: Recent Submissions ── */}
             <div className="rounded-2xl p-6" style={{ background: surface, border: `1px solid ${border}` }}>
               <h2 className="text-sm font-headline font-bold mb-4" style={{ color: textPri }}>Recent Accepted Submissions</h2>
               {recentSubs.length === 0 ? (
@@ -428,6 +549,107 @@ function AnalyticsPage({ theme, toggleTheme }) {
         )}
 
       </div>
+
+      {/* ── Topic Details & Teaching Mode Modal ── */}
+      {selectedTopic && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div
+            className="w-full max-w-xl rounded-2xl p-6 sm:p-7 shadow-2xl relative border overflow-hidden"
+            style={{ background: isDark ? '#18191c' : '#FFFFFF', borderColor: isDark ? 'rgba(99,102,241,0.25)' : 'rgba(0,0,0,0.1)' }}>
+            
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full"
+                    style={{ background: selectedTopic.tier.bg, color: selectedTopic.tier.color, border: `1px solid ${selectedTopic.tier.border}` }}>
+                    {selectedTopic.tier.label}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded" style={{ background: surfLow, color: textSec }}>
+                    {selectedTopic.category}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded" style={{ background: surfLow, color: textSec }}>
+                    Level: {selectedTopic.level}
+                  </span>
+                </div>
+                <h2 className="text-2xl font-headline font-extrabold" style={{ color: textPri }}>
+                  {selectedTopic.name}
+                </h2>
+              </div>
+              <button
+                onClick={() => setSelectedTopic(null)}
+                className="p-1.5 rounded-xl hover:opacity-70 cursor-pointer"
+                style={{ background: surfLow, color: textSec }}>
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            {/* Prerequisite Check & Advisory Warning */}
+            {(selectedTopic.level === 'Advanced' || selectedTopic.level === 'Expert' || selectedTopic.slug === 'dynamic-programming' || selectedTopic.slug === 'graph' || selectedTopic.slug === 'segment-tree') && selectedTopic.problems_solved < 5 && (
+              <div className="mb-5 p-4 rounded-xl border flex items-start gap-3"
+                style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)' }}>
+                <span className="material-symbols-outlined text-xl shrink-0 mt-0.5" style={{ color: '#EF4444' }}>warning</span>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider" style={{ color: '#EF4444' }}>Prerequisite Advisory</h4>
+                  <p className="text-xs mt-1 leading-relaxed" style={{ color: textPri }}>
+                    This topic requires strong fundamentals in <strong>{selectedTopic.minPreReq}</strong>. Since you are currently at <strong>Novice</strong> level with {selectedTopic.problems_solved} questions solved, we recommend solidifying foundational topics first.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Progress stats */}
+            <div className="p-4 rounded-xl mb-5" style={{ background: surfLow, border: `1px solid ${border}` }}>
+              <div className="flex justify-between items-center text-xs mb-2">
+                <span style={{ color: textSec }}>Problems Solved</span>
+                <span className="font-bold" style={{ color: textPri }}>{selectedTopic.problems_solved}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs mb-2">
+                <span style={{ color: textSec }}>Next Mastery Target</span>
+                <span className="font-bold" style={{ color: selectedTopic.tier.color }}>
+                  {selectedTopic.tier.next ? `${selectedTopic.tier.next} solved` : 'Milestone achieved'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span style={{ color: textSec }}>Prerequisites</span>
+                <span className="font-semibold" style={{ color: textPri }}>{selectedTopic.minPreReq}</span>
+              </div>
+            </div>
+
+            {/* Core Concepts */}
+            <div className="mb-6">
+              <h4 className="text-xs font-bold uppercase tracking-wider mb-2.5" style={{ color: textSec }}>Key Concepts You Will Master</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {selectedTopic.keyConcepts.map((c, idx) => (
+                  <div key={idx} className="flex items-center gap-2 p-2 rounded-lg text-xs" style={{ background: surfLow, color: textPri }}>
+                    <span className="material-symbols-outlined text-sm" style={{ color: '#6366F1' }}>check_circle</span>
+                    <span className="truncate">{c}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t" style={{ borderColor: border }}>
+              <button
+                onClick={() => setSelectedTopic(null)}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold hover:opacity-80 cursor-pointer"
+                style={{ background: surfLow, color: textSec }}>
+                Close
+              </button>
+              <button
+                onClick={() => handleStartLearning(selectedTopic)}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all hover:opacity-90 active:scale-95 cursor-pointer shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)', color: '#FFFFFF' }}>
+                <span className="material-symbols-outlined text-sm font-bold">school</span>
+                <span>{selectedTopic.problems_solved > 0 ? 'Continue Learning Topic' : 'Start Learning Topic'}</span>
+                <span className="material-symbols-outlined text-xs">arrow_forward</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       <SignInModal
         isOpen={showSignIn}
