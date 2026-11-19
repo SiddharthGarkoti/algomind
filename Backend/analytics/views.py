@@ -147,31 +147,6 @@ class DashboardView(APIView):
             .prefetch_related('topic_stats')
         )
 
-        # Auto-sync streak if any connected platform has streak == 0 or max_streak == 0
-        needs_re_eval = False
-        for p in profiles:
-            if hasattr(p, 'stats') and p.stats and (p.stats.streak == 0 or getattr(p.stats, 'max_streak', 0) == 0):
-                try:
-                    raw = fetch_stats(p.platform_name, p.handle)
-                    st = raw.get('streak', 0)
-                    mst = raw.get('max_streak', st)
-                    if st > 0 or mst > 0:
-                        p.stats.streak = st
-                        p.stats.max_streak = mst
-                        p.stats.save(update_fields=['streak', 'max_streak'])
-                        needs_re_eval = True
-                except Exception:
-                    pass
-
-        if needs_re_eval:
-            # Re-read to get updated stats
-            profiles = list(
-                PlatformProfile.objects
-                .filter(user=request.user)
-                .select_related('stats')
-                .prefetch_related('topic_stats')
-            )
-
         data = PlatformProfileSerializer(profiles, many=True).data
 
         rated_platforms = [p for p in data if p.get('stats') and p['stats'].get('rating', 0) > 0]

@@ -19,9 +19,75 @@ import json
 import sqlite3
 
 
+# ── Static Security Analysis ──────────────────────────────────────────────────
+_PYTHON_BLOCKED = re.compile(
+    r'import\s+os\b|import\s+subprocess\b|import\s+socket\b|import\s+sys\b'
+    r'|import\s+shutil\b|import\s+ctypes\b|import\s+signal\b|import\s+resource\b'
+    r'|__import__\s*\(|importlib|__builtins__|__subclasses__'
+    r'|\beval\s*\(|\bexec\s*\(|\bcompile\s*\('
+    r'|\bopen\s*\(|\bos\s*\.\s*|\bsubprocess\s*\.\s*|\bsocket\s*\.\s*|shutil\.'
+    r'|pty\.|pexpect\.|multiprocessing\.',
+    re.IGNORECASE,
+)
+
+_CPP_BLOCKED = re.compile(
+    r'\bsystem\s*\(|\bpopen\s*\(|\bexecv[ep]?\s*\(|\bfork\s*\('
+    r'|<\s*cstdlib\s*>|<\s*unistd\.h\s*>|<\s*sys/|WinExec|ShellExecute'
+    r'|CreateProcess|LoadLibrary',
+    re.IGNORECASE,
+)
+
+_JAVA_BLOCKED = re.compile(
+    r'Runtime\.getRuntime\(\)\.exec|ProcessBuilder|System\.exit'
+    r'|Class\.forName|Runtime\.exec|java\.lang\.reflect',
+    re.IGNORECASE,
+)
+
+_JS_BLOCKED = re.compile(
+    r'\brequire\s*\(\s*["\']child_process|require\s*\(\s*["\']fs["\']'
+    r'|require\s*\(\s*["\']os["\']|exec\s*\(|execSync\s*\(|spawnSync\s*\('
+    r'|__dirname|__filename|process\.env',
+    re.IGNORECASE,
+)
+
+
+def _check_safe(code: str, lang: str) -> str | None:
+    """Return error string if code is unsafe, None if safe."""
+    if lang in ('python', 'py', 'python3'):
+        m = _PYTHON_BLOCKED.search(code)
+        if m:
+            return f"Blocked: unsafe pattern detected ({m.group(0).strip()!r}). System access is not allowed."
+    elif lang in ('cpp', 'c++', 'c'):
+        m = _CPP_BLOCKED.search(code)
+        if m:
+            return f"Blocked: unsafe C++ pattern ({m.group(0).strip()!r}). System calls are not allowed."
+    elif lang == 'java':
+        m = _JAVA_BLOCKED.search(code)
+        if m:
+            return f"Blocked: unsafe Java pattern ({m.group(0).strip()!r}). Runtime exec is not allowed."
+    elif lang in ('javascript', 'js', 'node'):
+        m = _JS_BLOCKED.search(code)
+        if m:
+            return f"Blocked: unsafe JS pattern ({m.group(0).strip()!r}). Filesystem/process access is not allowed."
+    return None
+
+
 def execute_code(language: str, code: str, stdin: str = '', schema: str = '', timeout: int = 5) -> dict:
     lang = (language or 'cpp').lower().strip()
     start_time = time.time()
+
+    # Static safety check before any execution
+    if not lang.startswith('lld') and lang not in ('sql', 'mysql', 'postgres', 'postgresql', 'oracle'):
+        err = _check_safe(code, lang)
+        if err:
+            return {
+                'stdout': None,
+                'stderr': err,
+                'compiler_error': err,
+                'status': {'id': 6, 'description': 'Security Violation'},
+                'time': '0.000',
+                'memory': '0.0 MB',
+            }
 
     try:
         if lang in ('python', 'py', 'python3'):

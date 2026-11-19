@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db.models import Count
 from .models import CommunityPost, PostLike, PostComment
 from users.serializers import PublicUserSerializer
 
@@ -15,7 +16,7 @@ class PostCommentSerializer(serializers.ModelSerializer):
 class CommunityPostSerializer(serializers.ModelSerializer):
     author_info   = PublicUserSerializer(source='author', read_only=True)
     tag_list      = serializers.ReadOnlyField()
-    like_count    = serializers.ReadOnlyField()
+    like_count    = serializers.IntegerField(source='likes_count', read_only=True, default=0)
     comment_count = serializers.ReadOnlyField()
     liked_by_me   = serializers.SerializerMethodField()
 

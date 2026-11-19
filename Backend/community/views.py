@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import Count
 
 from .models import CommunityPost, PostLike, PostComment
 from .serializers import CommunityPostSerializer, CreatePostSerializer, PostCommentSerializer
@@ -22,7 +23,9 @@ class PostListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        qs        = CommunityPost.objects.prefetch_related('likes', 'author')
+        qs = CommunityPost.objects.select_related('author').prefetch_related('comments').annotate(
+            likes_count=Count('likes', distinct=True)
+        )
         post_type = self.request.query_params.get('type')
         if post_type:
             qs = qs.filter(post_type=post_type)

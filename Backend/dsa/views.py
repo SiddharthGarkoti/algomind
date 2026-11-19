@@ -7,6 +7,7 @@ from django.conf import settings
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from users.throttles import CodeExecThrottle
 from .models import Problem, Tag, Submission
 from .serializers import (ProblemListSerializer, ProblemDetailSerializer,
                            SubmissionSerializer, SubmissionCreateSerializer,
@@ -119,6 +120,7 @@ from .runner import execute_code
 
 class ExecuteCodeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [CodeExecThrottle]
 
     def post(self, request):
         serializer = CodeExecutionSerializer(data=request.data)

@@ -1,6 +1,7 @@
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from users.throttles import AIThrottle
 
 from dsa.models import Problem
 from .models import AIRequest
@@ -10,6 +11,7 @@ from .services import call_ai, call_ai_pro, generate_plan
 
 class _BaseAIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [AIThrottle]
     request_type = ''
     use_pro      = False
 

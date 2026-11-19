@@ -7,6 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers as drf_serializers
+from .throttles import OTPThrottle, LoginThrottle
 
 from .models import User, Notification
 from .serializers import (
@@ -56,6 +57,7 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
 class EmailLoginView(TokenObtainPairView):
     """POST /auth/login/ — accepts { email, password }"""
     serializer_class = EmailTokenObtainPairSerializer
+    throttle_classes = [LoginThrottle]
 
 
 
@@ -138,7 +140,7 @@ def _send_otp_email(email, otp):
     from email.mime.text import MIMEText
 
     user = getattr(django_settings, 'EMAIL_HOST_USER', 'AlgoMind.Support@gmail.com')
-    pwd = getattr(django_settings, 'EMAIL_HOST_PASSWORD', 'bhbaikbzcecgmyby')
+    pwd = getattr(django_settings, 'EMAIL_HOST_PASSWORD', '')
     from_header = f"AlgoMind <{user}>"
 
     msg = MIMEMultipart('alternative')
@@ -187,6 +189,7 @@ class SendOTPView(APIView):
     sends it to the given email. Rate-limited to 1 request per 60s per email.
     """
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [OTPThrottle]
 
     def post(self, request):
         email = (request.data.get('email') or '').strip().lower()
@@ -244,6 +247,7 @@ class VerifyOTPView(APIView):
     Does NOT consume the OTP — consumption happens at register time.
     """
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [OTPThrottle]
 
     def post(self, request):
         email = (request.data.get('email') or '').strip().lower()
@@ -797,11 +801,14 @@ class SetPlanTierView(APIView):
     """
     POST /auth/set-plan-tier/
     Body: { "plan_tier": "basic" | "plus" | "pro" }
-    Allows setting the user's plan tier (for testing / subscription preview).
+    Dev/admin only. Gated behind DEBUG=True or is_staff.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        from django.conf import settings as _s
+        if not (_s.DEBUG or request.user.is_staff or request.user.is_superuser):
+            return Response({'detail': 'Forbidden.'}, status=status.HTTP_403_FORBIDDEN)
         tier = (request.data.get('plan_tier') or 'basic').strip().lower()
         if tier not in ('basic', 'plus', 'pro'):
             return Response({'detail': 'Invalid plan tier. Valid options: basic, plus, pro.'}, status=status.HTTP_400_BAD_REQUEST)
