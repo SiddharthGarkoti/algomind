@@ -751,9 +751,11 @@ const SLUG_TO_ID = {
   'string':              'twoptr-1',
   'tree':                'trees-1',
   'binary-tree':         'trees-1',
+  'binary-search-tree':  'trees-2',
   'graph':               'graphs-1',
   'depth-first-search':  'graphs-1',
   'breadth-first-search':'graphs-1',
+  'shortest-path':       'graphs-2',
   'binary-search':       'bsearch-1',
   'hash-table':          'hash-1',
   'two-pointers':        'twoptr-1',
@@ -770,6 +772,55 @@ const SLUG_TO_ID = {
   'math':                'math-1',
   'number-theory':       'math-1',
   'recursion':           'backtrack-1',
+  'trie':                'trees-2',
+  'segment-tree':        'trees-2',
+};
+
+/* Map: topic slug → Master II advanced topic id (Higher difficulty & Hard LeetCode questions) */
+const SLUG_TO_MASTER_II = {
+  'array':                 'arrays-2',
+  'arrays':                'arrays-2',
+  'arrays-1':              'arrays-2',
+  'dynamic-programming':   'dp-2',
+  'dp':                    'dp-2',
+  'dp-1':                  'dp-2',
+  'graph':                 'graphs-2',
+  'graphs':                'graphs-2',
+  'graphs-1':              'graphs-2',
+  'tree':                  'trees-2',
+  'trees':                 'trees-2',
+  'trees-1':               'trees-2',
+  'binary-tree':           'trees-2',
+  'binary-search-tree':    'trees-2',
+  'binary-search':         'bsearch-2',
+  'bsearch-1':             'bsearch-2',
+  'two-pointers':          'twoptr-2',
+  'twoptr-1':              'twoptr-2',
+  'sliding-window':        'twoptr-2',
+  'string':                'twoptr-2',
+  'strings':               'twoptr-2',
+  'stack':                 'stack-2',
+  'stack-1':               'stack-2',
+  'monotonic-stack':       'stack-2',
+  'hash-table':            'hash-2',
+  'hash-1':                'hash-2',
+  'hash':                  'hash-2',
+  'linked-list':           'll-2',
+  'll-1':                  'll-2',
+  'sorting':               'sort-2',
+  'sort-1':                'sort-2',
+  'greedy':                'greedy-2',
+  'greedy-1':              'greedy-2',
+  'backtracking':          'backtrack-2',
+  'backtrack-1':           'backtrack-2',
+  'bit-manipulation':      'bits-2',
+  'bits-1':                'bits-2',
+  'math':                  'math-2',
+  'math-1':                'math-2',
+  'number-theory':         'math-2',
+  'trie':                  'trees-2',
+  'shortest-path':         'graphs-2',
+  'segment-tree':          'trees-2',
 };
 
 /* Default queue if backend has no weak areas */
@@ -1059,6 +1110,7 @@ function PlanViewPage({ theme, toggleTheme }) {
   const [searchParams]  = useSearchParams();
   const topicParam      = searchParams.get('topic');
   const actionParam     = searchParams.get('action');
+  const tierParam       = searchParams.get('tier');
 
   // Plan Customization & Drawer
   const [editPlanOpen,  setEditPlanOpen]  = useState(false);
@@ -1118,15 +1170,29 @@ function PlanViewPage({ theme, toggleTheme }) {
   useEffect(() => {
     if (!topicParam || topicQueue.length === 0) return;
     const clean = topicParam.toLowerCase().trim();
-    const targetId = SLUG_TO_ID[clean] || clean;
+    const isMasteredRequest = tierParam === 'mastered' || searchParams.get('mastery') === '2';
+
+    let targetId = isMasteredRequest
+      ? (SLUG_TO_MASTER_II[clean] || SLUG_TO_ID[clean] || clean)
+      : (SLUG_TO_ID[clean] || clean);
+
+    if (!TOPIC_MAP[targetId]) {
+      targetId = SLUG_TO_ID[clean] || clean;
+    }
     if (!TOPIC_MAP[targetId]) return;
 
+    // Check if targetId is already in queue
     const foundIdx = topicQueue.indexOf(targetId);
     if (foundIdx !== -1) {
       setCurrentIdx(foundIdx);
     } else {
-      setTopicQueue(prev => [targetId, ...prev]);
-      setCurrentIdx(0);
+      // Safely insert topic at current priority position without corrupting or dropping other parts of the plan
+      setTopicQueue(prev => {
+        if (prev.includes(targetId)) return prev;
+        const next = [...prev];
+        next.splice(currentIdx, 0, targetId);
+        return next;
+      });
     }
 
     if (actionParam === 'teach' || topicParam) {
@@ -1136,7 +1202,7 @@ function PlanViewPage({ theme, toggleTheme }) {
         if (el) el.scrollIntoView({ behavior: 'smooth' });
       }, 150);
     }
-  }, [topicParam, actionParam, topicQueue.length]);
+  }, [topicParam, actionParam, tierParam, topicQueue.length]);
 
   /* ── Plan Customizer Handlers ── */
   const openPlanEditor = () => {
@@ -1208,8 +1274,8 @@ function PlanViewPage({ theme, toggleTheme }) {
   const compDone    = topic ? topic.compulsory.filter(p => verified.has(p.id)).length : 0;
   const allCompDone = topic ? compDone === topic.compulsory.length : false;
 
-  // Visible strip: current + up to 4 upcoming
-  const stripIds = topicQueue.slice(currentIdx, currentIdx + 5);
+  // Master II status: topic is an advanced level 2 or 3 module
+  const isMasterII = topic ? (topic.id.endsWith('-2') || topic.id === 'dp-3') : false;
 
   /* ── Handlers ── */
   const toggleDone = (id) => setDone(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -1302,62 +1368,62 @@ function PlanViewPage({ theme, toggleTheme }) {
     <DashboardLayout theme={theme} toggleTheme={toggleTheme}>
       <div className="max-w-3xl mx-auto pb-20">
 
-        {/* ── Topic strip & Edit Plan Trigger ── */}
-        <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
-          <div className="flex items-center gap-2 flex-wrap">
+        {/* ── Topic Strip: Full Complete Plan Order Visible ── */}
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none flex-grow min-w-0 pr-2">
             {/* Completed count badge */}
             {completedSet.size > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold"
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold shrink-0"
                 style={{ background: 'rgba(34,197,94,0.1)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.2)' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '12px', fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                 {completedSet.size} done
               </div>
             )}
-            {stripIds.map((id, i) => {
+
+            {/* Complete learning plan sequence — no parts disappear */}
+            {topicQueue.map((id, idx) => {
               const t = TOPIC_MAP[id];
               if (!t) return null;
-              const isActive = id === topicId;
+              const isActive = idx === currentIdx;
               const isPast   = completedSet.has(id);
+              const isMaster2 = id.endsWith('-2') || id === 'dp-3';
+
               return (
                 <button
-                  key={id}
-                  onClick={() => {
-                    const realIdx = topicQueue.indexOf(id);
-                    if (realIdx !== -1 && realIdx <= currentIdx) setCurrentIdx(realIdx);
-                  }}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer"
+                  key={`${id}-${idx}`}
+                  onClick={() => setCurrentIdx(idx)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0"
                   style={{
-                    background: isActive ? '#6366F1' : isPast ? (isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)') : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
-                    color: isActive ? '#fff' : isPast ? '#6366F1' : textSec,
+                    background: isActive
+                      ? (isMaster2 ? 'linear-gradient(135deg, #7C3AED, #A855F7)' : '#6366F1')
+                      : isPast
+                        ? (isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)')
+                        : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
+                    color: isActive ? '#fff' : isPast ? '#818CF8' : textSec,
                     border: `1px solid ${isActive ? 'transparent' : isPast ? 'rgba(99,102,241,0.25)' : border}`,
-                    boxShadow: isActive ? '0 4px 14px -4px rgba(99,102,241,0.55)' : 'none',
-                    opacity: i > 0 && !isActive ? 0.6 : 1,
+                    boxShadow: isActive ? '0 4px 14px -4px rgba(99,102,241,0.5)' : 'none',
                   }}
                 >
-                  {isPast && <span className="material-symbols-outlined" style={{ fontSize: '13px', fontVariationSettings: "'FILL' 1", color: '#6366F1' }}>check_circle</span>}
-                  <span className="opacity-50 mr-0.5">
-                    {isPast ? 'Done ·' : `Priority ${currentIdx + i + 1} ·`}
-                  </span>
-                  {t.name}
-                  {t.level !== 'Foundation' && (
-                    <span className="text-[8px] px-1.5 py-0.5 rounded-full ml-1"
-                      style={{ background: t.level === 'Expert' ? 'rgba(239,68,68,0.15)' : 'rgba(168,85,247,0.15)', color: t.level === 'Expert' ? '#EF4444' : '#A855F7' }}>
-                      {t.level}
+                  {isPast ? (
+                    <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1", color: '#22C55E' }}>check_circle</span>
+                  ) : (
+                    <span className="opacity-50 text-[10px]">#{idx + 1}</span>
+                  )}
+                  <span>{t.name}</span>
+                  {isMaster2 && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase"
+                      style={{ background: isActive ? 'rgba(255,255,255,0.25)' : 'rgba(168,85,247,0.2)', color: isActive ? '#fff' : '#C084FC' }}>
+                      Master II
                     </span>
                   )}
                 </button>
               );
             })}
-            {topicQueue.length > currentIdx + 5 && (
-              <span className="text-[10px] px-2 py-1 rounded-full" style={{ color: textSec, border: `1px dashed ${border}` }}>
-                +{topicQueue.length - currentIdx - 5} more
-              </span>
-            )}
           </div>
 
           <button
             onClick={openPlanEditor}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all hover:opacity-85 cursor-pointer ml-auto"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all hover:opacity-85 cursor-pointer shrink-0"
             style={{ background: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)', color: '#818CF8', border: '1px solid rgba(99,102,241,0.25)' }}>
             <span className="material-symbols-outlined text-sm">tune</span>
             <span>Edit Plan</span>
@@ -1368,14 +1434,20 @@ function PlanViewPage({ theme, toggleTheme }) {
         {teachingMode && (
           <div className="rounded-2xl p-5 mb-8 border backdrop-blur-xl animate-fade-in"
             style={{
-              background: isDark ? 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.06))' : 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(168,85,247,0.04))',
-              borderColor: isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)',
+              background: isMasterII
+                ? (isDark ? 'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(168,85,247,0.08))' : 'linear-gradient(135deg, rgba(124,58,237,0.12), rgba(168,85,247,0.05))')
+                : (isDark ? 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.06))' : 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(168,85,247,0.04))'),
+              borderColor: isMasterII
+                ? (isDark ? 'rgba(168,85,247,0.4)' : 'rgba(124,58,237,0.3)')
+                : (isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)'),
             }}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm" style={{ color: '#818CF8' }}>school</span>
-                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#818CF8' }}>
-                  Guided Teaching Session
+                <span className="material-symbols-outlined text-sm" style={{ color: isMasterII ? '#C084FC' : '#818CF8' }}>
+                  {isMasterII ? 'workspace_premium' : 'school'}
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: isMasterII ? '#C084FC' : '#818CF8' }}>
+                  {isMasterII ? 'Master II Advanced Track' : 'Guided Teaching Session'}
                 </span>
               </div>
               <button
@@ -1385,15 +1457,25 @@ function PlanViewPage({ theme, toggleTheme }) {
                 Dismiss
               </button>
             </div>
-            <h3 className="text-base font-bold mb-1" style={{ color: textPri }}>
-              Mastering {topic.name}
-            </h3>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h3 className="text-base font-bold" style={{ color: textPri }}>
+                {isMasterII ? `Master II · Advanced Curriculum: ${topic.name}` : `Mastering ${topic.name}`}
+              </h3>
+              {isMasterII && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(168,85,247,0.2)', color: '#D8B4FE', border: '1px solid rgba(168,85,247,0.3)' }}>
+                  Higher Difficulty (Hards Included)
+                </span>
+              )}
+            </div>
             <p className="text-xs leading-relaxed" style={{ color: textSec }}>
-              Absorb the fundamental concept, state representation, and invariants below before proceeding with the mandatory verified practice set.
+              {isMasterII
+                ? 'You have already verified foundational mastery in this topic. This Master II curriculum challenges you with advanced techniques, Hard-level constraints, and complex state optimizations.'
+                : 'Absorb the fundamental concept, state representation, and invariants below before proceeding with the mandatory verified practice set.'}
             </p>
 
             {/* Prerequisite warning if high level */}
-            {(topic.level === 'Advanced' || topic.level === 'Expert' || topic.id === 'dp-1' || topic.id === 'graphs-1') && !completedSet.has('arrays-1') && (
+            {!isMasterII && (topic.level === 'Advanced' || topic.level === 'Expert' || topic.id === 'dp-1' || topic.id === 'graphs-1') && !completedSet.has('arrays-1') && (
               <div className="mt-3.5 p-3 rounded-xl border flex items-start gap-2.5"
                 style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)' }}>
                 <span className="material-symbols-outlined text-base shrink-0 mt-0.5" style={{ color: '#EF4444' }}>warning</span>
@@ -1418,12 +1500,20 @@ function PlanViewPage({ theme, toggleTheme }) {
               <span className="material-symbols-outlined" style={{ color: '#6366F1', fontSize: '18px' }}>menu_book</span>
             </div>
             <div className="flex-grow">
-              <div className="flex items-center gap-2 mb-1">
-                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#6366F1' }}>Core Concept</p>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: isMasterII ? '#C084FC' : '#6366F1' }}>
+                  {isMasterII ? 'Master II Advanced Core' : 'Core Concept'}
+                </p>
                 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold"
                   style={{ background: topic.level === 'Foundation' ? 'rgba(99,102,241,0.1)' : topic.level === 'Expert' ? 'rgba(239,68,68,0.1)' : 'rgba(168,85,247,0.1)', color: topic.level === 'Foundation' ? '#6366F1' : topic.level === 'Expert' ? '#EF4444' : '#A855F7' }}>
                   {topic.level}
                 </span>
+                {isMasterII && (
+                  <span className="text-[9px] px-2 py-0.5 rounded-full font-bold"
+                    style={{ background: 'rgba(168,85,247,0.18)', color: '#D8B4FE', border: '1px solid rgba(168,85,247,0.3)' }}>
+                    Hard & Advanced Patterns
+                  </span>
+                )}
               </div>
               <h2 className="text-2xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>{topic.theory.title}</h2>
             </div>

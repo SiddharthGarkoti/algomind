@@ -215,15 +215,23 @@ function AnalyticsPage({ theme, toggleTheme }) {
 
   /* Handler: Start / Continue Learning Topic */
   const handleStartLearning = (topic) => {
-    navigate(`/plan-view?topic=${topic.slug}&action=teach`);
+    const isMastered = topic.tier?.key === 'mastered' || topic.tier?.key === 'proficient' || topic.problems_solved >= 20;
+    navigate(`/plan-view?topic=${topic.slug}&action=teach${isMastered ? '&tier=mastered' : ''}`);
   };
 
   return (
     <DashboardLayout theme={theme} toggleTheme={toggleTheme}>
-      <div className="space-y-7 max-w-6xl mx-auto pb-12">
-        <div>
-          <h1 className="text-3xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>Analytics & Mastery</h1>
-          <p className="text-sm mt-1" style={{ color: textSec }}>Deep dive into your algorithmic performance, platform verification, and curriculum progression</p>
+      <div className="space-y-5 max-w-6xl mx-auto pb-12">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>
+              Analytics & Mastery
+            </h1>
+            <p className="text-xs sm:text-sm mt-0.5" style={{ color: textSec }}>
+              Performance calibration, verified problems, and curriculum progression
+            </p>
+          </div>
         </div>
 
         {/* Loading skeleton */}
@@ -236,20 +244,20 @@ function AnalyticsPage({ theme, toggleTheme }) {
 
         {/* Guest sign-in banner */}
         {isGuest && (
-          <div className="flex items-center justify-between gap-4 rounded-2xl p-4 border"
+          <div className="flex items-center justify-between gap-4 rounded-xl p-3.5 border"
             style={{ background: 'rgba(99,102,241,0.06)', borderColor: 'rgba(99,102,241,0.2)' }}>
             <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-2xl shrink-0" style={{ color: '#6366F1' }}>person_off</span>
+              <span className="material-symbols-outlined text-xl shrink-0" style={{ color: '#6366F1' }}>person_off</span>
               <div>
-                <p className="text-sm font-bold" style={{ color: textPri }}>You're in guest mode</p>
-                <p className="text-xs mt-0.5" style={{ color: textSec }}>
+                <p className="text-xs font-bold" style={{ color: textPri }}>You're in guest mode</p>
+                <p className="text-[11px] mt-0.5" style={{ color: textSec }}>
                   Sign in to save your progress, track history, and unlock full analytics.
                 </p>
               </div>
             </div>
             <button
               onClick={() => setShowSignIn(true)}
-              className="shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 cursor-pointer"
+              className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:opacity-90 cursor-pointer"
               style={{ background: '#6366F1', color: '#fff' }}>
               Sign In
             </button>
@@ -258,13 +266,13 @@ function AnalyticsPage({ theme, toggleTheme }) {
 
         {/* No platforms banner */}
         {platforms !== null && !hasRealData && (
-          <div className="flex items-center gap-4 rounded-2xl p-4 border"
+          <div className="flex items-center gap-4 rounded-xl p-3.5 border"
             style={{ background: 'rgba(99,102,241,0.06)', borderColor: 'rgba(99,102,241,0.2)' }}>
-            <span className="material-symbols-outlined text-2xl shrink-0" style={{ color: '#6366F1' }}>link_off</span>
+            <span className="material-symbols-outlined text-xl shrink-0" style={{ color: '#6366F1' }}>link_off</span>
             <div>
-              <p className="text-sm font-bold" style={{ color: textPri }}>No platforms connected yet</p>
-              <p className="text-xs mt-0.5" style={{ color: textSec }}>
-                Go to the home page or settings, enter your LeetCode or Codeforces username and click <strong>Analyze My Profile</strong>.
+              <p className="text-xs font-bold" style={{ color: textPri }}>No platforms connected yet</p>
+              <p className="text-[11px] mt-0.5" style={{ color: textSec }}>
+                Connect your LeetCode or Codeforces account in Settings to sync verified submissions and topics.
               </p>
             </div>
           </div>
@@ -272,17 +280,88 @@ function AnalyticsPage({ theme, toggleTheme }) {
 
         {platforms !== null && (
           <>
-            {/* ── Row 1: Problems Solved + Connected Platforms ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* ── KPI Metrics Strip (Apple Activity & Microsoft Fluent Space Optimization) ── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-xl p-3.5 flex flex-col justify-between"
+                style={{ background: surface, border: `1px solid ${border}` }}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: textSec }}>Problems Solved</span>
+                  <span className="material-symbols-outlined text-sm" style={{ color: '#818CF8' }}>check_circle</span>
+                </div>
+                <div className="flex items-baseline gap-1.5 my-1">
+                  <span className="text-2xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>
+                    {currentStats.total}
+                  </span>
+                  <span className="text-xs" style={{ color: textSec }}>solved</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] font-medium" style={{ color: textSec }}>
+                  <span style={{ color: '#6366F1' }}>{currentStats.easy}E</span> ·
+                  <span style={{ color: '#A855F7' }}>{currentStats.medium}M</span> ·
+                  <span style={{ color: '#C084FC' }}>{currentStats.hard}H</span>
+                </div>
+              </div>
 
-              {/* Problems Solved donut */}
-              <div className="rounded-2xl p-6" style={{ background: surface, border: `1px solid ${border}` }}>
-                <div className="flex items-center justify-between mb-5">
-                  <h2 className="text-sm font-headline font-bold" style={{ color: textPri }}>Problems Solved</h2>
-                  <div className="flex gap-1 p-1 rounded-xl" style={{ background: surfLow, border: `1px solid ${border}` }}>
+              <div className="rounded-xl p-3.5 flex flex-col justify-between"
+                style={{ background: surface, border: `1px solid ${border}` }}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: textSec }}>Consistency Streak</span>
+                  <span className="material-symbols-outlined text-sm" style={{ color: '#F59E0B' }}>local_fire_department</span>
+                </div>
+                <div className="flex items-baseline gap-1.5 my-1">
+                  <span className="text-2xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>
+                    {currentStats.currentStreak}d
+                  </span>
+                  <span className="text-xs" style={{ color: textSec }}>active streak</span>
+                </div>
+                <p className="text-[10px] font-medium" style={{ color: textSec }}>
+                  Best: <strong style={{ color: textPri }}>{currentStats.maxStreak} days</strong>
+                </p>
+              </div>
+
+              <div className="rounded-xl p-3.5 flex flex-col justify-between"
+                style={{ background: surface, border: `1px solid ${border}` }}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: textSec }}>Contest Standing</span>
+                  <span className="material-symbols-outlined text-sm" style={{ color: '#A855F7' }}>military_tech</span>
+                </div>
+                <div className="flex items-baseline gap-1.5 my-1">
+                  <span className="text-2xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>
+                    {currentStats.rating > 0 ? currentStats.rating : 'Unrated'}
+                  </span>
+                </div>
+                <p className="text-[10px] font-medium" style={{ color: textSec }}>
+                  Verified platform rating
+                </p>
+              </div>
+
+              <div className="rounded-xl p-3.5 flex flex-col justify-between"
+                style={{ background: surface, border: `1px solid ${border}` }}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: textSec }}>Ecosystem Sync</span>
+                  <span className="material-symbols-outlined text-sm" style={{ color: '#22C55E' }}>sync_saved_locally</span>
+                </div>
+                <div className="flex items-baseline gap-1.5 my-1">
+                  <span className="text-2xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>
+                    {platforms ? platforms.length : 0}
+                  </span>
+                  <span className="text-xs" style={{ color: textSec }}>connected</span>
+                </div>
+                <div className="truncate text-[10px] font-medium" style={{ color: textSec }}>
+                  {(platforms ?? []).map(p => p.platform_name).join(' · ') || 'No platforms'}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Row 1: Problem Distribution & Platform Accounts ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+              {/* Problem breakdown card */}
+              <div className="rounded-2xl p-5 flex flex-col justify-between" style={{ background: surface, border: `1px solid ${border}` }}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-headline font-bold" style={{ color: textPri }}>Problem Breakdown</h2>
+                  <div className="flex gap-1 p-0.5 rounded-lg" style={{ background: surfLow, border: `1px solid ${border}` }}>
                     {availablePlatforms.map(({ key, label }) => (
                       <button key={key} onClick={() => setSolvedTab(key)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                        className="px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer"
                         style={solvedTab === key ? { background: '#6366F1', color: '#fff' } : { color: textSec }}>
                         {label}
                       </button>
@@ -290,7 +369,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-5 my-auto">
                   <SolvedDonut
                     easy={currentStats.easy}
                     medium={currentStats.medium}
@@ -299,18 +378,18 @@ function AnalyticsPage({ theme, toggleTheme }) {
                     textPri={textPri}
                     textSec={textSec}
                   />
-                  <div className="flex-grow space-y-3">
+                  <div className="flex-grow space-y-2.5">
                     {[
                       { label: 'Easy',   val: currentStats.easy,   color: '#6366F1' },
                       { label: 'Medium', val: currentStats.medium, color: '#A855F7' },
                       { label: 'Hard',   val: currentStats.hard,   color: '#C084FC' },
                     ].map(({ label, val, color }) => (
                       <div key={label}>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span style={{ color, fontWeight: 700 }}>{label}</span>
-                          <span style={{ color: textSec }}>{val}</span>
+                        <div className="flex justify-between text-xs mb-0.5">
+                          <span style={{ color, fontWeight: 600 }}>{label}</span>
+                          <span className="font-bold" style={{ color: textPri }}>{val}</span>
                         </div>
-                        <div className="h-2 rounded-full overflow-hidden" style={{ background: surfLow }}>
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: surfLow }}>
                           <div className="h-full rounded-full transition-all duration-700"
                             style={{ width: `${currentStats.total > 0 ? Math.round((val/currentStats.total)*100) : 0}%`, background: color }} />
                         </div>
@@ -318,75 +397,65 @@ function AnalyticsPage({ theme, toggleTheme }) {
                     ))}
                     {currentStats.url && (
                       <a href={currentStats.url} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all hover:opacity-75 mt-1"
+                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-lg transition-all hover:opacity-75 mt-0.5"
                         style={{ background: 'rgba(99,102,241,0.1)', color: '#818CF8' }}>
-                        View profile
-                        <span className="material-symbols-outlined text-xs">open_in_new</span>
+                        <span>View platform profile</span>
+                        <span className="material-symbols-outlined text-[10px]">open_in_new</span>
                       </a>
                     )}
                   </div>
                 </div>
-
-                <div className="mt-5 pt-4 flex items-center gap-4 flex-wrap" style={{ borderTop: `1px solid ${border}` }}>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8' }}>Current Streak</span>
-                    <span className="text-sm font-bold tracking-tight" style={{ color: textPri }}>{currentStats.currentStreak}d</span>
-                  </div>
-                  <div className="h-3 w-px" style={{ background: border }} />
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded" style={{ background: 'rgba(168,85,247,0.12)', color: '#A855F7' }}>Max Streak</span>
-                    <span className="text-sm font-bold tracking-tight" style={{ color: textPri }}>{currentStats.maxStreak}d</span>
-                  </div>
-                  <div className="h-3 w-px" style={{ background: border }} />
-                  <span className="text-xs font-medium" style={{ color: textSec }}>Contest Rating: {currentStats.rating > 0 ? currentStats.rating : 'Unrated'}</span>
-                </div>
               </div>
 
-              {/* Connected Platforms */}
-              <div className="rounded-2xl p-6" style={{ background: surface, border: `1px solid ${border}` }}>
-                <h2 className="text-sm font-headline font-bold mb-5" style={{ color: textPri }}>Connected Platforms</h2>
-                <div className="space-y-4">
+              {/* Connected accounts card */}
+              <div className="rounded-2xl p-5 flex flex-col justify-between" style={{ background: surface, border: `1px solid ${border}` }}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-headline font-bold" style={{ color: textPri }}>Connected Platforms</h2>
+                  <span className="text-[11px]" style={{ color: textSec }}>Auto-synced</span>
+                </div>
+
+                <div className="space-y-2.5 my-auto">
                   {(platforms ?? []).length === 0 ? (
-                    <div className="p-6 rounded-xl text-center" style={{ background: surfLow, border: `1px solid ${border}` }}>
-                      <p className="text-xs" style={{ color: textSec }}>No platforms connected yet. Connect in Settings or Home to sync data.</p>
+                    <div className="p-4 rounded-xl text-center" style={{ background: surfLow, border: `1px solid ${border}` }}>
+                      <p className="text-xs" style={{ color: textSec }}>No platforms connected yet. Connect in Settings to sync.</p>
                     </div>
                   ) : (
                     platforms.map(p => {
                       const s = p.stats ?? {};
                       return (
-                        <div key={p.id} className="rounded-xl p-4 sm:p-5"
-                          style={{ background: surfLow, border: `1px solid ${border}` }}>
-                          <div className="flex items-center justify-between mb-4">
-                            <div>
-                              <p className="text-sm font-bold capitalize" style={{ color: textPri }}>{p.platform_name}</p>
-                              <p className="text-xs" style={{ color: textSec }}>@{p.handle}</p>
-                            </div>
+                        <div key={p.id} className="rounded-xl p-3.5 border flex items-center justify-between gap-3"
+                          style={{ background: surfLow, borderColor: border }}>
+                          <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
-                                style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#C084FC', border: '1px solid rgba(168, 85, 247, 0.25)' }}>Connected</span>
-                              <button
-                                disabled={refreshing === p.platform_name}
-                                onClick={() => refreshPlatform(p.platform_name)}
-                                className="p-1.5 rounded-lg transition-all hover:opacity-70 disabled:opacity-40 cursor-pointer"
-                                style={{ background: 'rgba(99,102,241,0.1)' }}
-                                title="Refresh stats">
-                                <span className={`material-symbols-outlined text-sm ${refreshing === p.platform_name ? 'animate-spin' : ''}`}
-                                  style={{ color: '#818CF8' }}>sync</span>
-                              </button>
+                              <p className="text-xs font-bold capitalize" style={{ color: textPri }}>{p.platform_name}</p>
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                                style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#C084FC', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
+                                Connected
+                              </span>
                             </div>
+                            <p className="text-[11px] truncate mt-0.5" style={{ color: textSec }}>
+                              @{p.handle} · {s.problems_solved ?? 0} solved · {s.streak ?? 0}d streak
+                            </p>
                           </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                            {[
-                              { label: 'Solved',         val: s.problems_solved ?? 0, color: textPri },
-                              { label: 'Current Streak', val: `${s.streak ?? 0}d`, color: '#818CF8' },
-                              { label: 'Contests',       val: s.contests ?? 0, color: textPri },
-                              { label: 'Rating',         val: s.rating > 0 ? s.rating : '—', color: '#C084FC' },
-                            ].map(({ label, val, color }) => (
-                              <div key={label} className="p-2.5 rounded-xl" style={{ background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
-                                <p className="text-lg font-headline font-bold" style={{ color }}>{val}</p>
-                                <p className="text-[10px] uppercase tracking-wider mt-0.5" style={{ color: textSec }}>{label}</p>
-                              </div>
-                            ))}
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              disabled={refreshing === p.platform_name}
+                              onClick={() => refreshPlatform(p.platform_name)}
+                              className="p-1.5 rounded-lg transition-all hover:opacity-75 disabled:opacity-40 cursor-pointer"
+                              style={{ background: 'rgba(99,102,241,0.1)' }}
+                              title="Refresh stats">
+                              <span className={`material-symbols-outlined text-sm ${refreshing === p.platform_name ? 'animate-spin' : ''}`}
+                                style={{ color: '#818CF8' }}>sync</span>
+                            </button>
+                            <a
+                              href={p.platform_name === 'leetcode' ? `https://leetcode.com/${p.handle}` : `https://codeforces.com/profile/${p.handle}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 rounded-lg transition-all hover:opacity-75"
+                              style={{ background: 'rgba(255,255,255,0.05)', color: textSec }}>
+                              <span className="material-symbols-outlined text-sm">open_in_new</span>
+                            </a>
                           </div>
                         </div>
                       );
@@ -397,43 +466,43 @@ function AnalyticsPage({ theme, toggleTheme }) {
             </div>
 
             {/* ── Row 2: Curriculum Topic Mastery (Two-Column Mastered vs Novice/Intermediate) ── */}
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="space-y-3.5 pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <div>
-                  <h2 className="text-xl font-headline font-bold tracking-tight" style={{ color: textPri }}>
+                  <h2 className="text-lg font-headline font-bold tracking-tight" style={{ color: textPri }}>
                     Curriculum & Topic Mastery
                   </h2>
-                  <p className="text-xs mt-0.5" style={{ color: textSec }}>
-                    Track your mastered algorithmic foundations alongside beginner and intermediate focus areas.
+                  <p className="text-xs" style={{ color: textSec }}>
+                    Your mastered foundations alongside novice and intermediate focus areas.
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                 {/* ── Left Side: Mastered Topics ── */}
-                <div className="rounded-2xl p-6 flex flex-col justify-between"
+                <div className="rounded-2xl p-5 flex flex-col justify-between"
                   style={{
                     background: surface,
                     border: `1px solid ${border}`,
-                    boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 20px -2px rgba(0,0,0,0.04)',
+                    boxShadow: isDark ? '0 4px 16px -2px rgba(0,0,0,0.3)' : '0 4px 16px -2px rgba(0,0,0,0.03)',
                   }}>
                   <div>
-                    <div className="flex items-center justify-between mb-4 pb-3 border-b" style={{ borderColor: border }}>
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b" style={{ borderColor: border }}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                           style={{ background: isDark ? 'rgba(168,85,247,0.15)' : 'rgba(168,85,247,0.1)' }}>
-                          <span className="material-symbols-outlined text-base" style={{ color: '#C084FC' }}>verified</span>
+                          <span className="material-symbols-outlined text-sm" style={{ color: '#C084FC' }}>verified</span>
                         </div>
                         <div>
-                          <h3 className="text-sm font-headline font-bold" style={{ color: textPri }}>
-                            Mastered Topics
+                          <h3 className="text-xs font-headline font-bold" style={{ color: textPri }}>
+                            Mastered & Proficient
                           </h3>
-                          <p className="text-[11px]" style={{ color: textSec }}>
+                          <p className="text-[10px]" style={{ color: textSec }}>
                             Demonstrated algorithmic depth
                           </p>
                         </div>
                       </div>
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
                         style={{
                           background: isDark ? 'rgba(168,85,247,0.12)' : 'rgba(168,85,247,0.08)',
                           color: isDark ? '#D8B4FE' : '#7E22CE',
@@ -443,27 +512,27 @@ function AnalyticsPage({ theme, toggleTheme }) {
                       </span>
                     </div>
 
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                       {displayedMastered.map(t => (
                         <div
                           key={t.slug}
                           onClick={() => setSelectedTopic(t)}
-                          className="group p-3.5 rounded-xl transition-all duration-200 hover:scale-[1.008] cursor-pointer flex items-center justify-between gap-3 border"
+                          className="group p-3 rounded-xl transition-all duration-200 hover:scale-[1.008] cursor-pointer flex items-center justify-between gap-3 border"
                           style={{
                             background: surfLow,
                             borderColor: border,
                           }}>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="text-sm font-bold truncate group-hover:text-purple-400 transition-colors" style={{ color: textPri }}>
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <h4 className="text-xs font-bold truncate group-hover:text-purple-400 transition-colors" style={{ color: textPri }}>
                                 {t.name}
                               </h4>
-                              <span className="text-[10px] font-medium px-2 py-0.5 rounded"
+                              <span className="text-[9px] font-medium px-1.5 py-0.2 rounded"
                                 style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', color: textSec }}>
                                 {t.category}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs" style={{ color: textSec }}>
+                            <div className="flex items-center gap-2 text-[11px]" style={{ color: textSec }}>
                               <span className="font-semibold" style={{ color: isDark ? '#E2E8F0' : '#1E293B' }}>
                                 {t.problems_solved} solved
                               </span>
@@ -472,8 +541,8 @@ function AnalyticsPage({ theme, toggleTheme }) {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2.5 shrink-0">
-                            <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                               style={{
                                 background: t.tier.bg,
                                 color: t.tier.color,
@@ -481,7 +550,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                               }}>
                               {t.tier.label}
                             </span>
-                            <span className="material-symbols-outlined text-sm transition-transform duration-200 group-hover:translate-x-1"
+                            <span className="material-symbols-outlined text-xs transition-transform duration-200 group-hover:translate-x-1"
                               style={{ color: textSec }}>
                               arrow_forward
                             </span>
@@ -490,7 +559,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                       ))}
 
                       {masteredTopics.length === 0 && (
-                        <div className="text-center py-10" style={{ color: textSec }}>
+                        <div className="text-center py-8" style={{ color: textSec }}>
                           <p className="text-xs">Solve 20+ problems in foundational areas to unlock Mastered status.</p>
                         </div>
                       )}
@@ -500,7 +569,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                   {masteredTopics.length > 5 && (
                     <button
                       onClick={() => setShowAllMastered(prev => !prev)}
-                      className="w-full mt-4 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:opacity-90 active:scale-[0.99]"
+                      className="w-full mt-3 py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer hover:opacity-90 active:scale-[0.99]"
                       style={{ background: surfLow, color: textPri, border: `1px solid ${border}` }}>
                       <span>{showAllMastered ? 'Show Less' : `Show More Mastered (${masteredTopics.length})`}</span>
                       <span className="material-symbols-outlined text-sm">{showAllMastered ? 'expand_less' : 'expand_more'}</span>
@@ -509,29 +578,29 @@ function AnalyticsPage({ theme, toggleTheme }) {
                 </div>
 
                 {/* ── Right Side: Novice & Intermediate (Focus Areas) ── */}
-                <div className="rounded-2xl p-6 flex flex-col justify-between"
+                <div className="rounded-2xl p-5 flex flex-col justify-between"
                   style={{
                     background: surface,
                     border: `1px solid ${border}`,
-                    boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 20px -2px rgba(0,0,0,0.04)',
+                    boxShadow: isDark ? '0 4px 16px -2px rgba(0,0,0,0.3)' : '0 4px 16px -2px rgba(0,0,0,0.03)',
                   }}>
                   <div>
-                    <div className="flex items-center justify-between mb-4 pb-3 border-b" style={{ borderColor: border }}>
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b" style={{ borderColor: border }}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                           style={{ background: isDark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.1)' }}>
-                          <span className="material-symbols-outlined text-base" style={{ color: '#818CF8' }}>target</span>
+                          <span className="material-symbols-outlined text-sm" style={{ color: '#818CF8' }}>target</span>
                         </div>
                         <div>
-                          <h3 className="text-sm font-headline font-bold" style={{ color: textPri }}>
+                          <h3 className="text-xs font-headline font-bold" style={{ color: textPri }}>
                             Novice & Intermediate
                           </h3>
-                          <p className="text-[11px]" style={{ color: textSec }}>
-                            Areas to practice and develop
+                          <p className="text-[10px]" style={{ color: textSec }}>
+                            High-growth focus areas to practice
                           </p>
                         </div>
                       </div>
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
                         style={{
                           background: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)',
                           color: isDark ? '#A5B4FC' : '#4338CA',
@@ -541,27 +610,27 @@ function AnalyticsPage({ theme, toggleTheme }) {
                       </span>
                     </div>
 
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                       {displayedNovice.map(t => (
                         <div
                           key={t.slug}
                           onClick={() => setSelectedTopic(t)}
-                          className="group p-3.5 rounded-xl transition-all duration-200 hover:scale-[1.008] cursor-pointer flex items-center justify-between gap-3 border"
+                          className="group p-3 rounded-xl transition-all duration-200 hover:scale-[1.008] cursor-pointer flex items-center justify-between gap-3 border"
                           style={{
                             background: surfLow,
                             borderColor: border,
                           }}>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="text-sm font-bold truncate group-hover:text-indigo-400 transition-colors" style={{ color: textPri }}>
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <h4 className="text-xs font-bold truncate group-hover:text-indigo-400 transition-colors" style={{ color: textPri }}>
                                 {t.name}
                               </h4>
-                              <span className="text-[10px] font-medium px-2 py-0.5 rounded"
+                              <span className="text-[9px] font-medium px-1.5 py-0.2 rounded"
                                 style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', color: textSec }}>
                                 {t.category}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs" style={{ color: textSec }}>
+                            <div className="flex items-center gap-2 text-[11px]" style={{ color: textSec }}>
                               <span className="font-semibold" style={{ color: isDark ? '#E2E8F0' : '#1E293B' }}>
                                 {t.problems_solved} solved
                               </span>
@@ -570,8 +639,8 @@ function AnalyticsPage({ theme, toggleTheme }) {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2.5 shrink-0">
-                            <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                               style={{
                                 background: t.tier.bg,
                                 color: t.tier.color,
@@ -579,7 +648,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                               }}>
                               {t.tier.label}
                             </span>
-                            <span className="material-symbols-outlined text-sm transition-transform duration-200 group-hover:translate-x-1"
+                            <span className="material-symbols-outlined text-xs transition-transform duration-200 group-hover:translate-x-1"
                               style={{ color: textSec }}>
                               arrow_forward
                             </span>
@@ -588,7 +657,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                       ))}
 
                       {noviceTopics.length === 0 && (
-                        <div className="text-center py-10" style={{ color: textSec }}>
+                        <div className="text-center py-8" style={{ color: textSec }}>
                           <p className="text-xs">Outstanding! All curriculum topics have reached advanced proficiency.</p>
                         </div>
                       )}
@@ -598,7 +667,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                   {noviceTopics.length > 5 && (
                     <button
                       onClick={() => setShowAllNovice(prev => !prev)}
-                      className="w-full mt-4 py-2.5 px-4 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:opacity-90 active:scale-[0.99]"
+                      className="w-full mt-3 py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1 cursor-pointer hover:opacity-90 active:scale-[0.99]"
                       style={{ background: surfLow, color: textPri, border: `1px solid ${border}` }}>
                       <span>{showAllNovice ? 'Show Less' : `Show More Focus Areas (${noviceTopics.length})`}</span>
                       <span className="material-symbols-outlined text-sm">{showAllNovice ? 'expand_less' : 'expand_more'}</span>
@@ -608,16 +677,19 @@ function AnalyticsPage({ theme, toggleTheme }) {
               </div>
             </div>
 
-            {/* ── Row 3: Recent Submissions ── */}
-            <div className="rounded-2xl p-6" style={{ background: surface, border: `1px solid ${border}` }}>
-              <h2 className="text-sm font-headline font-bold mb-4" style={{ color: textPri }}>Recent Accepted Submissions</h2>
+            {/* ── Row 3: Recent Accepted Submissions (Space-Optimized 2-Column Grid) ── */}
+            <div className="rounded-2xl p-5" style={{ background: surface, border: `1px solid ${border}` }}>
+              <div className="flex items-center justify-between mb-3.5">
+                <h2 className="text-xs font-headline font-bold uppercase tracking-wider" style={{ color: textPri }}>Recent Accepted Submissions</h2>
+                <span className="text-[11px]" style={{ color: textSec }}>Verified on platform</span>
+              </div>
               {recentSubs.length === 0 ? (
-                <p className="text-sm py-4 text-center" style={{ color: textSec }}>
+                <p className="text-xs py-4 text-center" style={{ color: textSec }}>
                   No recent submissions found. Connect a platform and solve problems to see them here.
                 </p>
               ) : (
-                <div className="space-y-2">
-                  {recentSubs.slice(0, 15).map((sub, i) => {
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {recentSubs.slice(0, 10).map((sub, i) => {
                     const platformColor = sub.platform === 'leetcode' ? '#4F46E5' : '#7C3AED';
                     const platformLabel = sub.platform === 'leetcode' ? 'LC' : 'CF';
                     const dateStr = sub.timestamp
@@ -629,24 +701,24 @@ function AnalyticsPage({ theme, toggleTheme }) {
                         href={sub.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3.5 rounded-xl transition-all hover:border-purple-500/30 block"
-                        style={{ background: surfLow, textDecoration: 'none' }}
+                        className="flex items-center justify-between p-2.5 rounded-xl transition-all hover:border-purple-500/30 border block"
+                        style={{ background: surfLow, borderColor: border, textDecoration: 'none' }}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold text-white shrink-0"
                             style={{ background: platformColor }}>
                             {platformLabel}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold truncate" style={{ color: textPri }}>
+                            <p className="text-xs font-semibold truncate" style={{ color: textPri }}>
                               {sub.title}
                             </p>
-                            <p className="text-xs" style={{ color: textSec }}>
+                            <p className="text-[10px]" style={{ color: textSec }}>
                               {sub.language} · {dateStr}
                             </p>
                           </div>
                         </div>
-                        <span className="text-xs font-semibold px-2.5 py-1 rounded-lg shrink-0 ml-2"
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded shrink-0 ml-2"
                           style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#818CF8' }}>
                           Accepted
                         </span>
@@ -748,14 +820,30 @@ function AnalyticsPage({ theme, toggleTheme }) {
                 style={{ background: surfLow, color: textSec }}>
                 Close
               </button>
-              <button
-                onClick={() => handleStartLearning(selectedTopic)}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all hover:opacity-90 active:scale-95 cursor-pointer shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)', color: '#FFFFFF' }}>
-                <span className="material-symbols-outlined text-sm font-bold">school</span>
-                <span>{selectedTopic.problems_solved > 0 ? 'Continue Learning Topic' : 'Start Learning Topic'}</span>
-                <span className="material-symbols-outlined text-xs">arrow_forward</span>
-              </button>
+              {(() => {
+                const isMastered = selectedTopic.tier?.key === 'mastered' || selectedTopic.tier?.key === 'proficient' || selectedTopic.problems_solved >= 20;
+                return (
+                  <button
+                    onClick={() => handleStartLearning(selectedTopic)}
+                    className="px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all hover:opacity-90 active:scale-95 cursor-pointer shadow-lg"
+                    style={{
+                      background: isMastered
+                        ? 'linear-gradient(135deg, #7C3AED, #A855F7)'
+                        : 'linear-gradient(135deg, #6366F1, #818CF8)',
+                      color: '#FFFFFF'
+                    }}>
+                    <span className="material-symbols-outlined text-sm font-bold">
+                      {isMastered ? 'workspace_premium' : 'school'}
+                    </span>
+                    <span>
+                      {isMastered
+                        ? 'Launch Master II (Hard & Advanced Patterns)'
+                        : (selectedTopic.problems_solved > 0 ? 'Continue Learning Topic' : 'Start Learning Topic')}
+                    </span>
+                    <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                  </button>
+                );
+              })()}
             </div>
 
           </div>
