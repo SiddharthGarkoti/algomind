@@ -27,17 +27,17 @@ function Header({ theme, toggleTheme, onOpenChat }) {
   const { user, isAuthenticated } = useAuth();
   const isDark    = theme === 'dark';
 
-  // ── streak (real in-app streak) ──────────────────────────────────
-  const appStreak = user?.streak ?? Number(localStorage.getItem('algomind_app_streak') || 0);
+  // ── streak (real AlgoMind in-app activity streak) ──────────────────
+  const appStreak = isAuthenticated ? (user?.streak ?? Number(localStorage.getItem('algomind_app_streak') || 0)) : 0;
   const streak = appStreak;
 
   useEffect(() => {
     // Purge old platform streak cache if present
     localStorage.removeItem('algomind_streak_cache');
-    if (user?.streak !== undefined && user?.streak !== null) {
+    if (isAuthenticated && user?.streak !== undefined && user?.streak !== null) {
       localStorage.setItem('algomind_app_streak', String(user.streak));
     }
-  }, [user?.streak]);
+  }, [user?.streak, isAuthenticated]);
 
   // ── chat message popup ───────────────────────────────────────────
   const [chatPopup, setChatPopup] = useState(null); // { sender, text }
@@ -159,7 +159,7 @@ function Header({ theme, toggleTheme, onOpenChat }) {
     const items = [];
     
     if (streakAtRisk) {
-      items.push(<><span style={{ color: '#EF4444', fontWeight: 700 }}>Solve 1 more question</span> to keep your streak 🔥</>);
+      items.push(<><span style={{ color: '#EF4444', fontWeight: 700 }}>Solve 1 more question</span> to maintain your daily streak</>);
     }
     
     if (onlineFriends.length > 0) {
@@ -477,14 +477,14 @@ function Header({ theme, toggleTheme, onOpenChat }) {
           )}
         </div>
 
-        {/* Streak — real data from backend */}
+        {/* Streak — authentic AlgoMind in-app activity streak */}
         <div className="rounded-xl px-4 py-2.5 flex items-center gap-3 relative"
           style={{ background: surface, border: `1px solid ${border}` }}>
           {showPlusOne && <span className="streak-plus-one">+1</span>}
           <div>
-            <p className="text-[9px] uppercase font-label leading-none mb-0.5" style={{ color: textSec }}>Streak</p>
+            <p className="text-[9px] uppercase font-label tracking-wider leading-none mb-0.5" style={{ color: textSec }}>AlgoMind Streak</p>
             <p className="text-[11px] font-bold" style={{ color: streakAtRisk ? '#EF4444' : '#A855F7' }}>
-              {streak > 0 ? `${streak} Days` : 'Start today!'}
+              {streak > 0 ? `${streak} ${streak === 1 ? 'Day' : 'Days'}` : '0 Days'}
             </p>
           </div>
           <div className="w-7 h-7 rounded-lg flex items-center justify-center float-anim"

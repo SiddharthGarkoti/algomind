@@ -131,6 +131,13 @@ class ConnectPlatformView(APIView):
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
 
+    def delete(self, request):
+        platform = request.data.get('platform_name') or request.query_params.get('platform_name')
+        if not platform:
+            return Response({'detail': 'platform_name is required'}, status=status.HTTP_400_BAD_REQUEST)
+        count, _ = PlatformProfile.objects.filter(user=request.user, platform_name=platform).delete()
+        return Response({'detail': f'Disconnected {platform}', 'deleted': count > 0}, status=status.HTTP_200_OK)
+
 
 class DashboardView(APIView):
     """
