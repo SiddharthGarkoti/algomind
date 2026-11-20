@@ -114,6 +114,9 @@ class ConnectPlatformView(APIView):
                     },
                 )
 
+            # Recalculate authentic Elo rating based on new platform solves
+            request.user.recalculate_rating()
+
         resp_data = PlatformProfileSerializer(profile).data
         if fetch_warning:
             resp_data['warning'] = fetch_warning
@@ -302,6 +305,9 @@ class RefreshPlatformView(APIView):
                 },
             )
 
+        # Recalculate authentic Elo rating
+        request.user.recalculate_rating()
+
         return Response(PlatformProfileSerializer(profile).data)
 
 
@@ -335,10 +341,14 @@ class SyncPlatformsView(APIView):
             except Exception:
                 pass
 
+        # Recalculate authentic Elo rating after all platforms synced
+        request.user.recalculate_rating()
+
         return Response({
             'status': 'ok',
             'synced_platforms': synced,
             'count': len(synced),
+            'rating': request.user.rating,
         })
 
 

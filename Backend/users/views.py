@@ -466,6 +466,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         # Always write exact datetime so online-presence polling works
         user.last_active = now
         user.save(update_fields=['streak', 'last_active'])
+        user.recalculate_rating()
         return user
 
 
@@ -484,6 +485,22 @@ class PublicProfileView(APIView):
         target_user = User.objects.filter(username__iexact=username).first()
         if not target_user:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Auto-update LeetCode profiles once a day for users who have not logged in
+        today = timezone.now().date()
+        is_logged_in_today = bool(target_user.last_active and target_user.last_active.date() == today)
+        if not is_logged_in_today:
+            from analytics.sync_tasks import sync_single_profile
+            for p in target_user.platform_profiles.all():
+                st = getattr(p, 'stats', None)
+                if not st or not st.last_updated or st.last_updated.date() < today:
+                    sync_single_profile(p)
+
+        from analytics.sync_tasks import trigger_daily_sync_background
+        trigger_daily_sync_background()
+
+        # Recalculate target user's authentic Elo rating
+        target_user.recalculate_rating()
 
         # Friendship status
         friendship_status = 'unauthenticated'
@@ -522,6 +539,7 @@ class PublicProfileView(APIView):
                     'easy_solved': st.easy_solved if st else 0,
                     'medium_solved': st.medium_solved if st else 0,
                     'hard_solved': st.hard_solved if st else 0,
+                    'last_updated': st.last_updated.isoformat() if st and st.last_updated else None,
                 })
 
         # Completed plans count
@@ -558,6 +576,9 @@ class LeaderboardView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
+        from analytics.sync_tasks import trigger_daily_sync_background
+        trigger_daily_sync_background()
+
         limit = min(int(request.query_params.get('limit', 50)), 200)
 
         # Exclude developer / admin accounts from public competitive leaderboard
@@ -579,7 +600,6 @@ class LeaderboardView(APIView):
                 'username': user.username,
                 'avatar':   request.build_absolute_uri(user.avatar.url) if user.avatar else None,
                 'rating':   user.rating,
-                'level':    user.level,
                 'streak':   user.streak,
                 'is_self':  (request.user.is_authenticated and request.user.id == user.id),
             })
@@ -607,7 +627,6 @@ class LeaderboardView(APIView):
                         'username': me.username,
                         'avatar':   request.build_absolute_uri(me.avatar.url) if me.avatar else None,
                         'rating':   me.rating,
-                        'level':    me.level,
                         'streak':   me.streak,
                         'is_self':  True,
                     })

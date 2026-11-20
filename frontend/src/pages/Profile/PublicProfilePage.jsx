@@ -6,6 +6,32 @@ import api from '../../utils/api.js';
 import { getInitials } from '../../utils/initials.js';
 import { buildAchievements } from '../Profile/achievementsCatalog.js';
 
+function formatJoinedDate(dateStr) {
+  if (!dateStr) return 'Joined recently';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Joined recently';
+    return `Joined ${d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`;
+  } catch {
+    return 'Joined recently';
+  }
+}
+
+function formatSyncDate(dateStr) {
+  if (!dateStr) return 'Synced';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Synced';
+    const now = Date.now();
+    const diff = (now - d.getTime()) / 1000;
+    if (diff < 3600) return 'Synced recently';
+    if (diff < 86400) return 'Synced today';
+    return `Synced ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  } catch {
+    return 'Synced';
+  }
+}
+
 function PublicProfilePage({ theme, toggleTheme }) {
   const { username } = useParams();
   const navigate = useNavigate();
@@ -230,6 +256,16 @@ function PublicProfilePage({ theme, toggleTheme }) {
                       <span className="material-symbols-outlined text-sm">local_fire_department</span>
                       <span>{profile.streak ?? 0}d App Streak</span>
                     </div>
+
+                    {profile.date_joined && (
+                      <div
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                        style={{ background: surfLow, border: `1px solid ${border}`, color: textSec }}
+                      >
+                        <span className="material-symbols-outlined text-sm">calendar_today</span>
+                        <span>{formatJoinedDate(profile.date_joined)}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -338,12 +374,20 @@ function PublicProfilePage({ theme, toggleTheme }) {
                               </p>
                             </div>
                           </div>
-                          {plat.rating > 0 && (
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg"
-                              style={{ background: surfLow, color: iconColor, border: `1px solid ${border}` }}>
-                              {plat.rating} Elo
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {plat.rating > 0 && (
+                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg"
+                                style={{ background: surfLow, color: iconColor, border: `1px solid ${border}` }}>
+                                {plat.rating} Elo
+                              </span>
+                            )}
+                            {plat.last_updated && (
+                              <span className="text-[10px] font-medium px-2 py-0.5 rounded-lg"
+                                style={{ background: surfLow, color: textSec, border: `1px solid ${border}` }}>
+                                {formatSyncDate(plat.last_updated)}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Metrics Breakdown */}

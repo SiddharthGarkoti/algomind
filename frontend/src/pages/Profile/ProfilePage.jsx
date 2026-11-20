@@ -301,9 +301,14 @@ function ProfilePage({ theme, toggleTheme }) {
                             Upgrade
                           </button>
                         )}
-                        <span className="text-xs" style={{ color: textSec }}>
-                          Level {user?.level ?? 1} · Rating {user?.rating ?? 1000}
+                        <span className="text-xs font-semibold" style={{ color: '#818CF8' }}>
+                          {user?.rating ?? 1000} Elo
                         </span>
+                        {user?.date_joined && (
+                          <span className="text-xs" style={{ color: textSec }}>
+                            · Joined {new Date(user.date_joined).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <button
