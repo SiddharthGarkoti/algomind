@@ -124,7 +124,9 @@ async function requestForm(path, formData, method = 'PATCH') {
 // ── public API with smart TTL caching ────────────────────────────
 const api = {
   get: async (path, options = {}) => {
-    const noCache = options?.noCache || false;
+    // Dynamic endpoints that must never be served stale
+    const isVolatile = path.includes('/auth/profile') || path.includes('/auth/notifications');
+    const noCache = options?.noCache || isVolatile || false;
     const ttl = options?.ttl || DEFAULT_TTL_MS;
     const cacheKey = `${getToken() || 'anon'}:${path}`;
 

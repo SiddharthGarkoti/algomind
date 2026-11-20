@@ -459,6 +459,10 @@ class ProfileView(generics.RetrieveUpdateAPIView):
             yesterday   = today - timezone.timedelta(days=1)
             user.streak = (user.streak + 1) if last_date == yesterday else 1
 
+        # Sanity safeguard: authentic in-app streak cannot be contaminated by 3rd-party platform numbers
+        if user.streak > 100:
+            user.streak = 1
+
         # Always write exact datetime so online-presence polling works
         user.last_active = now
         user.save(update_fields=['streak', 'last_active'])

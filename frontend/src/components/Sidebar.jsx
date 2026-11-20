@@ -84,14 +84,15 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
       onMouseLeave={() => { setIsHovered(false); if (!isPinned) { setIsPracticeOpen(false); } }}
     >
       {/* Brand */}
-      <div className="flex items-center h-16 shrink-0 overflow-hidden" style={{ borderBottom: `1px solid ${borderCol}` }}>
+      <div className="flex items-center h-16 shrink-0 overflow-hidden px-2" style={{ borderBottom: `1px solid ${borderCol}` }}>
         <div className="icon-container">
           <button
-            className="w-10 h-10 flex items-center justify-center rounded-lg transition-colors"
+            className="w-10 h-10 flex items-center justify-center rounded-lg transition-colors hover:bg-white/5"
             style={{ color: textMuted }}
             onClick={e => { e.stopPropagation(); setIsPinned(p => !p); }}
+            title={isPinned ? 'Unpin Sidebar' : 'Pin Sidebar'}
           >
-            <span className="material-symbols-outlined !text-lg">{isPinned ? 'push_pin' : 'menu'}</span>
+            <span className="material-symbols-outlined !text-[20px]">{isPinned ? 'push_pin' : 'menu'}</span>
           </button>
         </div>
         <div className="flex items-center gap-2.5 sidebar-content-text">
@@ -147,10 +148,10 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
 
           {/* MILO (AI Mentor) */}
           <NavLink to="/chatbot"
-            className="nav-item"
+            className={({ isActive }) => `nav-item${isActive ? ' active-item' : ''}`}
             style={({ isActive }) => ({
-              background: isActive ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.06)',
-              color: isActive ? (isDark ? '#FFFFFF' : '#4F46E5') : '#A5B4FC',
+              background: isActive ? 'rgba(99,102,241,0.12)' : 'transparent',
+              color: isActive ? (isDark ? '#FFFFFF' : '#4F46E5') : textMuted,
             })}
           >
             <div className="icon-container flex items-center justify-center">
@@ -164,11 +165,11 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
       {/* Bottom section — differs for guest vs authenticated */}
       {isGuest && !user ? (
         /* Guest: sign-in nav-item row + guest identity row */
-        <div style={{ borderTop: `1px solid ${borderCol}` }} className="shrink-0">
+        <div style={{ borderTop: `1px solid ${borderCol}` }} className="shrink-0 py-2">
           {/* Sign In — styled exactly like a nav item so it collapses properly */}
           <button
             onClick={() => setShowSignIn(true)}
-            className="nav-item w-full text-left transition-all hover:opacity-90"
+            className="nav-item text-left transition-all hover:opacity-90 w-[calc(100%-16px)]"
             style={{ color: '#6366F1', background: 'rgba(99,102,241,0.06)' }}
           >
             <div className="icon-container">
@@ -181,7 +182,7 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
           </button>
           {/* Guest identity row */}
           <button
-            className="nav-item w-full text-left opacity-50 cursor-default"
+            className="nav-item text-left opacity-50 cursor-default w-[calc(100%-16px)]"
             style={{ color: textMuted }}
             tabIndex={-1}
           >
@@ -245,7 +246,7 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
           {/* Profile Button */}
           <button
             ref={profileBtnRef}
-            className="w-full flex items-center h-16 overflow-hidden transition-colors hover:opacity-80"
+            className="w-full flex items-center h-16 overflow-hidden transition-colors hover:opacity-80 px-2"
             onClick={e => { e.stopPropagation(); if (isExpanded) setIsProfileOpen(p => !p); }}
           >
             <div className="icon-container">
@@ -253,7 +254,7 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
                 <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
               </div>
             </div>
-            <div className="sidebar-content-text flex-grow truncate text-left">
+            <div className="sidebar-content-text flex-grow truncate text-left pl-1">
               <p className="text-xs font-bold truncate" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
                 {user?.username ?? '...'}
               </p>

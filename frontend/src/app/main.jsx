@@ -12,6 +12,15 @@ document.documentElement.classList.toggle('dark',  isDark);
 document.documentElement.classList.toggle('light', !isDark);
 document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
 
+// Unconditionally purge legacy streak keys
+try {
+  localStorage.removeItem('algomind_streak_cache');
+  localStorage.removeItem('algomind_app_streak');
+  localStorage.removeItem('algomind_streak');
+  sessionStorage.removeItem('algomind_streak_cache');
+  sessionStorage.removeItem('algomind_app_streak');
+} catch {}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>

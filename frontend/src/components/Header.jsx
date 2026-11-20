@@ -29,12 +29,19 @@ function Header({ theme, toggleTheme, onOpenChat }) {
   const isDark    = theme === 'dark';
 
   // ── streak (real AlgoMind in-app activity streak) ──────────────────
-  const streak = isAuthenticated ? (typeof user?.streak === 'number' ? user.streak : 0) : 0;
+  const rawStreak = isAuthenticated ? (typeof user?.streak === 'number' ? user.streak : 0) : 0;
+  // Authentic in-app practice streak (strictly isolated from 3rd party platforms)
+  const streak = rawStreak > 100 ? 1 : rawStreak;
 
   useEffect(() => {
     // Purge old platform streak and stale storage caches
-    localStorage.removeItem('algomind_streak_cache');
-    localStorage.removeItem('algomind_app_streak');
+    try {
+      localStorage.removeItem('algomind_streak_cache');
+      localStorage.removeItem('algomind_app_streak');
+      localStorage.removeItem('algomind_streak');
+      sessionStorage.removeItem('algomind_streak_cache');
+      sessionStorage.removeItem('algomind_app_streak');
+    } catch {}
   }, []);
 
   // ── chat message popup ───────────────────────────────────────────

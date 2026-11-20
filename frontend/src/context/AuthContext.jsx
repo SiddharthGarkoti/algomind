@@ -31,8 +31,9 @@ export function AuthProvider({ children }) {
       return () => window.removeEventListener('algomind:auth-expired', handleExpired);
     }
 
-    api.get('/auth/profile/')
+    api.get('/auth/profile/', { noCache: true })
       .then(p => {
+        if (p && typeof p.streak === 'number' && p.streak > 100) p.streak = 1;
         setUser(p);
         api.post('/analytics/sync/').catch(() => {});
       })
@@ -63,7 +64,8 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const data = await api.post('/auth/login/', { email, password });
     api.setTokens(data.access, data.refresh);
-    const profile = await api.get('/auth/profile/');
+    const profile = await api.get('/auth/profile/', { noCache: true });
+    if (profile && typeof profile.streak === 'number' && profile.streak > 100) profile.streak = 1;
     setUser(profile);
     _clearGuest();
     // Auto-sync platform profiles on login
@@ -88,7 +90,8 @@ export function AuthProvider({ children }) {
   // hydrate the user profile via a normal /profile/ call.
   const loginFromOAuth = useCallback(async (access, refresh) => {
     api.setTokens(access, refresh);
-    const profile = await api.get('/auth/profile/');
+    const profile = await api.get('/auth/profile/', { noCache: true });
+    if (profile && typeof profile.streak === 'number' && profile.streak > 100) profile.streak = 1;
     setUser(profile);
     _clearGuest();
     // Auto-sync platform profiles on login
