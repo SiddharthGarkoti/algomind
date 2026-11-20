@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
+import { getInitials } from '../../utils/initials.js';
 
 /* ── Local storage helpers ── */
 const NOTIF_KEY = 'algomind_notif_settings';
@@ -102,6 +103,8 @@ export default function SettingsPage({ theme, toggleTheme }) {
   const [cfInput, setCfInput] = useState('');
   const [platLoading, setPlatLoading] = useState({ leetcode: false, codeforces: false });
   const [platFeedback, setPlatFeedback] = useState({ leetcode: null, codeforces: null });
+  const [hidePlatforms, setHidePlatforms] = useState(user?.hide_connected_platforms ?? false);
+  const [hidePlatformsSaving, setHidePlatformsSaving] = useState(false);
 
   // Notifications
   const [notifs, setNotifs] = useState(loadNotifSettings);
@@ -128,8 +131,23 @@ export default function SettingsPage({ theme, toggleTheme }) {
     if (user) {
       setUsername(user.username || '');
       setBio(user.bio || '');
+      setHidePlatforms(user.hide_connected_platforms ?? false);
     }
   }, [user]);
+
+  const handleToggleHidePlatforms = async () => {
+    const nextVal = !hidePlatforms;
+    setHidePlatforms(nextVal);
+    setHidePlatformsSaving(true);
+    try {
+      const res = await api.patch('/auth/profile/', { hide_connected_platforms: nextVal });
+      if (updateUser) updateUser(res);
+    } catch {
+      setHidePlatforms(!nextVal);
+    } finally {
+      setHidePlatformsSaving(false);
+    }
+  };
 
   // Load platform connection statuses
   const fetchPlatformStatus = useCallback(async () => {
@@ -263,13 +281,11 @@ export default function SettingsPage({ theme, toggleTheme }) {
   const handleClearCache = () => {
     const token = localStorage.getItem('access_token');
     const refresh = localStorage.getItem('refresh_token');
-    const appStreak = localStorage.getItem('algomind_app_streak');
     
-    // Retain auth & streak tokens while scrubbing temp scratchpads & cache
+    // Retain auth tokens while scrubbing temp scratchpads & cache
     localStorage.clear();
     if (token) localStorage.setItem('access_token', token);
     if (refresh) localStorage.setItem('refresh_token', refresh);
-    if (appStreak) localStorage.setItem('algomind_app_streak', appStreak);
     
     setCacheCleared(true);
     setTimeout(() => setCacheCleared(false), 3000);
@@ -390,7 +406,7 @@ export default function SettingsPage({ theme, toggleTheme }) {
                       className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-bold font-mono tracking-wider shrink-0"
                       style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1', border: `1px solid rgba(99,102,241,0.2)` }}
                     >
-                      {(user?.username || 'U').substring(0, 2).toUpperCase()}
+                      {getInitials(user?.username)}
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
@@ -401,8 +417,7 @@ export default function SettingsPage({ theme, toggleTheme }) {
                       </div>
                       <p className="text-xs" style={{ color: textSec }}>{user?.email || 'No email attached'}</p>
                       <div className="flex items-center gap-4 text-xs pt-1" style={{ color: textSec }}>
-                        <span>AlgoMind Rating: <strong style={{ color: textPri }}>{user?.rating || 0}</strong></span>
-                        <span>Level: <strong style={{ color: textPri }}>{user?.level || 1}</strong></span>
+                        <span>Elo Rating: <strong style={{ color: textPri }}>{user?.rating || 1000}</strong></span>
                         <span>App Streak: <strong style={{ color: textPri }}>{user?.streak || 0}d</strong></span>
                       </div>
                     </div>
@@ -628,6 +643,29 @@ export default function SettingsPage({ theme, toggleTheme }) {
                         {platFeedback.codeforces.text}
                       </p>
                     )}
+                  </div>
+
+                  {/* Public Profile Visibility Privacy Card */}
+                  <div className="p-4 rounded-xl flex items-center justify-between" style={{ background: surfLow, border: `1px solid ${border}` }}>
+                    <div className="pr-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="material-symbols-outlined text-base" style={{ color: '#6366F1' }}>visibility_off</span>
+                        <p className="text-sm font-semibold" style={{ color: textPri }}>Hide Platforms on Public Profile</p>
+                      </div>
+                      <p className="text-xs" style={{ color: textSec }}>
+                        Keep your connected LeetCode and Codeforces profile stats private from other users when they inspect your profile.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={hidePlatforms}
+                        disabled={hidePlatformsSaving}
+                        onChange={handleToggleHidePlatforms}
+                      />
+                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
                   </div>
                 </SettingCard>
               </div>

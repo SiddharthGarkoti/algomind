@@ -4,6 +4,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
 import { buildAchievements } from './achievementsCatalog.js';
+import { getInitials } from '../../utils/initials.js';
 
 function ProfilePage({ theme, toggleTheme }) {
   const isDark   = theme === 'dark';
@@ -98,14 +99,14 @@ function ProfilePage({ theme, toggleTheme }) {
   };
 
   const displayName    = user?.username ?? '...';
-  const initials       = displayName.slice(0, 2).toUpperCase();
+  const initials       = getInitials(displayName);
   const resolvedAvatar = avatarSrc ?? user?.avatar ?? null;
 
   // Real data metrics
   const totalSolved   = platforms.reduce((s, p) => s + (p.stats?.problems_solved ?? 0), 0);
   const totalContests = platforms.reduce((s, p) => s + (p.stats?.contests ?? 0), 0);
   const maxRating     = Math.max(0, ...platforms.map(p => p.stats?.rating ?? 0));
-  const appStreak     = user?.streak ?? Number(localStorage.getItem('algomind_app_streak') || 0);
+  const appStreak     = typeof user?.streak === 'number' ? user.streak : 0;
   const bestStreak    = appStreak;
 
   // Study plan completions from localStorage

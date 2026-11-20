@@ -24,6 +24,7 @@ class User(AbstractUser):
     
     # Billing / Tier
     plan_tier      = models.CharField(max_length=10, default='basic')  # basic, plus, pro
+    hide_connected_platforms = models.BooleanField(default=False)  # Privacy: hide LeetCode/CF from public profile
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

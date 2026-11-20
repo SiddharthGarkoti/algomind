@@ -465,11 +465,83 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         return user
 
 
-class PublicProfileView(generics.RetrieveAPIView):
-    queryset           = User.objects.all()
-    serializer_class   = PublicUserSerializer
+class PublicProfileView(APIView):
+    """
+    GET /api/auth/profile/<username>/
+    Public profile inspect endpoint with real-time data:
+    - User name, avatar, bio, AlgoMind streak, Elo rating (no level)
+    - Real-time friendship status ('self', 'friends', 'request_sent', 'request_received', 'none')
+    - Connected platform info (unless hidden by user's privacy setting)
+    - Completed plans and activity metrics
+    """
     permission_classes = [permissions.AllowAny]
-    lookup_field       = 'username'
+
+    def get(self, request, username):
+        target_user = User.objects.filter(username__iexact=username).first()
+        if not target_user:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Friendship status
+        friendship_status = 'unauthenticated'
+        if request.user.is_authenticated:
+            if request.user == target_user:
+                friendship_status = 'self'
+            else:
+                from friends.models import Friendship, FriendRequest
+                from django.db.models import Q
+                if Friendship.objects.filter(
+                    Q(user1=request.user, user2=target_user) | Q(user1=target_user, user2=request.user)
+                ).exists():
+                    friendship_status = 'friends'
+                elif FriendRequest.objects.filter(sender=request.user, receiver=target_user, status='pending').exists():
+                    friendship_status = 'request_sent'
+                elif FriendRequest.objects.filter(sender=target_user, receiver=request.user, status='pending').exists():
+                    friendship_status = 'request_received'
+                else:
+                    friendship_status = 'none'
+
+        is_self = request.user.is_authenticated and request.user.id == target_user.id
+        platforms_hidden = bool(target_user.hide_connected_platforms and not is_self)
+
+        platforms_data = []
+        if not platforms_hidden:
+            for p in target_user.platform_profiles.select_related('stats').all():
+                st = getattr(p, 'stats', None)
+                platforms_data.append({
+                    'platform_name': p.platform_name,
+                    'handle': p.handle,
+                    'problems_solved': st.problems_solved if st else 0,
+                    'rating': st.rating if st else 0,
+                    'contests': st.contests if st else 0,
+                    'streak': st.streak if st else 0,
+                    'max_streak': st.max_streak if st else 0,
+                    'easy_solved': st.easy_solved if st else 0,
+                    'medium_solved': st.medium_solved if st else 0,
+                    'hard_solved': st.hard_solved if st else 0,
+                })
+
+        # Completed plans count
+        from analytics.models import CompletedPlan
+        completed_plans_count = CompletedPlan.objects.filter(user=target_user).count()
+
+        avatar_url = request.build_absolute_uri(target_user.avatar.url) if target_user.avatar else None
+
+        return Response({
+            'id': target_user.id,
+            'username': target_user.username,
+            'bio': target_user.bio or '',
+            'streak': target_user.streak or 0,
+            'rating': target_user.rating or 1000,
+            'avatar': avatar_url,
+            'date_joined': target_user.date_joined,
+            'is_admin': target_user.is_admin,
+            'plan_tier': target_user.plan_tier,
+            'friendship_status': friendship_status,
+            'hide_connected_platforms': target_user.hide_connected_platforms,
+            'platforms_hidden': platforms_hidden,
+            'platforms': platforms_data,
+            'completed_plans_count': completed_plans_count,
+        })
 
 
 class LeaderboardView(APIView):

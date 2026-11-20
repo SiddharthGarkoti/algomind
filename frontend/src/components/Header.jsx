@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../utils/api.js';
+import { getInitials } from '../utils/initials.js';
 
 /* ─── helpers ─────────────────────────────────────────────────────── */
 function timeAgo(dateStr) {
@@ -28,16 +29,13 @@ function Header({ theme, toggleTheme, onOpenChat }) {
   const isDark    = theme === 'dark';
 
   // ── streak (real AlgoMind in-app activity streak) ──────────────────
-  const appStreak = isAuthenticated ? (user?.streak ?? Number(localStorage.getItem('algomind_app_streak') || 0)) : 0;
-  const streak = appStreak;
+  const streak = isAuthenticated ? (typeof user?.streak === 'number' ? user.streak : 0) : 0;
 
   useEffect(() => {
-    // Purge old platform streak cache if present
+    // Purge old platform streak and stale storage caches
     localStorage.removeItem('algomind_streak_cache');
-    if (isAuthenticated && user?.streak !== undefined && user?.streak !== null) {
-      localStorage.setItem('algomind_app_streak', String(user.streak));
-    }
-  }, [user?.streak, isAuthenticated]);
+    localStorage.removeItem('algomind_app_streak');
+  }, []);
 
   // ── chat message popup ───────────────────────────────────────────
   const [chatPopup, setChatPopup] = useState(null); // { sender, text }
@@ -247,11 +245,11 @@ function Header({ theme, toggleTheme, onOpenChat }) {
       >
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
           style={{ background: 'linear-gradient(135deg,#22C55E,#16A34A)' }}>
-          {friendToast.username.slice(0, 2).toUpperCase()}
+          {getInitials(friendToast.username)}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
-            {friendToast.username} is online 🟢
+            {friendToast.username} is online
           </p>
           <p className="text-[11px]" style={{ color: isDark ? '#908fa0' : '#64748B' }}>Just joined AlgoMind</p>
         </div>
@@ -274,7 +272,7 @@ function Header({ theme, toggleTheme, onOpenChat }) {
       >
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
           style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)' }}>
-          {chatPopup.sender.slice(0, 2).toUpperCase()}
+          {getInitials(chatPopup.sender)}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-bold mb-0.5" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
@@ -306,7 +304,7 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                         style={{ borderColor: isDark ? '#121315' : '#fff' }} alt="" />
                     : <div className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-[8px] font-bold text-white"
                         style={{ borderColor: isDark ? '#121315' : '#fff', background: ['#2f3aa3','#62259b','#22C55E'][i % 3] }}>
-                        {(f.username ?? '?').slice(0,2).toUpperCase()}
+                        {getInitials(f.username)}
                       </div>
                   }
                   <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full border border-white"

@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
+import { getInitials } from '../../utils/initials.js';
 
 const COLOURS = ['#6366F1','#A855F7','#22C55E','#F59E0B','#EF4444','#06B6D4','#EC4899','#8B5CF6'];
 const colourFor = (id) => COLOURS[(id ?? 0) % COLOURS.length];
-const initials  = (name) => (name ?? '??').slice(0, 2).toUpperCase();
+const initials  = (name) => getInitials(name);
 
 function FriendsPage({ theme, toggleTheme }) {
   const isDark = theme === 'dark';
@@ -175,8 +176,8 @@ function FriendsPage({ theme, toggleTheme }) {
 
               {entries.length > 0 && (
                 <>
-                  <div className="grid grid-cols-[40px_1fr_80px_90px] gap-4 px-4 pb-1">
-                    {['Rank','Name','Level','Rating'].map(h => (
+                  <div className="grid grid-cols-[40px_1fr_90px] gap-4 px-4 pb-1">
+                    {['Rank','Name','Rating'].map(h => (
                       <span key={h} className="text-[10px] font-bold uppercase tracking-widest" style={{ color: textSec }}>{h}</span>
                     ))}
                   </div>
@@ -187,10 +188,10 @@ function FriendsPage({ theme, toggleTheme }) {
                         background: entry.is_self ? (isDark ? 'rgba(99,102,241,0.08)' : '#EEF2FF') : surface,
                         border: `1px solid ${entry.is_self ? 'rgba(99,102,241,0.3)' : border}`,
                       }}>
-                      <div className="grid grid-cols-[40px_1fr_80px_90px] gap-4 items-center">
-                        <span className="text-lg font-headline font-extrabold"
+                      <div className="grid grid-cols-[40px_1fr_90px] gap-4 items-center">
+                        <span className="text-sm font-headline font-extrabold"
                           style={{ color: entry.rank <= 3 ? ['#F59E0B','#94A3B8','#CD7C2F'][entry.rank-1] : textSec }}>
-                          {entry.rank <= 3 ? ['🥇','🥈','🥉'][entry.rank-1] : `#${entry.rank}`}
+                          #{entry.rank}
                         </span>
                         <div className="flex items-center gap-3">
                           {entry.avatar
@@ -212,7 +213,6 @@ function FriendsPage({ theme, toggleTheme }) {
                             </p>
                           </div>
                         </div>
-                        <span className="text-sm font-bold" style={{ color: textPri }}>Lv {entry.level}</span>
                         <span className="text-sm font-bold" style={{ color: colourFor(entry.id) }}>{entry.rating}</span>
                       </div>
                     </div>
@@ -286,7 +286,7 @@ function FriendsPage({ theme, toggleTheme }) {
                       <p className="text-[10px]" style={{ color: textSec }}>
                         {isOnline
                           ? <span style={{ color: '#22C55E' }}>● Online</span>
-                          : `Lv ${friend?.level} · Rating ${friend?.rating} · ${friend?.streak}d streak`
+                          : `Rating ${friend?.rating} · ${friend?.streak}d streak`
                         }
                       </p>
                     </div>

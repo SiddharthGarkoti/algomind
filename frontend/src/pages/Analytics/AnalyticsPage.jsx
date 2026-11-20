@@ -129,7 +129,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
   /* Build solved stats for current tab */
   const statsFor = (platformName) => {
     // Strictly isolate AlgoMind app streak from third-party platform streaks
-    const appStreak = user?.streak ?? summary?.app_streak ?? Number(localStorage.getItem('algomind_app_streak') || 0);
+    const appStreak = typeof user?.streak === 'number' ? user.streak : (summary?.app_streak ?? 0);
 
     if (platformName === 'total') {
       return {

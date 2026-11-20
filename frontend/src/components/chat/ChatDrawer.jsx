@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
+import { getInitials } from '../../utils/initials.js';
 
 /* Play a short notification beep via Web Audio API */
 function playNotifSound() {
@@ -132,7 +133,7 @@ function ChatDrawer({ friend, onClose, isDark }) {
 
   /* Derive initials for friend avatar */
   const friendName    = friend?.username ?? friend?.name ?? '??';
-  const friendInitial = friendName.slice(0, 2).toUpperCase();
+  const friendInitial = getInitials(friendName);
   const COLOURS = ['#6366F1','#A855F7','#22C55E','#F59E0B','#EF4444','#06B6D4'];
   const friendColor = friend?.avatar_color ?? COLOURS[(friend?.id ?? 0) % COLOURS.length];
 
