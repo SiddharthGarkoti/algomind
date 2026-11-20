@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
+import { ALL_CURRICULUM_CATALOG, CURRICULUM_CATEGORIES } from './curriculumCatalogData.js';
 
 /* ══════════════════════════════════════════════════════════════════
    TOPIC LIBRARY — keyed by id.
@@ -826,7 +827,12 @@ const SLUG_TO_MASTER_II = {
 /* Default queue if backend has no weak areas */
 const DEFAULT_QUEUE = ['dp-1', 'arrays-1', 'graphs-1', 'bsearch-1', 'twoptr-1', 'hash-1', 'trees-1', 'backtrack-1', 'bits-1', 'greedy-1', 'stack-1', 'sort-1', 'll-1'];
 
-const TOPIC_MAP = Object.fromEntries(ALL_TOPICS.map(t => [t.id, t]));
+const COMBINED_ALL_TOPICS = [
+  ...ALL_TOPICS,
+  ...ALL_CURRICULUM_CATALOG.filter(c => !ALL_TOPICS.some(t => t.id === c.id))
+];
+
+const TOPIC_MAP = Object.fromEntries(COMBINED_ALL_TOPICS.map(t => [t.id, t]));
 const DIFF_COLOR = { Easy: '#22C55E', Medium: '#F59E0B', Hard: '#EF4444' };
 
 /* ── Canonical Pedagogical Order & Prerequisite Validation ── */
@@ -1116,6 +1122,9 @@ function PlanViewPage({ theme, toggleTheme }) {
   const [editPlanOpen,  setEditPlanOpen]  = useState(false);
   const [draftQueue,    setDraftQueue]    = useState([]);
   const [selectedToAdd, setSelectedToAdd] = useState('');
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogCategory, setCatalogCategory] = useState('All');
+  const [catalogLevel, setCatalogLevel] = useState('All');
   const [teachingMode,  setTeachingMode]  = useState(false);
   const [platformAnalytics, setPlatformAnalytics] = useState(null);
 
@@ -1296,6 +1305,42 @@ function PlanViewPage({ theme, toggleTheme }) {
     });
   };
 
+  const addSpecificTopic = (topicIdToAdd) => {
+    if (!topicIdToAdd || draftQueue.includes(topicIdToAdd)) return;
+    const t = TOPIC_MAP[topicIdToAdd];
+    const isComplex = t?.level === 'Advanced' || t?.level === 'Expert' || ['dp', 'graphs', 'trees', 'backtracking', 'trie', 'disjoint-set'].includes(topicIdToAdd);
+
+    if (isComplex) {
+      const mastery = checkFundamentalMastery();
+      if (!mastery.mastered) {
+        setToast({
+          msg: `Prerequisite Note: "${t?.name || 'Topic'}" is an advanced topic. Fundamentals are recommended, but it has been added to your draft sequence.`,
+          ok: false
+        });
+      } else {
+        setToast({ msg: `Added "${t?.name || topicIdToAdd}" to your learning sequence.`, ok: true });
+      }
+    } else {
+      setToast({ msg: `Added "${t?.name || topicIdToAdd}" to your learning sequence.`, ok: true });
+    }
+
+    setDraftQueue(prev => [...prev, topicIdToAdd]);
+  };
+
+  const filteredCatalog = useMemo(() => {
+    const q = catalogSearch.trim().toLowerCase();
+    return COMBINED_ALL_TOPICS.filter(t => {
+      if (catalogCategory !== 'All' && t.category !== catalogCategory) return false;
+      if (catalogLevel !== 'All' && t.level !== catalogLevel) return false;
+      if (!q) return true;
+      const matchName = t.name?.toLowerCase().includes(q);
+      const matchCat = t.category?.toLowerCase().includes(q);
+      const matchSlugs = t.slugs?.some(s => s.toLowerCase().includes(q));
+      const matchIdeas = t.theory?.keyIdeas?.some(k => k.toLowerCase().includes(q));
+      return matchName || matchCat || matchSlugs || matchIdeas;
+    });
+  }, [catalogSearch, catalogCategory, catalogLevel]);
+
   const addTopicToPlan = () => {
     if (!selectedToAdd) return;
     if (draftQueue.includes(selectedToAdd)) return;
@@ -1453,28 +1498,28 @@ function PlanViewPage({ theme, toggleTheme }) {
               </div>
             )}
 
-            {/* Complete learning plan sequence — Movement permitted front-to-back only */}
+            {/* Complete learning plan sequence — Revisit past topics allowed, jumping ahead locked */}
             {topicQueue.map((id, idx) => {
               const t = TOPIC_MAP[id];
               if (!t) return null;
               const isActive = idx === currentIdx;
               const isPast   = completedSet.has(id);
               const isMaster2 = id.endsWith('-2') || id === 'dp-3';
-              // Allow movement from front to back (idx > currentIdx), but disallow back to front (idx < currentIdx)
-              const isLocked = idx < currentIdx;
+              // Future topics that are not completed are locked (cannot jump ahead)
+              const isLocked = !isPast && !isActive && (idx > currentIdx);
 
               const handleTopicClick = () => {
                 if (isActive) return;
-                if (idx < currentIdx) {
-                  // Disallow navigating backwards (back to front)
-                  setToast({
-                    msg: `Movement is allowed from front to back only. Backwards navigation to #${idx + 1} (${t.name}) is disabled.`,
-                    ok: false
-                  });
+                // Allow navigating back to completed or earlier topics
+                if (isPast || idx <= currentIdx) {
+                  setCurrentIdx(idx);
                   return;
                 }
-                // Allow advancing/moving forward (front to back)
-                setCurrentIdx(idx);
+                // Disallow skipping ahead to locked future topics
+                setToast({
+                  msg: `Topic #${idx + 1} (${t.name}) is locked. Complete Topic #${currentIdx + 1} (${TOPIC_MAP[topicQueue[currentIdx]]?.name}) first.`,
+                  ok: false
+                });
               };
 
               return (
@@ -1494,7 +1539,7 @@ function PlanViewPage({ theme, toggleTheme }) {
                     cursor: isLocked ? 'not-allowed' : 'pointer',
                     opacity: isLocked ? 0.55 : 1,
                   }}
-                  title={isLocked ? `Topic #${idx + 1} (${t.name}) — Front-to-back only (backwards navigation locked)` : t.name}
+                  title={isLocked ? `Topic #${idx + 1} (${t.name}) is locked. Complete Topic #${currentIdx + 1} first.` : (isPast ? `Review #${idx + 1} (${t.name})` : t.name)}
                 >
                   {isPast ? (
                     <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1", color: '#22C55E' }}>check_circle</span>
@@ -1730,162 +1775,333 @@ function PlanViewPage({ theme, toggleTheme }) {
 
       </div>
 
-      {/* ── Edit Plan Side Panel Drawer ── */}
+      {/* ── Edit Plan Modal Dialog (Full Responsive Apple/Fluent Layout with 320+ Catalog & Search) ── */}
       {editPlanOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-fade-in">
           <div
-            className="w-full max-w-md h-full flex flex-col p-6 shadow-2xl relative border-l overflow-y-auto"
-            style={{ background: isDark ? '#141416' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
-            
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between pb-4 border-b" style={{ borderColor: border }}>
-              <div>
-                <h3 className="text-base font-headline font-bold" style={{ color: textPri }}>Curriculum Topic Manager</h3>
-                <p className="text-xs mt-0.5" style={{ color: textSec }}>Structured pedagogical progression based on verified mastery</p>
+            className="w-full max-w-5xl h-[92vh] max-h-[850px] flex flex-col rounded-2xl shadow-2xl relative border overflow-hidden"
+            style={{ background: isDark ? '#141416' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b shrink-0" style={{ borderColor: border }}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-indigo-400"
+                  style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)' }}>
+                  <span className="material-symbols-outlined text-xl">auto_stories</span>
+                </div>
+                <div>
+                  <h3 className="text-base font-headline font-bold" style={{ color: textPri }}>
+                    Curriculum Plan Manager
+                  </h3>
+                  <p className="text-xs" style={{ color: textSec }}>
+                    Assemble and reorder your personalized syllabus from 320+ verified topics
+                  </p>
+                </div>
               </div>
-              <button
-                onClick={() => setEditPlanOpen(false)}
-                className="p-1.5 rounded-xl hover:opacity-75 cursor-pointer"
-                style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', color: textSec }}>
-                <span className="material-symbols-outlined text-lg">close</span>
-              </button>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                  style={{ background: 'rgba(99,102,241,0.12)', color: '#818CF8', border: '1px solid rgba(99,102,241,0.25)' }}>
+                  {draftQueue.length} In Plan
+                </span>
+                <button
+                  onClick={() => setEditPlanOpen(false)}
+                  className="p-1.5 rounded-xl hover:opacity-75 cursor-pointer"
+                  style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', color: textSec }}
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
             </div>
 
-            {/* List of Topics in Draft Queue */}
-            <div className="flex-grow my-4 space-y-2 overflow-y-auto pr-1">
-              <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: textSec }}>
-                Learning Sequence ({draftQueue.length} Topics)
-              </p>
-              {draftQueue.map((id, idx) => {
-                const t = TOPIC_MAP[id];
-                if (!t) return null;
-                const isPast = completedSet.has(id);
-                return (
-                  <div
-                    key={id}
-                    className="flex items-center justify-between p-3 rounded-xl border transition-all"
-                    style={{ background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderColor: border }}>
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-xs font-mono font-bold w-5 shrink-0" style={{ color: '#818CF8' }}>
-                        {idx + 1}.
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold truncate" style={{ color: textPri }}>{t.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[9px] px-1.5 py-0.2 rounded"
-                            style={{ background: t.level === 'Expert' ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.15)', color: t.level === 'Expert' ? '#EF4444' : '#818CF8' }}>
-                            {t.level}
+            {/* Main Content: Split Columns (Active Sequence on Left, 320+ Searchable Catalog on Right) */}
+            <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
+              
+              {/* Left Column: Active Learning Sequence (5 cols) */}
+              <div className="lg:col-span-5 border-b lg:border-b-0 lg:border-r flex flex-col min-h-0 p-4 sm:p-5"
+                style={{ borderColor: border, background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.01)' }}>
+                <div className="flex items-center justify-between mb-3 shrink-0">
+                  <span className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>
+                    Active Plan Sequence ({draftQueue.length})
+                  </span>
+                  <button
+                    onClick={handleAutoReform}
+                    className="text-[10px] font-semibold text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    title="Sort foundational prerequisites first"
+                  >
+                    <span className="material-symbols-outlined text-xs">auto_fix_high</span>
+                    Auto-Order Fundamentals
+                  </button>
+                </div>
+
+                {/* Scrollable list of draft queue topics */}
+                <div className="flex-grow space-y-2 overflow-y-auto pr-1">
+                  {draftQueue.map((id, idx) => {
+                    const t = TOPIC_MAP[id];
+                    if (!t) return null;
+                    const isPast = completedSet.has(id);
+                    return (
+                      <div
+                        key={`${id}-${idx}`}
+                        className="flex items-center justify-between p-2.5 rounded-xl border transition-all"
+                        style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF', borderColor: border }}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-xs font-mono font-bold w-5 shrink-0 text-indigo-400">
+                            #{idx + 1}
                           </span>
-                          {isPast && (
-                            <span className="text-[9px] font-semibold text-emerald-500 flex items-center gap-0.5">
-                              <span className="material-symbols-outlined text-[10px]">check_circle</span>
-                              Mastered
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold truncate" style={{ color: textPri }}>
+                              {t.name}
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[9px] px-1.5 py-0.2 rounded font-medium"
+                                style={{
+                                  background: t.category === 'OOPS & Architecture' ? 'rgba(236,72,153,0.15)'
+                                    : t.category === 'Low-Level Design' ? 'rgba(245,158,11,0.15)'
+                                    : 'rgba(99,102,241,0.15)',
+                                  color: t.category === 'OOPS & Architecture' ? '#EC4899'
+                                    : t.category === 'Low-Level Design' ? '#F59E0B'
+                                    : '#818CF8'
+                                }}
+                              >
+                                {t.category || 'DSA'}
+                              </span>
+                              <span className="text-[9px] px-1.5 py-0.2 rounded font-medium"
+                                style={{
+                                  background: t.level === 'Expert' ? 'rgba(239,68,68,0.15)'
+                                    : t.level === 'Advanced' ? 'rgba(168,85,247,0.15)'
+                                    : 'rgba(59,130,246,0.15)',
+                                  color: t.level === 'Expert' ? '#EF4444'
+                                    : t.level === 'Advanced' ? '#A855F7'
+                                    : '#3B82F6'
+                                }}
+                              >
+                                {t.level}
+                              </span>
+                              {isPast && (
+                                <span className="text-[9px] font-semibold text-emerald-500 flex items-center gap-0.5">
+                                  <span className="material-symbols-outlined text-[10px]">check_circle</span>
+                                  Done
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Reorder and Remove controls */}
+                        <div className="flex items-center gap-0.5 shrink-0 ml-2">
+                          <button
+                            onClick={() => moveUp(idx)}
+                            disabled={idx === 0}
+                            className="p-1 rounded hover:bg-white/10 disabled:opacity-20 cursor-pointer text-slate-400 hover:text-indigo-400"
+                            title="Move earlier"
+                          >
+                            <span className="material-symbols-outlined text-sm">arrow_upward</span>
+                          </button>
+                          <button
+                            onClick={() => moveDown(idx)}
+                            disabled={idx === draftQueue.length - 1}
+                            className="p-1 rounded hover:bg-white/10 disabled:opacity-20 cursor-pointer text-slate-400 hover:text-indigo-400"
+                            title="Move later"
+                          >
+                            <span className="material-symbols-outlined text-sm">arrow_downward</span>
+                          </button>
+                          <button
+                            onClick={() => removeTopic(id)}
+                            disabled={draftQueue.length <= 1}
+                            className="p-1 rounded hover:bg-red-500/10 disabled:opacity-20 cursor-pointer text-red-400 ml-1"
+                            title="Remove topic"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Column: 320+ Topic Catalog & Search Bar (7 cols) */}
+              <div className="lg:col-span-7 flex flex-col min-h-0 p-4 sm:p-5">
+                
+                {/* Search Bar & Instant Filter */}
+                <div className="space-y-3 shrink-0 mb-3">
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-lg text-slate-400">
+                      search
+                    </span>
+                    <input
+                      type="text"
+                      value={catalogSearch}
+                      onChange={(e) => setCatalogSearch(e.target.value)}
+                      placeholder="Search 320+ topics (e.g., Red-Black Tree, Dijkstra, SOLID, LLD Uber, Trie)..."
+                      className="w-full pl-9 pr-9 py-2 text-xs rounded-xl border outline-none transition-all focus:border-indigo-500"
+                      style={{ background: isDark ? '#1e1f23' : '#F8FAFC', borderColor: border, color: textPri }}
+                    />
+                    {catalogSearch && (
+                      <button
+                        onClick={() => setCatalogSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-200"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Category Pills Filter */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                    {CURRICULUM_CATEGORIES.map(cat => {
+                      const isSel = catalogCategory === cat;
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setCatalogCategory(cat)}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0"
+                          style={{
+                            background: isSel ? '#6366F1' : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
+                            color: isSel ? '#FFFFFF' : textSec,
+                            border: `1px solid ${isSel ? 'transparent' : border}`
+                          }}
+                        >
+                          {cat}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Level Filter Chips */}
+                  <div className="flex items-center justify-between text-[11px]" style={{ color: textSec }}>
+                    <span>Showing {filteredCatalog.length} of {COMBINED_ALL_TOPICS.length} topics</span>
+                    <div className="flex items-center gap-1">
+                      {['All', 'Foundation', 'Intermediate', 'Advanced', 'Expert'].map(lvl => (
+                        <button
+                          key={lvl}
+                          onClick={() => setCatalogLevel(lvl)}
+                          className={`px-1.5 py-0.5 rounded text-[10px] cursor-pointer ${catalogLevel === lvl ? 'font-bold text-indigo-400 underline' : 'opacity-70 hover:opacity-100'}`}
+                        >
+                          {lvl}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Catalog Cards Scrollable Area */}
+                <div className="flex-grow space-y-2 overflow-y-auto pr-1">
+                  {filteredCatalog.slice(0, 50).map(t => {
+                    const inPlan = draftQueue.includes(t.id);
+                    return (
+                      <div
+                        key={t.id}
+                        className="p-3 rounded-xl border transition-all flex items-center justify-between gap-3"
+                        style={{
+                          background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                          borderColor: inPlan ? 'rgba(34,197,94,0.3)' : border
+                        }}
+                      >
+                        <div className="min-w-0 flex-grow">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-bold truncate" style={{ color: textPri }}>
+                              {t.name}
+                            </h4>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded font-medium"
+                              style={{
+                                background: t.level === 'Expert' ? 'rgba(239,68,68,0.15)'
+                                  : t.level === 'Advanced' ? 'rgba(168,85,247,0.15)'
+                                  : 'rgba(59,130,246,0.15)',
+                                color: t.level === 'Expert' ? '#EF4444'
+                                  : t.level === 'Advanced' ? '#A855F7'
+                                  : '#3B82F6'
+                              }}
+                            >
+                              {t.level}
                             </span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded font-medium" style={{ color: textSec }}>
+                              {t.category}
+                            </span>
+                          </div>
+                          <p className="text-[11px] opacity-75 mt-0.5 line-clamp-1" style={{ color: textSec }}>
+                            {t.theory?.body || t.theory?.title}
+                          </p>
+                          {t.theory?.keyIdeas && (
+                            <div className="flex items-center gap-1.5 mt-1 overflow-hidden">
+                              {t.theory.keyIdeas.slice(0, 2).map((idea, i) => (
+                                <span key={i} className="text-[9px] px-1.5 py-0.2 rounded bg-white/5 text-slate-400 truncate max-w-[140px]">
+                                  {idea}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Add / Added Button */}
+                        <div className="shrink-0">
+                          {inPlan ? (
+                            <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-500 px-2.5 py-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10">
+                              <span className="material-symbols-outlined text-xs">check</span>
+                              In Plan
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => addSpecificTopic(t.id)}
+                              className="flex items-center gap-1 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all hover:opacity-90 active:scale-95 cursor-pointer text-white"
+                              style={{ background: '#6366F1' }}
+                            >
+                              <span className="material-symbols-outlined text-xs">add</span>
+                              Add
+                            </button>
                           )}
                         </div>
                       </div>
-                    </div>
+                    );
+                  })}
 
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
-                      {idx < draftQueue.length - 1 && (
-                        <button
-                          onClick={() => moveTowardsBack(idx)}
-                          className="p-1 rounded hover:opacity-75 cursor-pointer text-indigo-400"
-                          title="Move topic towards back (front-to-back progression permitted)">
-                          <span className="material-symbols-outlined text-sm">arrow_downward</span>
-                        </button>
-                      )}
+                  {filteredCatalog.length === 0 && (
+                    <div className="text-center py-12" style={{ color: textSec }}>
+                      <span className="material-symbols-outlined text-3xl mb-1 opacity-50">search_off</span>
+                      <p className="text-xs font-semibold">No topics found matching "{catalogSearch}"</p>
                       <button
-                        onClick={() => removeTopic(id)}
-                        disabled={draftQueue.length <= 1}
-                        className="p-1 rounded hover:opacity-75 disabled:opacity-20 cursor-pointer text-red-400"
-                        title="Remove from Plan">
-                        <span className="material-symbols-outlined text-sm">delete</span>
+                        onClick={() => { setCatalogSearch(''); setCatalogCategory('All'); setCatalogLevel('All'); }}
+                        className="mt-2 text-xs text-indigo-400 underline cursor-pointer"
+                      >
+                        Reset search filters
                       </button>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Add Topic Dropdown with Verified Prerequisite Inspection */}
-            {(() => {
-              const selectedObj = TOPIC_MAP[selectedToAdd];
-              const isComplex = selectedObj?.level === 'Advanced' || selectedObj?.level === 'Expert' || ['dp', 'graphs', 'trees', 'backtracking', 'trie', 'disjoint-set'].includes(selectedToAdd);
-              const mastery = checkFundamentalMastery();
-              const canAdd = selectedToAdd && (!isComplex || mastery.mastered);
-
-              return (
-                <div className="pt-3 border-t space-y-3" style={{ borderColor: border }}>
-                  <label className="text-[11px] font-bold uppercase tracking-wider block" style={{ color: textSec }}>
-                    Add Topic to Curriculum
-                  </label>
-                  <div className="flex gap-2">
-                    <select
-                      value={selectedToAdd}
-                      onChange={(e) => setSelectedToAdd(e.target.value)}
-                      className="flex-grow text-xs rounded-xl px-3 py-2 border outline-none cursor-pointer"
-                      style={{ background: isDark ? '#1e1f23' : '#F8FAFC', borderColor: border, color: textPri }}>
-                      <option value="">Select a topic to add…</option>
-                      {ALL_TOPICS.filter(t => !draftQueue.includes(t.id)).map(t => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} ({t.level})
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={addTopicToPlan}
-                      disabled={!canAdd}
-                      className="px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 disabled:opacity-40 cursor-pointer shrink-0"
-                      style={{ background: '#6366F1', color: '#fff' }}>
-                      Add
-                    </button>
-                  </div>
-
-                  {/* Feedback on selected topic */}
-                  {selectedObj && isComplex && !mastery.mastered && (
-                    <div className="p-3 rounded-xl border flex items-start gap-2 text-xs"
-                      style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)', color: '#EF4444' }}>
-                      <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
-                      <div>
-                        <p className="font-semibold">{selectedObj.name} is an advanced topic</p>
-                        <p className="text-[11px] opacity-90 mt-0.5 leading-relaxed">
-                          Prerequisites required: You must complete fundamental topics (Arrays, Two Pointers, Hash Tables) on AlgoMind first, or connect a LeetCode profile that has verified mastery.
-                        </p>
-                      </div>
-                    </div>
                   )}
 
-                  {selectedObj && isComplex && mastery.mastered && (
-                    <div className="p-3 rounded-xl border flex items-start gap-2 text-xs"
-                      style={{ background: 'rgba(34,197,94,0.08)', borderColor: 'rgba(34,197,94,0.25)', color: '#22C55E' }}>
-                      <span className="material-symbols-outlined text-base shrink-0 mt-0.5">verified</span>
-                      <div>
-                        <p className="font-semibold">Prerequisites Satisfied ({mastery.source})</p>
-                        <p className="text-[11px] opacity-90 mt-0.5 leading-relaxed">
-                          {mastery.reason}. You are approved to add this advanced topic.
-                        </p>
-                      </div>
-                    </div>
+                  {filteredCatalog.length > 50 && (
+                    <p className="text-center text-[11px] py-2 opacity-60" style={{ color: textSec }}>
+                      Showing top 50 results. Use the search bar to find specific topics among {filteredCatalog.length} matches.
+                    </p>
                   )}
                 </div>
-              );
-            })()}
 
-            {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 mt-4 border-t" style={{ borderColor: border }}>
-              <button
-                onClick={() => setEditPlanOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold hover:opacity-80 cursor-pointer"
-                style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', color: textSec }}>
-                Cancel
-              </button>
-              <button
-                onClick={saveCustomPlan}
-                className="px-5 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 active:scale-95 cursor-pointer shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)', color: '#fff' }}>
-                Save & Apply Plan
-              </button>
+              </div>
+
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="flex items-center justify-between px-6 py-3.5 border-t shrink-0" style={{ borderColor: border }}>
+              <div className="text-xs" style={{ color: textSec }}>
+                Plan sequence: <strong style={{ color: textPri }}>{draftQueue.length} topics</strong> will be applied.
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setEditPlanOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold hover:opacity-80 cursor-pointer"
+                  style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', color: textSec }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveCustomPlan}
+                  className="px-5 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 active:scale-95 cursor-pointer shadow-lg"
+                  style={{ background: 'linear-gradient(135deg, #6366F1, #A855F7)', color: '#fff' }}
+                >
+                  Save & Apply Plan
+                </button>
+              </div>
             </div>
 
           </div>
