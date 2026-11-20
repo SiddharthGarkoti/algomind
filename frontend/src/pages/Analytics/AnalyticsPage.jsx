@@ -303,7 +303,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                 style={{ background: surface, border: `1px solid ${border}` }}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: textSec }}>
-                    {activePlatform === 'total' ? 'AlgoMind Streak' : `${activePlatform === 'leetcode' ? 'LeetCode' : 'Codeforces'} Streak`}
+                    {solvedTab === 'total' ? 'AlgoMind Streak' : `${solvedTab === 'leetcode' ? 'LeetCode' : 'Codeforces'} Streak`}
                   </span>
                   <span className="material-symbols-outlined text-sm" style={{ color: '#F59E0B' }}>local_fire_department</span>
                 </div>
@@ -312,7 +312,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                     {currentStats.currentStreak}d
                   </span>
                   <span className="text-xs" style={{ color: textSec }}>
-                    {activePlatform === 'total' ? 'in-app streak' : 'platform streak'}
+                    {solvedTab === 'total' ? 'in-app streak' : 'platform streak'}
                   </span>
                 </div>
                 <p className="text-[10px] font-medium" style={{ color: textSec }}>

@@ -421,8 +421,8 @@ class VerifySolvedView(APIView):
                 else:
                     difficulty = 'easy'
 
-            # Platform solves receive 3/4/5 + 2 points (5 for easy, 6 for medium, 7 for hard)
-            points = request.user.award_question_rating(difficulty, from_platform=True)
+            # Solves receive 3 for easy, 4 for medium, 5 for hard (no extra bonus)
+            points = request.user.award_question_rating(difficulty)
 
             return Response({
                 'verified': True,

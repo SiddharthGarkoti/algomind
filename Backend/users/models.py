@@ -41,20 +41,15 @@ class User(AbstractUser):
 
     # ── Dynamic rating helpers ────────────────────────────────────
     # Elo system rules:
-    # 3 points for easy question, 4 for medium, 5 for hard
-    # Extra 2 points on each if done from platform (5 for easy, 6 for medium, 7 for hard)
+    # 3 points for easy question, 4 for medium, 5 for hard (no extra bonus)
+    # LeetCode contest rating impact: +100 Elo for every +200 rating after 1500 (at 1700 -> +100, at 1900 -> +200, etc.)
     # 15 points for completion of one plan part
-    # No other system of increment!
     DIFFICULTY_POINTS = {'easy': 3, 'medium': 4, 'hard': 5}
-    PLATFORM_DIFFICULTY_POINTS = {'easy': 5, 'medium': 6, 'hard': 7}
 
     def award_question_rating(self, difficulty: str, from_platform: bool = False) -> int:
         """Call when a user solves a question in-app or verifies from external platform."""
         diff = (difficulty or 'easy').lower()
-        if from_platform:
-            pts = self.PLATFORM_DIFFICULTY_POINTS.get(diff, 5)
-        else:
-            pts = self.DIFFICULTY_POINTS.get(diff, 3)
+        pts = self.DIFFICULTY_POINTS.get(diff, 3)
         self.award_rating(pts)
         return pts
 
@@ -63,22 +58,23 @@ class User(AbstractUser):
         self.award_rating(15)
 
     def award_contest_win(self, rank: int, total_participants: int):
-        """No other system of increment per system rules."""
+        """On-app contest rating award placeholder."""
         pass
 
     def recalculate_rating(self) -> int:
         """
         Recalculates the user's authentic Elo rating according to defined rules:
         - Baseline: 1000
-        - Platform solves: 5 for Easy (3+2), 6 for Medium (4+2), 7 for Hard (5+2)
-        - In-app verified solves (not from platform): 3 for Easy, 4 for Medium, 5 for Hard
+        - Problem solves: 3 for Easy, 4 for Medium, 5 for Hard (no bonus)
+        - LeetCode contest rating impact: +100 Elo for every +200 rating after 1500 (at 1700 -> +100, at 1900 -> +200...)
         - Plan parts completed: 15 points each
-        No other system of increment.
+        - In-app verified solves (not on platform): 3 for Easy, 4 for Medium, 5 for Hard
         """
         base_elo = 1000
 
-        # 1. Connected platforms solved problems
+        # 1. Connected platforms solved problems (3 Easy, 4 Medium, 5 Hard)
         platform_points = 0
+        contest_bonus = 0
         try:
             for profile in self.platform_profiles.select_related('stats').all():
                 st = getattr(profile, 'stats', None)
@@ -87,7 +83,13 @@ class User(AbstractUser):
                     hard = int(st.hard_solved or 0)
                     total = int(st.problems_solved or 0)
                     med = int(st.medium_solved) if (st.medium_solved is not None and st.medium_solved > 0) else max(0, total - easy - hard)
-                    platform_points += (easy * 5) + (med * 6) + (hard * 7)
+                    platform_points += (easy * 3) + (med * 4) + (hard * 5)
+
+                    # LeetCode contest rating bonus: +100 for every +200 above 1500 (1700 -> 100, 1900 -> 200, etc.)
+                    if profile.platform_name == 'leetcode':
+                        lc_rating = int(st.rating or 0)
+                        if lc_rating >= 1700:
+                            contest_bonus += ((lc_rating - 1500) // 200) * 100
         except Exception:
             pass
 
@@ -109,7 +111,7 @@ class User(AbstractUser):
         except Exception:
             pass
 
-        new_rating = base_elo + platform_points + plan_points + in_app_points
+        new_rating = base_elo + platform_points + contest_bonus + plan_points + in_app_points
         self.rating = new_rating
         self.level = max(1, new_rating // 500)
         if self.pk:

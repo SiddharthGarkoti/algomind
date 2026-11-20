@@ -351,6 +351,13 @@ function PublicProfilePage({ theme, toggleTheme }) {
                   {profile.platforms.map((plat) => {
                     const isLc = plat.platform_name === 'leetcode';
                     const iconColor = isLc ? '#F59E0B' : '#3B82F6';
+                    const totalSolved = Number(plat.problems_solved || 0);
+                    const easySolved  = Number(plat.easy_solved || 0);
+                    const hardSolved  = Number(plat.hard_solved || 0);
+                    const medSolved   = (plat.medium_solved !== undefined && plat.medium_solved !== null)
+                      ? Number(plat.medium_solved)
+                      : Math.max(0, totalSolved - easySolved - hardSolved);
+
                     return (
                       <div
                         key={plat.platform_name}
@@ -390,27 +397,23 @@ function PublicProfilePage({ theme, toggleTheme }) {
                           </div>
                         </div>
 
-                        {/* Metrics Breakdown */}
-                        <div className="grid grid-cols-4 gap-2 pt-1 border-t" style={{ borderColor: border }}>
-                          <div className="text-center p-2 rounded-xl" style={{ background: surfLow }}>
-                            <p className="text-xs font-bold" style={{ color: textPri }}>{plat.problems_solved || 0}</p>
-                            <p className="text-[9px] uppercase tracking-wider mt-0.5" style={{ color: textSec }}>Solved</p>
+                        {/* Metrics Breakdown: Solved, Easy, Medium, Hard */}
+                        <div className="grid grid-cols-4 gap-1.5 sm:gap-2 pt-2 border-t" style={{ borderColor: border }}>
+                          <div className="text-center p-2 rounded-xl min-w-0" style={{ background: surfLow }}>
+                            <p className="text-xs font-bold truncate" style={{ color: textPri }}>{totalSolved}</p>
+                            <p className="text-[9px] uppercase tracking-wider mt-0.5 font-medium" style={{ color: textSec }}>Solved</p>
                           </div>
-                          <div className="text-center p-2 rounded-xl" style={{ background: surfLow }}>
-                            <p className="text-xs font-bold" style={{ color: '#22C55E' }}>{plat.easy_solved || 0}</p>
-                            <p className="text-[9px] uppercase tracking-wider mt-0.5" style={{ color: textSec }}>Easy</p>
+                          <div className="text-center p-2 rounded-xl min-w-0" style={{ background: surfLow }}>
+                            <p className="text-xs font-bold truncate" style={{ color: '#22C55E' }}>{easySolved}</p>
+                            <p className="text-[9px] uppercase tracking-wider mt-0.5 font-medium" style={{ color: textSec }}>Easy</p>
                           </div>
-                          <div className="text-center p-2 rounded-xl" style={{ background: surfLow }}>
-                            <p className="text-xs font-bold" style={{ color: '#F59E0B' }}>
-                              {plat.medium_solved !== undefined && plat.medium_solved !== null && plat.medium_solved > 0
-                                ? plat.medium_solved
-                                : Math.max(0, (plat.problems_solved || 0) - (plat.easy_solved || 0) - (plat.hard_solved || 0))}
-                            </p>
-                            <p className="text-[9px] uppercase tracking-wider mt-0.5" style={{ color: textSec }}>Medium</p>
+                          <div className="text-center p-2 rounded-xl min-w-0" style={{ background: surfLow }}>
+                            <p className="text-xs font-bold truncate" style={{ color: '#F59E0B' }}>{medSolved}</p>
+                            <p className="text-[9px] uppercase tracking-wider mt-0.5 font-medium" style={{ color: textSec }}>Medium</p>
                           </div>
-                          <div className="text-center p-2 rounded-xl" style={{ background: surfLow }}>
-                            <p className="text-xs font-bold" style={{ color: '#EF4444' }}>{plat.hard_solved || 0}</p>
-                            <p className="text-[9px] uppercase tracking-wider mt-0.5" style={{ color: textSec }}>Hard</p>
+                          <div className="text-center p-2 rounded-xl min-w-0" style={{ background: surfLow }}>
+                            <p className="text-xs font-bold truncate" style={{ color: '#EF4444' }}>{hardSolved}</p>
+                            <p className="text-[9px] uppercase tracking-wider mt-0.5 font-medium" style={{ color: textSec }}>Hard</p>
                           </div>
                         </div>
                       </div>
