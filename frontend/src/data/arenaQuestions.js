@@ -1258,12 +1258,7 @@ WHERE (e.departmentId, e.salary) IN (
     SELECT departmentId, MAX(salary)
     FROM Employee
     GROUP BY departmentId
-);`,
-      cpp: `// Write SQL query or C++ simulation`,
-      python: `# Python SQLite query solution
-import sqlite3
-def solve():
-    pass`
+);`
     },
     testCases: [
       {
@@ -1437,12 +1432,7 @@ public:
         dll.emplace_front(key, value);
         cache[key] = dll.begin();
     }
-};`,
-      python: `class LRUCache:
-    def __init__(self, capacity: int):
-        self.cap = capacity
-        self.cache = {}`,
-      cpp: `// C++ implementation`
+};`
     },
     testCases: [
       {

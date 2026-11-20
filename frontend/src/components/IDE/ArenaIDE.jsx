@@ -5,17 +5,81 @@ import api from '../../utils/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ARENA_QUESTIONS } from '../../data/arenaQuestions.js';
 
-const LANGUAGE_CONFIG = {
+import { useMemo } from 'react';
+
+export const SQL_LANGUAGES = {
+  mysql: { label: 'MySQL', monacoLang: 'sql', extension: 'sql' },
+  postgres: { label: 'PostgreSQL', monacoLang: 'sql', extension: 'sql' },
+  oracle: { label: 'Oracle SQL', monacoLang: 'sql', extension: 'sql' },
+};
+
+export const LLD_LANGUAGES = {
+  lld_python: { label: 'Python (LLD OOP)', monacoLang: 'python', extension: 'py' },
+  lld_java: { label: 'Java (LLD Design)', monacoLang: 'java', extension: 'java' },
+  lld_cpp: { label: 'C++ (LLD System)', monacoLang: 'cpp', extension: 'cpp' },
+};
+
+export const DSA_LANGUAGES = {
   cpp: { label: 'C++', monacoLang: 'cpp', extension: 'cpp' },
   python: { label: 'Python 3', monacoLang: 'python', extension: 'py' },
   java: { label: 'Java', monacoLang: 'java', extension: 'java' },
   javascript: { label: 'JavaScript', monacoLang: 'javascript', extension: 'js' },
-  mysql: { label: 'MySQL', monacoLang: 'sql', extension: 'sql' },
-  postgres: { label: 'PostgreSQL', monacoLang: 'sql', extension: 'sql' },
-  oracle: { label: 'Oracle SQL', monacoLang: 'sql', extension: 'sql' },
-  lld_python: { label: 'LLD (Python OOP)', monacoLang: 'python', extension: 'py' },
-  lld_java: { label: 'LLD (Java Design)', monacoLang: 'java', extension: 'java' },
-  lld_cpp: { label: 'LLD (C++ System)', monacoLang: 'cpp', extension: 'cpp' },
+};
+
+export const LANGUAGE_CONFIG = {
+  ...DSA_LANGUAGES,
+  ...SQL_LANGUAGES,
+  ...LLD_LANGUAGES,
+};
+
+export const detectQuestionType = (q) => {
+  if (!q) return 'dsa';
+  const topic = (q.topic || '').toLowerCase();
+  const category = (q.category || '').toLowerCase();
+  const title = (q.title || '').toLowerCase();
+  const starters = q.starterCode ? Object.keys(q.starterCode) : [];
+
+  // SQL Questions: only SQL languages
+  if (
+    topic.includes('sql') ||
+    topic.includes('database') ||
+    category.includes('sql') ||
+    title.includes('(sql)') ||
+    title.includes('sql') ||
+    starters.includes('mysql') ||
+    starters.includes('postgres') ||
+    starters.includes('oracle')
+  ) {
+    return 'sql';
+  }
+
+  // LLD Questions: only LLD languages
+  if (
+    topic.includes('lld') ||
+    topic.includes('design') ||
+    topic.includes('oop') ||
+    category.includes('lld') ||
+    category.includes('low-level design') ||
+    category.includes('oops') ||
+    title.includes('(lld)') ||
+    title.includes('low-level design') ||
+    title.toLowerCase().startsWith('lld:') ||
+    starters.includes('lld_python') ||
+    starters.includes('lld_java') ||
+    starters.includes('lld_cpp')
+  ) {
+    return 'lld';
+  }
+
+  // DSA / Algorithmic questions
+  return 'dsa';
+};
+
+export const getQuestionLanguages = (q) => {
+  const type = detectQuestionType(q);
+  if (type === 'sql') return SQL_LANGUAGES;
+  if (type === 'lld') return LLD_LANGUAGES;
+  return DSA_LANGUAGES;
 };
 
 function ArenaIDE({ theme, toggleTheme, selected, setSelected, setShowIDE }) {
@@ -25,6 +89,11 @@ function ArenaIDE({ theme, toggleTheme, selected, setSelected, setShowIDE }) {
 
   // Active question (fallback to first question if selected not found)
   const question = selected || ARENA_QUESTIONS[0];
+
+  // Strictly filter languages to match question domain (SQL for SQL, LLD for LLD, DSA for DSA)
+  const questionType = useMemo(() => detectQuestionType(question), [question]);
+  const allowedLanguages = useMemo(() => getQuestionLanguages(question), [question]);
+  const defaultLangForQ = useMemo(() => Object.keys(allowedLanguages)[0], [allowedLanguages]);
 
   // Left panel active tab
   const [leftTab, setLeftTab] = useState('problem'); // 'problem', 'solution', 'submissions', 'peer'
@@ -36,25 +105,43 @@ function ArenaIDE({ theme, toggleTheme, selected, setSelected, setShowIDE }) {
   const [selectedQuizOpt, setSelectedQuizOpt] = useState(null);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
 
-  // Editor states
-  const [language, setLanguage] = useState('cpp');
+  // Editor states — defaulted strictly to the question's domain language
+  const [language, setLanguage] = useState(() => defaultLangForQ);
   const [tabs, setTabs] = useState(['Tab-1']);
   const [activeTab, setActiveTab] = useState('Tab-1');
   const [codeMap, setCodeMap] = useState(() => {
-    // initialize starter codes
+    const initialLang = Object.keys(getQuestionLanguages(question))[0];
+    const starter = question.starterCode?.[initialLang] ||
+      Object.values(question.starterCode || {})[0] ||
+      (detectQuestionType(question) === 'sql' ? '-- Write your SQL query here\n'
+        : detectQuestionType(question) === 'lld' ? '# Write your LLD class implementation here\n'
+        : '// Write your solution here\n');
     return {
-      'Tab-1': question.starterCode?.[language] || question.starterCode?.cpp || '// Write your solution here'
+      'Tab-1': starter
     };
   });
 
+  // Automatically synchronize active language when question changes
+  useEffect(() => {
+    if (!allowedLanguages[language]) {
+      setLanguage(defaultLangForQ);
+    }
+  }, [question.id, allowedLanguages, defaultLangForQ]);
+
   // Whenever language or question changes, update code if not user-edited
   useEffect(() => {
-    const starter = question.starterCode?.[language] || question.starterCode?.cpp || '';
+    const starter = question.starterCode?.[language] ||
+      question.starterCode?.[defaultLangForQ] ||
+      Object.values(question.starterCode || {})[0] ||
+      (questionType === 'sql' ? '-- Write your SQL query here\n'
+        : questionType === 'lld' ? '# Write your LLD class implementation here\n'
+        : '// Write your solution here\n');
+
     setCodeMap(prev => ({
       ...prev,
       [activeTab]: prev[activeTab] || starter
     }));
-  }, [language, question, activeTab]);
+  }, [language, question, activeTab, defaultLangForQ, questionType]);
 
   // Reset quiz on question change
   useEffect(() => {
@@ -162,7 +249,7 @@ function ArenaIDE({ theme, toggleTheme, selected, setSelected, setShowIDE }) {
         runtime: '18 ms',
         memory: '14.6 MB',
         time: 'Just now',
-        lang: LANGUAGE_CONFIG[language].label
+        lang: (LANGUAGE_CONFIG[language] || allowedLanguages[language])?.label || language
       };
 
       setSubmissionHistory(prev => [newSub, ...prev]);
@@ -637,10 +724,10 @@ function ArenaIDE({ theme, toggleTheme, selected, setSelected, setShowIDE }) {
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="text-xs font-semibold px-2 py-1 rounded-lg border outline-none cursor-pointer"
+                className="text-xs font-semibold px-2.5 py-1 rounded-lg border outline-none cursor-pointer transition-all"
                 style={{ background: panelBg, borderColor: border, color: textPri }}
               >
-                {Object.entries(LANGUAGE_CONFIG).map(([k, cfg]) => (
+                {Object.entries(allowedLanguages).map(([k, cfg]) => (
                   <option key={k} value={k} className="text-black dark:text-white" style={{ background: panelBg }}>
                     {cfg.label}
                   </option>
