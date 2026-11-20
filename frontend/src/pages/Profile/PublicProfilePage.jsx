@@ -376,9 +376,9 @@ function PublicProfilePage({ theme, toggleTheme }) {
                           </div>
                           <div className="flex items-center gap-1.5">
                             {plat.rating > 0 && (
-                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg"
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-lg"
                                 style={{ background: surfLow, color: iconColor, border: `1px solid ${border}` }}>
-                                {plat.rating} Elo
+                                Contest Rating {plat.rating}
                               </span>
                             )}
                             {plat.last_updated && (
@@ -391,7 +391,7 @@ function PublicProfilePage({ theme, toggleTheme }) {
                         </div>
 
                         {/* Metrics Breakdown */}
-                        <div className="grid grid-cols-3 gap-2 pt-1 border-t" style={{ borderColor: border }}>
+                        <div className="grid grid-cols-4 gap-2 pt-1 border-t" style={{ borderColor: border }}>
                           <div className="text-center p-2 rounded-xl" style={{ background: surfLow }}>
                             <p className="text-xs font-bold" style={{ color: textPri }}>{plat.problems_solved || 0}</p>
                             <p className="text-[9px] uppercase tracking-wider mt-0.5" style={{ color: textSec }}>Solved</p>
@@ -399,6 +399,14 @@ function PublicProfilePage({ theme, toggleTheme }) {
                           <div className="text-center p-2 rounded-xl" style={{ background: surfLow }}>
                             <p className="text-xs font-bold" style={{ color: '#22C55E' }}>{plat.easy_solved || 0}</p>
                             <p className="text-[9px] uppercase tracking-wider mt-0.5" style={{ color: textSec }}>Easy</p>
+                          </div>
+                          <div className="text-center p-2 rounded-xl" style={{ background: surfLow }}>
+                            <p className="text-xs font-bold" style={{ color: '#F59E0B' }}>
+                              {plat.medium_solved !== undefined && plat.medium_solved !== null && plat.medium_solved > 0
+                                ? plat.medium_solved
+                                : Math.max(0, (plat.problems_solved || 0) - (plat.easy_solved || 0) - (plat.hard_solved || 0))}
+                            </p>
+                            <p className="text-[9px] uppercase tracking-wider mt-0.5" style={{ color: textSec }}>Medium</p>
                           </div>
                           <div className="text-center p-2 rounded-xl" style={{ background: surfLow }}>
                             <p className="text-xs font-bold" style={{ color: '#EF4444' }}>{plat.hard_solved || 0}</p>

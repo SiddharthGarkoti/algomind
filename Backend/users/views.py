@@ -528,17 +528,21 @@ class PublicProfileView(APIView):
         if not platforms_hidden:
             for p in target_user.platform_profiles.select_related('stats').all():
                 st = getattr(p, 'stats', None)
+                easy = st.easy_solved if st else 0
+                hard = st.hard_solved if st else 0
+                total = st.problems_solved if st else 0
+                med = st.medium_solved if (st and st.medium_solved is not None and st.medium_solved > 0) else max(0, total - easy - hard)
                 platforms_data.append({
                     'platform_name': p.platform_name,
                     'handle': p.handle,
-                    'problems_solved': st.problems_solved if st else 0,
+                    'problems_solved': total,
                     'rating': st.rating if st else 0,
                     'contests': st.contests if st else 0,
                     'streak': st.streak if st else 0,
                     'max_streak': st.max_streak if st else 0,
-                    'easy_solved': st.easy_solved if st else 0,
-                    'medium_solved': st.medium_solved if st else 0,
-                    'hard_solved': st.hard_solved if st else 0,
+                    'easy_solved': easy,
+                    'medium_solved': med,
+                    'hard_solved': hard,
                     'last_updated': st.last_updated.isoformat() if st and st.last_updated else None,
                 })
 
