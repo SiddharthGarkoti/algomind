@@ -15,7 +15,7 @@ from .serializers import (ProblemListSerializer, ProblemDetailSerializer,
 from .filters import ProblemFilter
 
 
-DIFFICULTY_POINTS = {'easy': 10, 'medium': 25, 'hard': 50}
+DIFFICULTY_POINTS = {'easy': 3, 'medium': 4, 'hard': 5}
 JUDGE0_FINAL_STATUS_IDS = {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
 
 
@@ -106,8 +106,9 @@ class SubmitView(APIView):
             ).exclude(id=submission.id).exists()
 
             if not prior_accepted:
-                # 10 points per problem, no points on resubmission
-                request.user.award_rating(10)
+                # 3 points for easy, 4 for medium, 5 for hard
+                difficulty = (submission.problem.difficulty or 'easy').lower()
+                request.user.award_question_rating(difficulty, from_platform=False)
 
         return Response(
             SubmissionSerializer(submission).data,

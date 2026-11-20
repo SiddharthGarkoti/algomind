@@ -8,11 +8,13 @@ from .views import (
     RecentSubmissionsView,
     PreviewStatsView,
     VerifySolvedView,
+    SyncPlatformsView,
 )
 
 urlpatterns = [
     path('connect/',                        ConnectPlatformView.as_view(),    name='connect_platform'),
     path('dashboard/',                      DashboardView.as_view(),          name='analytics_dashboard'),
+    path('sync/',                           SyncPlatformsView.as_view(),      name='sync_platforms'),
     path('weak-areas/',                     WeakAreasView.as_view(),          name='weak_areas'),
     path('recent-submissions/',             RecentSubmissionsView.as_view(),  name='recent_submissions'),
     path('refresh/<str:platform>/',         RefreshPlatformView.as_view(),    name='refresh_platform'),

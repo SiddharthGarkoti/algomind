@@ -1355,7 +1355,8 @@ function PlanViewPage({ theme, toggleTheme }) {
         if (res.already_credited) {
           setToast({ msg: `${problem.title} verified! (Already credited, no points on resubmission)`, ok: true });
         } else {
-          setToast({ msg: `${problem.title} verified! +${res.points_awarded || 15} rating awarded!`, ok: true });
+          const defaultPts = problem.difficulty === 'Hard' ? 7 : problem.difficulty === 'Medium' ? 6 : 5;
+          setToast({ msg: `${problem.title} verified! +${res.points_awarded || defaultPts} rating awarded!`, ok: true });
           if (res.new_rating && updateUser) updateUser({ rating: res.new_rating });
         }
       } else {
@@ -1374,12 +1375,12 @@ function PlanViewPage({ theme, toggleTheme }) {
     const newCompleted = new Set([...completedSet, topicId]);
     setCompletedSet(newCompleted);
 
-    // Call backend to award +100 rating for plan completion
+    // Call backend to award +15 rating for plan completion
     if (isAuthenticated) {
       api.post('/auth/award-plan-completion/', { topic_id: topicId })
         .then(d => {
           if (d.awarded > 0) {
-            setToast({ msg: 'Topic plan completed! +100 rating bonus awarded!', ok: true });
+            setToast({ msg: 'Topic plan completed! +15 rating bonus awarded!', ok: true });
             if (d.new_rating && updateUser) updateUser({ rating: d.new_rating });
           }
         })

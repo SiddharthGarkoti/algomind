@@ -292,18 +292,6 @@ class RefreshPlatformView(APIView):
 
         PlatformStats.objects.update_or_create(profile=profile, defaults=raw)
 
-        # Elo rating update: user with x questions gets x * 10 rating
-        all_solved = sum(
-            p.stats.problems_solved
-            for p in request.user.platform_profiles.select_related('stats')
-            if hasattr(p, 'stats') and p.stats
-        )
-        target_rating = all_solved * 10
-        if request.user.rating < target_rating:
-            request.user.rating = target_rating
-            request.user.level = max(1, target_rating // 500)
-            request.user.save(update_fields=['rating', 'level'])
-
         for ts in topic_stats_raw:
             TopicStats.objects.update_or_create(
                 profile=profile,
@@ -317,20 +305,59 @@ class RefreshPlatformView(APIView):
         return Response(PlatformProfileSerializer(profile).data)
 
 
+class SyncPlatformsView(APIView):
+    """
+    POST /api/analytics/sync/
+    Auto-syncs all connected platform profiles for the authenticated user.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        profiles = PlatformProfile.objects.filter(user=request.user)
+        synced = []
+        for profile in profiles:
+            if not profile.handle:
+                continue
+            try:
+                raw = fetch_stats(profile.platform_name, profile.handle)
+                topic_stats_raw = raw.pop('topic_stats', [])
+                PlatformStats.objects.update_or_create(profile=profile, defaults=raw)
+                for ts in topic_stats_raw:
+                    TopicStats.objects.update_or_create(
+                        profile=profile,
+                        topic_slug=ts['topic_slug'],
+                        defaults={
+                            'topic_name':      ts['topic_name'],
+                            'problems_solved': ts['problems_solved'],
+                        },
+                    )
+                synced.append(profile.platform_name)
+            except Exception:
+                pass
+
+        return Response({
+            'status': 'ok',
+            'synced_platforms': synced,
+            'count': len(synced),
+        })
+
+
 class VerifySolvedView(APIView):
     """
     POST /api/analytics/verify-solved/
-    Body: { platform: 'leetcode', slug: 'climbing-stairs', is_plan: true }
+    Body: { platform: 'leetcode', slug: 'climbing-stairs', difficulty: 'easy', is_plan: true }
     Returns { verified: true/false, already_credited: bool, points_awarded: int, new_rating: int, detail: '...' }
-    Awards 10 points per question, +5 additional points when completed through the plan.
+    Elo rules: 3 for easy, 4 for medium, 5 for hard.
+    Extra 2 points on each if done from platform (+2 -> 5, 6, 7).
     Zero points awarded on resubmission.
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        platform = request.data.get('platform', 'leetcode').lower()
-        slug     = request.data.get('slug', '').strip()
-        is_plan  = bool(request.data.get('is_plan', False))
+        platform   = request.data.get('platform', 'leetcode').lower()
+        slug       = request.data.get('slug', '').strip()
+        difficulty = (request.data.get('difficulty') or '').strip().lower()
+        is_plan    = bool(request.data.get('is_plan', False))
 
         if not slug:
             return Response({'verified': False, 'detail': 'Slug is required.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -375,9 +402,17 @@ class VerifySolvedView(APIView):
                 is_plan=is_plan
             )
 
-            # 10 points per question + 5 additional when completed through the plan
-            points = 15 if is_plan else 10
-            request.user.award_rating(points)
+            # Determine difficulty if not provided
+            if not difficulty or difficulty not in ['easy', 'medium', 'hard']:
+                from dsa.models import Problem
+                p = Problem.objects.filter(slug=slug).first()
+                if p and p.difficulty:
+                    difficulty = p.difficulty.lower()
+                else:
+                    difficulty = 'easy'
+
+            # Platform solves receive 3/4/5 + 2 points (5 for easy, 6 for medium, 7 for hard)
+            points = request.user.award_question_rating(difficulty, from_platform=True)
 
             return Response({
                 'verified': True,

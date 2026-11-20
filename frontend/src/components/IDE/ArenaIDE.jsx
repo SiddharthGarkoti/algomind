@@ -966,7 +966,7 @@ function ArenaIDE({ theme, toggleTheme, selected, setSelected, setShowIDE }) {
             <div>
               <h3 className="text-xl font-headline font-extrabold" style={{ color: textPri }}>Accepted!</h3>
               <p className="text-xs mt-1" style={{ color: textSec }}>
-                All testcases passed with flying colors. +10 Elo rating points awarded!
+                All testcases passed with flying colors. +{question.difficulty === 'Hard' ? 5 : question.difficulty === 'Medium' ? 4 : 3} Elo rating points awarded!
               </p>
             </div>
             <div className="p-3 rounded-xl font-mono text-xs border space-y-1" style={{ background: codeSurface, borderColor: border }}>

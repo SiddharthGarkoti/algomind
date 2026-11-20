@@ -41,11 +41,14 @@ function ArenaPage({ theme, toggleTheme }) {
   // Fetch verified solved statuses
   useEffect(() => {
     if (!isAuthenticated) return;
-    const slugs = ARENA_QUESTIONS.map(q => q.slug);
     Promise.all(
-      slugs.map(slug =>
-        api.post('/analytics/verify-solved/', { platform: 'leetcode', slug })
-          .then(r => r.verified ? slug : null)
+      ARENA_QUESTIONS.map(q =>
+        api.post('/analytics/verify-solved/', {
+          platform: 'leetcode',
+          slug: q.slug,
+          difficulty: q.difficulty?.toLowerCase?.() || 'easy',
+        })
+          .then(r => r.verified ? q.slug : null)
           .catch(() => null)
       )
     ).then(results => {

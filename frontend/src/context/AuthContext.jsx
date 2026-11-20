@@ -32,7 +32,10 @@ export function AuthProvider({ children }) {
     }
 
     api.get('/auth/profile/')
-      .then(setUser)
+      .then(p => {
+        setUser(p);
+        api.post('/analytics/sync/').catch(() => {});
+      })
       .catch(() => api.clearTokens())
       .finally(() => setLoading(false));
 
@@ -63,6 +66,8 @@ export function AuthProvider({ children }) {
     const profile = await api.get('/auth/profile/');
     setUser(profile);
     _clearGuest();
+    // Auto-sync platform profiles on login
+    api.post('/analytics/sync/').catch(() => {});
     return profile;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -73,6 +78,8 @@ export function AuthProvider({ children }) {
     api.setTokens(data.access, data.refresh);
     setUser(data.user);
     _clearGuest();
+    // Auto-sync platform profiles on registration/login
+    api.post('/analytics/sync/').catch(() => {});
     return data.user;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -84,6 +91,8 @@ export function AuthProvider({ children }) {
     const profile = await api.get('/auth/profile/');
     setUser(profile);
     _clearGuest();
+    // Auto-sync platform profiles on login
+    api.post('/analytics/sync/').catch(() => {});
     return profile;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

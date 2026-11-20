@@ -865,7 +865,7 @@ class MentorAnalysisView(APIView):
 class AwardPlanCompletionView(APIView):
     """
     POST /auth/award-plan-completion/
-    Gives user exactly 100 rating points once per topic completed.
+    Gives user exactly 15 rating points once per topic completed.
     No points on resubmission.
     """
     permission_classes = [permissions.IsAuthenticated]
@@ -885,11 +885,11 @@ class AwardPlanCompletionView(APIView):
             })
 
         CompletedPlan.objects.create(user=request.user, topic_id=topic_id)
-        request.user.award_plan_completion()  # +100 rating
+        request.user.award_plan_completion()  # +15 rating
 
         return Response({
-            'detail': 'Plan topic completed, +100 rating awarded!',
-            'awarded': 100,
+            'detail': 'Plan topic completed, +15 rating awarded!',
+            'awarded': 15,
             'new_rating': request.user.rating
         })
 

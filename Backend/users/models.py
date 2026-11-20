@@ -35,35 +35,35 @@ class User(AbstractUser):
         self.rating = max(0, self.rating + points)
         # level up every 500 rating points above the 1000 base
         self.level = max(1, self.rating // 500)
-        self.save(update_fields=['rating', 'level'])
+        if self.pk:
+            self.save(update_fields=['rating', 'level'])
 
     # ── Dynamic rating helpers ────────────────────────────────────
-    DIFFICULTY_POINTS = {'easy': 20, 'medium': 40, 'hard': 50}
+    # Elo system rules:
+    # 3 points for easy question, 4 for medium, 5 for hard
+    # Extra 2 points on each if done from platform (5 for easy, 6 for medium, 7 for hard)
+    # 15 points for completion of one plan part
+    # No other system of increment!
+    DIFFICULTY_POINTS = {'easy': 3, 'medium': 4, 'hard': 5}
+    PLATFORM_DIFFICULTY_POINTS = {'easy': 5, 'medium': 6, 'hard': 7}
 
-    def award_question_rating(self, difficulty: str):
-        """Call when a user verifies a solved question in a party."""
-        pts = self.DIFFICULTY_POINTS.get(difficulty.lower(), 10)
+    def award_question_rating(self, difficulty: str, from_platform: bool = False) -> int:
+        """Call when a user solves a question in-app or verifies from external platform."""
+        diff = (difficulty or 'easy').lower()
+        if from_platform:
+            pts = self.PLATFORM_DIFFICULTY_POINTS.get(diff, 5)
+        else:
+            pts = self.DIFFICULTY_POINTS.get(diff, 3)
         self.award_rating(pts)
+        return pts
 
     def award_plan_completion(self):
-        """Call when a user completes a full algorithm/goal plan."""
-        self.award_rating(100)
+        """15 points for completion of one plan part."""
+        self.award_rating(15)
 
     def award_contest_win(self, rank: int, total_participants: int):
-        """
-        Call when a ranked challenge finishes.
-        Rank 1 gets most points, scaled by participant count.
-        rank=1 → 100 + 10×participants, rank=2 → 60, rank=3 → 30, others → 10.
-        """
-        if rank == 1:
-            pts = 100 + 10 * max(0, total_participants - 1)
-        elif rank == 2:
-            pts = 60
-        elif rank == 3:
-            pts = 30
-        else:
-            pts = 10
-        self.award_rating(pts)
+        """No other system of increment per system rules."""
+        pass
 
 
 NOTIF_TYPES = [
