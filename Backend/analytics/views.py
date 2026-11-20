@@ -173,17 +173,22 @@ class DashboardView(APIView):
         total_current_streak = max(platform_current_streaks) if platform_current_streaks else 0
         total_max_streak     = max(platform_max_streaks) if platform_max_streaks else 0
 
+        # Authentic AlgoMind in-app streak (isolated from third-party platform streaks)
+        app_streak = request.user.streak or 0
+
         return Response({
             'platforms': data,
             'summary': {
-                'total_problems_solved': total_problems,
-                'total_contests':        total_contests,
-                'average_rating':        avg_rating,
-                'platforms_connected':   len(data),
-                'streak':                total_max_streak,
-                'max_streak':            total_max_streak,
-                'current_streak':        total_current_streak,
-                'app_streak':            request.user.streak,
+                'total_problems_solved':   total_problems,
+                'total_contests':          total_contests,
+                'average_rating':          avg_rating,
+                'platforms_connected':     len(data),
+                'streak':                  app_streak,
+                'max_streak':              app_streak,
+                'current_streak':          app_streak,
+                'app_streak':              app_streak,
+                'platform_current_streak': total_current_streak,
+                'platform_max_streak':     total_max_streak,
             },
         })
 

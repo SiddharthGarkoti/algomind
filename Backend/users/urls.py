@@ -7,6 +7,7 @@ from .views import (
     FriendOnlineStatusView, AIInsightNotificationView, MentorAnalysisView,
     SendOTPView, VerifyOTPView, AwardPlanCompletionView, DeleteAccountView,
     ContactSupportView, SetPlanTierView,
+    ForgotPasswordSendOTPView, ForgotPasswordVerifyOTPView, ForgotPasswordResetView,
 )
 from .oauth import GitHubBeginView, GitHubCallbackView, GoogleBeginView, GoogleCallbackView
 
@@ -15,6 +16,9 @@ urlpatterns = [
     path('register/',                RegisterView.as_view(),               name='register'),
     path('send-otp/',                SendOTPView.as_view(),                name='send_otp'),
     path('verify-otp/',              VerifyOTPView.as_view(),              name='verify_otp'),
+    path('forgot-password/send-otp/',   ForgotPasswordSendOTPView.as_view(),   name='forgot_password_send_otp'),
+    path('forgot-password/verify-otp/', ForgotPasswordVerifyOTPView.as_view(), name='forgot_password_verify_otp'),
+    path('forgot-password/reset/',      ForgotPasswordResetView.as_view(),      name='forgot_password_reset'),
     path('login/',                   EmailLoginView.as_view(),             name='login'),
     path('token/refresh/',           TokenRefreshView.as_view(),           name='token_refresh'),
     path('logout/',                  LogoutView.as_view(),                 name='logout'),

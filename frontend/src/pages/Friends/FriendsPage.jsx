@@ -204,7 +204,10 @@ function FriendsPage({ theme, toggleTheme }) {
                               )}
                               {entry.is_self && <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background:'rgba(99,102,241,0.15)',color:'#6366F1' }}>You</span>}
                             </p>
-                            <p className="text-[9px]" style={{ color: textSec }}>🔥 {entry.streak}d streak</p>
+                            <p className="text-[9px] flex items-center gap-0.5" style={{ color: textSec }}>
+                              <span className="material-symbols-outlined text-[11px]" style={{ color: '#F59E0B' }}>local_fire_department</span>
+                              <span>{entry.streak}d streak</span>
+                            </p>
                           </div>
                         </div>
                         <span className="text-sm font-bold" style={{ color: textPri }}>Lv {entry.level}</span>
@@ -281,7 +284,7 @@ function FriendsPage({ theme, toggleTheme }) {
                       <p className="text-[10px]" style={{ color: textSec }}>
                         {isOnline
                           ? <span style={{ color: '#22C55E' }}>● Online</span>
-                          : `Lv ${friend?.level} · Rating ${friend?.rating} · 🔥${friend?.streak}d`
+                          : `Lv ${friend?.level} · Rating ${friend?.rating} · ${friend?.streak}d streak`
                         }
                       </p>
                     </div>

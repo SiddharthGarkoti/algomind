@@ -34,12 +34,12 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
             user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
             raise drf_serializers.ValidationError(
-                {'detail': 'No account found with this email address.'}
+                {'detail': 'Invalid credentials.'}
             )
 
         if not user.check_password(password):
             raise drf_serializers.ValidationError(
-                {'detail': 'Incorrect password. Please try again.'}
+                {'detail': 'Invalid credentials.'}
             )
 
         if not user.is_active:
@@ -73,7 +73,11 @@ def _otp_cache_key(email):
     return f'algomind_reg_otp_{email.lower().strip()}'
 
 
-def _send_otp_email(email, otp):
+def _forgot_otp_cache_key(email):
+    return f'algomind_forgot_otp_{email.lower().strip()}'
+
+
+def _send_otp_email(email, otp, purpose='register'):
     """
     Sends OTP email:
     1. If BREVO_API_KEY is configured, sends via Brevo REST API (HTTPS port 443).
@@ -83,24 +87,37 @@ def _send_otp_email(email, otp):
     """
     brevo_key = getattr(django_settings, 'BREVO_API_KEY', '').strip()
 
+    is_reset = (purpose == 'reset')
+    subject_title = "Password Reset Code" if is_reset else "Verification Code"
+    heading = "Reset Your Password" if is_reset else "Verify Your Email Address"
+    intro = (
+        "Use the one-time code below to verify your password reset request. It expires in 10 minutes."
+        if is_reset
+        else "Use the one-time code below to verify your account. It expires in 10 minutes."
+    )
+    footer = (
+        "If you did not request a password reset, please ignore this email or secure your account."
+        if is_reset
+        else "If you did not request this verification code, please ignore this email."
+    )
+
     html_content = (
         f"<div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#0f172a;border-radius:16px;color:#f8fafc;border:1px solid #1e293b;'>"
         f"<div style='margin-bottom:24px;'>"
-        f"<span style='font-size:24px;'>🧠</span> "
         f"<span style='font-size:20px;font-weight:800;letter-spacing:-0.03em;color:#ffffff;'>Algo<span style='color:#6366f1;'>Mind</span></span>"
         f"</div>"
-        f"<h2 style='font-size:20px;font-weight:700;color:#f8fafc;margin:0 0 12px 0;'>Verify Your Email Address</h2>"
-        f"<p style='color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px 0;'>Use the one-time code below to verify your account. It expires in 10 minutes.</p>"
+        f"<h2 style='font-size:20px;font-weight:700;color:#f8fafc;margin:0 0 12px 0;'>{heading}</h2>"
+        f"<p style='color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px 0;'>{intro}</p>"
         f"<div style='background:#1e1b4b;border:1px solid #4338ca;padding:16px 24px;border-radius:12px;text-align:center;margin:0 0 24px 0;'>"
         f"<span style='font-family:monospace;font-size:32px;font-weight:800;letter-spacing:8px;color:#818cf8;'>{otp}</span>"
         f"</div>"
-        f"<p style='color:#64748b;font-size:12px;line-height:1.5;margin:0;'>If you did not request this verification code, please ignore this email.</p>"
+        f"<p style='color:#64748b;font-size:12px;line-height:1.5;margin:0;'>{footer}</p>"
         f"</div>"
     )
     plain_text = (
-        f"Your AlgoMind verification code is: {otp}\n\n"
+        f"Your AlgoMind {subject_title.lower()} is: {otp}\n\n"
         f"This code expires in 10 minutes. Do not share it with anyone.\n\n"
-        f"If you did not request this, please ignore this email."
+        f"{footer}"
     )
 
     # 1. PRIMARY: Brevo HTTPS REST API (Port 443 - Works on Render and locally, sends to ANY recipient)
@@ -111,7 +128,7 @@ def _send_otp_email(email, otp):
             payload = {
                 "sender": {"name": "AlgoMind", "email": brevo_sender},
                 "to": [{"email": email}],
-                "subject": f"AlgoMind — Verification Code: {otp}",
+                "subject": f"AlgoMind — {subject_title}: {otp}",
                 "htmlContent": html_content,
                 "textContent": plain_text
             }
@@ -144,7 +161,7 @@ def _send_otp_email(email, otp):
     from_header = f"AlgoMind <{user}>"
 
     msg = MIMEMultipart('alternative')
-    msg['Subject'] = f"AlgoMind — Verification Code: {otp}"
+    msg['Subject'] = f"AlgoMind — {subject_title}: {otp}"
     msg['From'] = from_header
     msg['To'] = email
     msg['Reply-To'] = user
@@ -258,6 +275,125 @@ class VerifyOTPView(APIView):
         if stored != otp:
             return Response({'detail': 'Incorrect verification code. Please check and try again.'}, status=400)
         return Response({'detail': 'Code verified.'})
+
+
+class ForgotPasswordSendOTPView(APIView):
+    """
+    POST /auth/forgot-password/send-otp/
+    Body: { "email": "user@example.com" }
+    Generates 6-digit OTP for password reset, sends email. Rate-limited to 60s per email.
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [OTPThrottle]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip().lower()
+        if not email or '@' not in email:
+            return Response({'detail': 'A valid email address is required.'}, status=400)
+
+        # Enforce that user exists
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response({'detail': 'No account found with this email address.'}, status=400)
+
+        # Rate-limit: 60s
+        rate_key = f'algomind_forgot_rate_{email}'
+        if cache.get(rate_key):
+            return Response({'detail': 'Please wait 60 seconds before requesting another reset code.'}, status=429)
+
+        # Generate 6-digit OTP
+        otp = ''.join(random.choices(string.digits, k=6))
+        cache.set(_forgot_otp_cache_key(email), otp, timeout=600)  # 10 minutes
+        cache.set(rate_key, True, timeout=60)
+
+        delivery_error = None
+        try:
+            _send_otp_email(email, otp, purpose='reset')
+        except Exception as e:
+            delivery_error = e
+            if django_settings.DEBUG:
+                print(f'\n=======================================================')
+                print(f'[AlgoMind Forgot Password DEV] Send error: {e}')
+                print(f'[AlgoMind Forgot Password DEV] OTP for {email}: {otp}')
+                print(f'=======================================================\n')
+            else:
+                cache.delete(_forgot_otp_cache_key(email))
+                cache.delete(rate_key)
+                return Response({'detail': f'Failed to send email: {e}'}, status=500)
+
+        resp = {'detail': 'Password reset verification code sent to your email.'}
+        is_dummy = getattr(django_settings, 'IS_DUMMY_EMAIL', False) or (
+            'console' in getattr(django_settings, 'EMAIL_BACKEND', '').lower()
+        )
+        has_brevo = bool(getattr(django_settings, 'BREVO_API_KEY', '').strip())
+        if django_settings.DEBUG and ((is_dummy and not has_brevo) or delivery_error):
+            resp['dev_otp'] = otp
+            resp['detail'] = f'Reset code generated! (Dev OTP: {otp})'
+
+        return Response(resp)
+
+
+class ForgotPasswordVerifyOTPView(APIView):
+    """
+    POST /auth/forgot-password/verify-otp/
+    Body: { "email": "...", "otp": "123456" }
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [OTPThrottle]
+
+    def post(self, request):
+        email = (request.data.get('email') or '').strip().lower()
+        otp   = (request.data.get('otp') or '').strip()
+        stored = cache.get(_forgot_otp_cache_key(email))
+        if not stored:
+            return Response({'detail': 'Verification code has expired or was not requested. Please click "Resend code".'}, status=400)
+        if stored != otp:
+            return Response({'detail': 'Incorrect verification code. Please check and try again.'}, status=400)
+        return Response({'detail': 'Code verified.'})
+
+
+class ForgotPasswordResetView(APIView):
+    """
+    POST /auth/forgot-password/reset/
+    Body: { "email": "...", "otp": "123456", "password": "...", "password2": "..." }
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [OTPThrottle]
+
+    def post(self, request):
+        email     = (request.data.get('email') or '').strip().lower()
+        otp       = (request.data.get('otp') or '').strip()
+        password  = request.data.get('password') or ''
+        password2 = request.data.get('password2') or ''
+
+        if not email or not otp:
+            return Response({'detail': 'Email and verification code are required.'}, status=400)
+
+        stored = cache.get(_forgot_otp_cache_key(email))
+        if not stored or stored != otp:
+            return Response({'detail': 'Verification code is invalid or has expired.'}, status=400)
+
+        if not password or len(password) < 8:
+            return Response({'detail': 'Password must be at least 8 characters long.'}, status=400)
+
+        if password != password2:
+            return Response({'detail': 'Passwords do not match.'}, status=400)
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response({'detail': 'No account found with this email address.'}, status=404)
+
+        user.set_password(password)
+        user.save(update_fields=['password'])
+
+        # Invalidate OTP after successful reset
+        cache.delete(_forgot_otp_cache_key(email))
+        rate_key = f'algomind_forgot_rate_{email}'
+        cache.delete(rate_key)
+
+        return Response({'detail': 'Password reset successful! You can now sign in with your new password.'})
 
 
 class RegisterView(generics.CreateAPIView):

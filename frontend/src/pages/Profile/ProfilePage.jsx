@@ -105,9 +105,8 @@ function ProfilePage({ theme, toggleTheme }) {
   const totalSolved   = platforms.reduce((s, p) => s + (p.stats?.problems_solved ?? 0), 0);
   const totalContests = platforms.reduce((s, p) => s + (p.stats?.contests ?? 0), 0);
   const maxRating     = Math.max(0, ...platforms.map(p => p.stats?.rating ?? 0));
-  const maxPlatformStreak = platforms.reduce((m, p) => Math.max(m, p.stats?.max_streak ?? p.stats?.streak ?? 0), 0);
-  const currentPlatformStreak = platforms.reduce((m, p) => Math.max(m, p.stats?.streak ?? 0), 0);
-  const bestStreak    = Math.max(user?.streak ?? 0, maxPlatformStreak);
+  const appStreak     = user?.streak ?? Number(localStorage.getItem('algomind_app_streak') || 0);
+  const bestStreak    = appStreak;
 
   // Study plan completions from localStorage
   const savedPlan = useMemo(() => {
@@ -329,7 +328,7 @@ function ProfilePage({ theme, toggleTheme }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 divide-y md:divide-y-0 md:divide-x"
             style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
             {[
-              { label: 'Max Streak',    value: `${bestStreak}d`,             sub: `${currentPlatformStreak}d current`, color: '#818CF8' },
+              { label: 'AlgoMind Streak', value: `${appStreak}d`,            sub: 'In-app solving streak', color: '#818CF8' },
               { label: 'Total Solved',  value: totalSolved.toLocaleString(), sub: 'Across platforms', color: '#A855F7' },
               { label: 'Contests',      value: totalContests,                sub: 'Rated appearances', color: '#C084FC' },
               { label: 'Contest Rating',value: maxRating > 0 ? maxRating : '—', sub: 'Peak rating', color: '#6366F1' },

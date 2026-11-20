@@ -128,10 +128,8 @@ function AnalyticsPage({ theme, toggleTheme }) {
 
   /* Build solved stats for current tab */
   const statsFor = (platformName) => {
-    const maxPlatformStreak = platforms?.reduce((max, p) => Math.max(max, p.stats?.max_streak ?? p.stats?.streak ?? 0), 0) ?? 0;
-    const currentPlatformStreak = platforms?.reduce((max, p) => Math.max(max, p.stats?.streak ?? 0), 0) ?? 0;
-    const bestMaxStreak = summary?.max_streak || summary?.streak || maxPlatformStreak || user?.streak || 0;
-    const bestCurrentStreak = summary?.current_streak ?? currentPlatformStreak ?? 0;
+    // Strictly isolate AlgoMind app streak from third-party platform streaks
+    const appStreak = user?.streak ?? summary?.app_streak ?? Number(localStorage.getItem('algomind_app_streak') || 0);
 
     if (platformName === 'total') {
       return {
@@ -140,9 +138,9 @@ function AnalyticsPage({ theme, toggleTheme }) {
         hard:          summary?.hard_solved   ?? platforms?.reduce((s,p)=>s+(p.stats?.hard_solved??0),0) ?? 0,
         total:         summary?.total_problems_solved ?? 0,
         rating:        summary?.average_rating ?? 0,
-        currentStreak: bestCurrentStreak,
-        maxStreak:     bestMaxStreak,
-        streak:        bestMaxStreak,
+        currentStreak: appStreak,
+        maxStreak:     appStreak,
+        streak:        appStreak,
         url:           null,
       };
     }
@@ -304,14 +302,18 @@ function AnalyticsPage({ theme, toggleTheme }) {
               <div className="rounded-xl p-3.5 flex flex-col justify-between"
                 style={{ background: surface, border: `1px solid ${border}` }}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: textSec }}>Consistency Streak</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: textSec }}>
+                    {activePlatform === 'total' ? 'AlgoMind Streak' : `${activePlatform === 'leetcode' ? 'LeetCode' : 'Codeforces'} Streak`}
+                  </span>
                   <span className="material-symbols-outlined text-sm" style={{ color: '#F59E0B' }}>local_fire_department</span>
                 </div>
                 <div className="flex items-baseline gap-1.5 my-1">
                   <span className="text-2xl font-headline font-extrabold tracking-tight" style={{ color: textPri }}>
                     {currentStats.currentStreak}d
                   </span>
-                  <span className="text-xs" style={{ color: textSec }}>active streak</span>
+                  <span className="text-xs" style={{ color: textSec }}>
+                    {activePlatform === 'total' ? 'in-app streak' : 'platform streak'}
+                  </span>
                 </div>
                 <p className="text-[10px] font-medium" style={{ color: textSec }}>
                   Best: <strong style={{ color: textPri }}>{currentStats.maxStreak} days</strong>
