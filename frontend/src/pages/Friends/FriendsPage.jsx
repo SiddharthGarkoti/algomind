@@ -144,9 +144,11 @@ function FriendsPage({ theme, toggleTheme }) {
 
         {/* Leaderboard */}
         {!loading && tab === 'leaderboard' && (() => {
-          const entries = lbMode === 'friends'
+          const devUsernames = new Set(['siddharth', 'godninja']);
+          const rawEntries = lbMode === 'friends'
             ? friendsLb.map((u, i) => ({ ...u, rank: i + 1, is_self: u.username === user?.username }))
             : leaderboard;
+          const entries = rawEntries.filter(u => !u.is_admin && !devUsernames.has(u.username?.toLowerCase()));
           return (
             <div className="space-y-4">
               {/* Global / Friends toggle */}

@@ -476,13 +476,24 @@ class LeaderboardView(APIView):
     """
     GET /api/auth/leaderboard/?limit=50
     Returns top users ranked by rating, with online status omitted (no WS yet).
+    Excludes developer and staff admin profiles from public leaderboard.
     When the requesting user is authenticated, injects their own entry.
     """
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         limit = min(int(request.query_params.get('limit', 50)), 200)
-        top_users = User.objects.order_by('-rating')[:limit]
+
+        # Exclude developer / admin accounts from public competitive leaderboard
+        top_users = (
+            User.objects
+            .exclude(is_staff=True)
+            .exclude(is_superuser=True)
+            .exclude(is_admin=True)
+            .exclude(username__iexact='Siddharth')
+            .exclude(username__iexact='godninja')
+            .order_by('-rating')[:limit]
+        )
 
         result = []
         for rank, user in enumerate(top_users, start=1):
@@ -497,24 +508,44 @@ class LeaderboardView(APIView):
                 'is_self':  (request.user.is_authenticated and request.user.id == user.id),
             })
 
-        # If the authenticated user is not in the top list, append their entry
+        # If the authenticated user is not in the top list and is not a dev, append their entry
         if request.user.is_authenticated:
-            in_list = any(e['is_self'] for e in result)
-            if not in_list:
-                me   = request.user
-                rank = User.objects.filter(rating__gt=me.rating).count() + 1
-                result.append({
-                    'rank':     rank,
-                    'id':       me.id,
-                    'username': me.username,
-                    'avatar':   request.build_absolute_uri(me.avatar.url) if me.avatar else None,
-                    'rating':   me.rating,
-                    'level':    me.level,
-                    'streak':   me.streak,
-                    'is_self':  True,
-                })
+            me = request.user
+            is_dev = me.is_staff or me.is_superuser or me.is_admin or me.username.lower() in ('siddharth', 'godninja')
+            if not is_dev:
+                in_list = any(e['is_self'] for e in result)
+                if not in_list:
+                    rank = (
+                        User.objects
+                        .exclude(is_staff=True)
+                        .exclude(is_superuser=True)
+                        .exclude(is_admin=True)
+                        .exclude(username__iexact='Siddharth')
+                        .exclude(username__iexact='godninja')
+                        .filter(rating__gt=me.rating)
+                        .count() + 1
+                    )
+                    result.append({
+                        'rank':     rank,
+                        'id':       me.id,
+                        'username': me.username,
+                        'avatar':   request.build_absolute_uri(me.avatar.url) if me.avatar else None,
+                        'rating':   me.rating,
+                        'level':    me.level,
+                        'streak':   me.streak,
+                        'is_self':  True,
+                    })
 
-        return Response({'leaderboard': result, 'total': User.objects.count()})
+        total_count = (
+            User.objects
+            .exclude(is_staff=True)
+            .exclude(is_superuser=True)
+            .exclude(is_admin=True)
+            .exclude(username__iexact='Siddharth')
+            .exclude(username__iexact='godninja')
+            .count()
+        )
+        return Response({'leaderboard': result, 'total': total_count})
 
 
 class UserSearchView(APIView):

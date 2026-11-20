@@ -103,14 +103,6 @@ class ConnectPlatformView(APIView):
                 defaults=raw,
             )
 
-            # Elo rating: user with already an x amount of questions gets x * 10 rating
-            total_solved = raw.get('problems_solved', 0)
-            target_rating = total_solved * 10
-            if request.user.rating < target_rating:
-                request.user.rating = target_rating
-                request.user.level = max(1, target_rating // 500)
-                request.user.save(update_fields=['rating', 'level'])
-
             # --- save topic stats ---
             for ts in topic_stats_raw:
                 TopicStats.objects.update_or_create(
@@ -158,11 +150,6 @@ class DashboardView(APIView):
 
         rated_platforms = [p for p in data if p.get('stats') and p['stats'].get('rating', 0) > 0]
         total_problems  = sum(p['stats']['problems_solved'] for p in data if p.get('stats'))
-        base_elo = total_problems * 10
-        if request.user.rating < base_elo:
-            request.user.rating = base_elo
-            request.user.level = max(1, base_elo // 500)
-            request.user.save(update_fields=['rating', 'level'])
         total_contests  = sum(p['stats']['contests']        for p in data if p.get('stats'))
         avg_rating      = (
             sum(p['stats']['rating'] for p in rated_platforms) // len(rated_platforms)

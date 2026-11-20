@@ -1117,6 +1117,53 @@ function PlanViewPage({ theme, toggleTheme }) {
   const [draftQueue,    setDraftQueue]    = useState([]);
   const [selectedToAdd, setSelectedToAdd] = useState('');
   const [teachingMode,  setTeachingMode]  = useState(false);
+  const [platformAnalytics, setPlatformAnalytics] = useState(null);
+
+  /* ── Load connected platform data for prerequisite verification ── */
+  useEffect(() => {
+    if (isAuthenticated) {
+      api.get('/analytics/dashboard/').then(setPlatformAnalytics).catch(() => {});
+    }
+  }, [isAuthenticated]);
+
+  /* ── Check if fundamental topics are completed (in-app or via LeetCode/CF) ── */
+  const checkFundamentalMastery = useCallback(() => {
+    // 1. AlgoMind in-app progress
+    const inAppFundamentalCount = ['arrays', 'two-pointers', 'hash-tables'].filter(id => completedSet.has(id)).length;
+    if (inAppFundamentalCount >= 2) {
+      return { mastered: true, reason: 'Completed on AlgoMind', source: 'AlgoMind' };
+    }
+
+    // 2. Connected LeetCode or Codeforces profile inspection
+    const platforms = platformAnalytics?.platforms || [];
+    const lc = platforms.find(p => p.platform_name?.toLowerCase() === 'leetcode');
+    const cf = platforms.find(p => p.platform_name?.toLowerCase() === 'codeforces');
+
+    const lcSolved = lc?.stats?.problems_solved || 0;
+    const cfSolved = cf?.stats?.problems_solved || 0;
+    const topicStats = lc?.topic_stats || [];
+
+    const hasArrayOrTwoPointer = topicStats.some(t => {
+      const slug = (t.topic_slug || '').toLowerCase();
+      return (slug.includes('array') || slug.includes('two-pointer') || slug.includes('hash')) && (t.problems_solved || 0) >= 15;
+    });
+
+    if (hasArrayOrTwoPointer || lcSolved >= 50 || cfSolved >= 50) {
+      const platName = lc ? 'LeetCode' : 'Codeforces';
+      const handle = lc?.handle || cf?.handle;
+      return {
+        mastered: true,
+        reason: `Verified via ${platName} (@${handle})`,
+        source: platName,
+        handle
+      };
+    }
+
+    return {
+      mastered: false,
+      reason: 'Fundamental prerequisites (Arrays, Two Pointers, Hash Tables) required first.'
+    };
+  }, [completedSet, platformAnalytics]);
 
   /* ── Load or build progress from backend + localStorage ── */
   useEffect(() => {
@@ -1242,6 +1289,18 @@ function PlanViewPage({ theme, toggleTheme }) {
   const addTopicToPlan = () => {
     if (!selectedToAdd) return;
     if (draftQueue.includes(selectedToAdd)) return;
+    
+    const t = TOPIC_MAP[selectedToAdd];
+    const isComplex = t?.level === 'Advanced' || t?.level === 'Expert' || ['dp', 'graphs', 'trees', 'backtracking', 'trie', 'disjoint-set'].includes(selectedToAdd);
+
+    if (isComplex) {
+      const mastery = checkFundamentalMastery();
+      if (!mastery.mastered) {
+        setToast({ msg: `Prerequisite Required: Complete fundamental topics (Arrays, Two Pointers, Hash Tables) first or verify via LeetCode.`, ok: false });
+        return;
+      }
+    }
+
     setDraftQueue(prev => [...prev, selectedToAdd]);
     setSelectedToAdd('');
   };
@@ -1368,9 +1427,12 @@ function PlanViewPage({ theme, toggleTheme }) {
     <DashboardLayout theme={theme} toggleTheme={toggleTheme}>
       <div className="max-w-3xl mx-auto pb-20">
 
-        {/* ── Topic Strip: Full Complete Plan Order Visible ── */}
+        {/* ── Topic Strip: Full Complete Plan Order Visible (No native scrollbar) ── */}
         <div className="flex items-center justify-between gap-3 mb-6">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none flex-grow min-w-0 pr-2">
+          <div
+            className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none flex-grow min-w-0 pr-2 select-none"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
             {/* Completed count badge */}
             {completedSet.size > 0 && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold shrink-0"
@@ -1380,32 +1442,51 @@ function PlanViewPage({ theme, toggleTheme }) {
               </div>
             )}
 
-            {/* Complete learning plan sequence — no parts disappear */}
+            {/* Complete learning plan sequence — strict sequential progression */}
             {topicQueue.map((id, idx) => {
               const t = TOPIC_MAP[id];
               if (!t) return null;
               const isActive = idx === currentIdx;
               const isPast   = completedSet.has(id);
               const isMaster2 = id.endsWith('-2') || id === 'dp-3';
+              const isLocked = !isPast && !isActive && (idx > currentIdx);
+
+              const handleTopicClick = () => {
+                if (isActive) return;
+                if (isPast) {
+                  setCurrentIdx(idx);
+                  return;
+                }
+                // Disallow arbitrary skipping/jumping ahead to locked future topics
+                setToast({
+                  msg: `Topic #${idx + 1} (${t.name}) is locked. Complete #${currentIdx + 1} (${TOPIC_MAP[topicQueue[currentIdx]]?.name}) first.`,
+                  ok: false
+                });
+              };
 
               return (
                 <button
                   key={`${id}-${idx}`}
-                  onClick={() => setCurrentIdx(idx)}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0"
+                  onClick={handleTopicClick}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0"
                   style={{
                     background: isActive
                       ? (isMaster2 ? 'linear-gradient(135deg, #7C3AED, #A855F7)' : '#6366F1')
                       : isPast
                         ? (isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)')
                         : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
-                    color: isActive ? '#fff' : isPast ? '#818CF8' : textSec,
+                    color: isActive ? '#fff' : isPast ? '#818CF8' : (isDark ? '#64748B' : '#94A3B8'),
                     border: `1px solid ${isActive ? 'transparent' : isPast ? 'rgba(99,102,241,0.25)' : border}`,
                     boxShadow: isActive ? '0 4px 14px -4px rgba(99,102,241,0.5)' : 'none',
+                    cursor: isLocked ? 'not-allowed' : 'pointer',
+                    opacity: isLocked ? 0.6 : 1,
                   }}
+                  title={isLocked ? `Complete Topic #${currentIdx + 1} first to unlock` : t.name}
                 >
                   {isPast ? (
                     <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1", color: '#22C55E' }}>check_circle</span>
+                  ) : isLocked ? (
+                    <span className="material-symbols-outlined text-[11px] opacity-70">lock</span>
                   ) : (
                     <span className="opacity-50 text-[10px]">#{idx + 1}</span>
                   )}
@@ -1646,8 +1727,8 @@ function PlanViewPage({ theme, toggleTheme }) {
             {/* Drawer Header */}
             <div className="flex items-center justify-between pb-4 border-b" style={{ borderColor: border }}>
               <div>
-                <h3 className="text-base font-headline font-bold" style={{ color: textPri }}>Customize Learning Path</h3>
-                <p className="text-xs mt-0.5" style={{ color: textSec }}>Reorder topics or modify your structured sequence</p>
+                <h3 className="text-base font-headline font-bold" style={{ color: textPri }}>Curriculum Topic Manager</h3>
+                <p className="text-xs mt-0.5" style={{ color: textSec }}>Structured pedagogical progression based on verified mastery</p>
               </div>
               <button
                 onClick={() => setEditPlanOpen(false)}
@@ -1657,46 +1738,15 @@ function PlanViewPage({ theme, toggleTheme }) {
               </button>
             </div>
 
-            {/* Live Customization Warnings & Suggestions */}
-            {(() => {
-              const warnings = validatePlanOrder(draftQueue);
-              if (warnings.length === 0) return null;
-              return (
-                <div className="my-4 p-4 rounded-xl border"
-                  style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)' }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="material-symbols-outlined text-base" style={{ color: '#EF4444' }}>warning</span>
-                    <h4 className="text-xs font-bold uppercase tracking-wider" style={{ color: '#EF4444' }}>
-                      Customization Warning: Prerequisite Conflict
-                    </h4>
-                  </div>
-                  <div className="space-y-2 mb-3">
-                    {warnings.slice(0, 3).map((w, idx) => (
-                      <div key={idx} className="text-xs leading-relaxed" style={{ color: textPri }}>
-                        <p className="font-semibold text-rose-300">• {w.message}</p>
-                        <p className="text-[11px] opacity-80 mt-0.5">{w.reason}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    onClick={handleAutoReform}
-                    className="w-full py-2 px-3 rounded-lg text-xs font-bold transition-all hover:opacity-90 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
-                    style={{ background: '#6366F1', color: '#fff' }}>
-                    <span className="material-symbols-outlined text-sm">auto_fix_high</span>
-                    <span>Auto-Reform to Optimal Order</span>
-                  </button>
-                </div>
-              );
-            })()}
-
             {/* List of Topics in Draft Queue */}
             <div className="flex-grow my-4 space-y-2 overflow-y-auto pr-1">
               <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: textSec }}>
-                Current Priority Sequence ({draftQueue.length} Topics)
+                Learning Sequence ({draftQueue.length} Topics)
               </p>
               {draftQueue.map((id, idx) => {
                 const t = TOPIC_MAP[id];
                 if (!t) return null;
+                const isPast = completedSet.has(id);
                 return (
                   <div
                     key={id}
@@ -1708,30 +1758,22 @@ function PlanViewPage({ theme, toggleTheme }) {
                       </span>
                       <div className="min-w-0">
                         <p className="text-xs font-bold truncate" style={{ color: textPri }}>{t.name}</p>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded"
-                          style={{ background: t.level === 'Expert' ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.15)', color: t.level === 'Expert' ? '#EF4444' : '#818CF8' }}>
-                          {t.level}
-                        </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[9px] px-1.5 py-0.2 rounded"
+                            style={{ background: t.level === 'Expert' ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.15)', color: t.level === 'Expert' ? '#EF4444' : '#818CF8' }}>
+                            {t.level}
+                          </span>
+                          {isPast && (
+                            <span className="text-[9px] font-semibold text-emerald-500 flex items-center gap-0.5">
+                              <span className="material-symbols-outlined text-[10px]">check_circle</span>
+                              Mastered
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0 ml-2">
-                      <button
-                        onClick={() => moveUp(idx)}
-                        disabled={idx === 0}
-                        className="p-1 rounded hover:opacity-75 disabled:opacity-20 cursor-pointer"
-                        title="Move Up"
-                        style={{ color: textPri }}>
-                        <span className="material-symbols-outlined text-sm">arrow_upward</span>
-                      </button>
-                      <button
-                        onClick={() => moveDown(idx)}
-                        disabled={idx === draftQueue.length - 1}
-                        className="p-1 rounded hover:opacity-75 disabled:opacity-20 cursor-pointer"
-                        title="Move Down"
-                        style={{ color: textPri }}>
-                        <span className="material-symbols-outlined text-sm">arrow_downward</span>
-                      </button>
                       <button
                         onClick={() => removeTopic(id)}
                         disabled={draftQueue.length <= 1}
@@ -1745,33 +1787,69 @@ function PlanViewPage({ theme, toggleTheme }) {
               })}
             </div>
 
-            {/* Add Topic Dropdown */}
-            <div className="pt-3 border-t space-y-2" style={{ borderColor: border }}>
-              <label className="text-[11px] font-bold uppercase tracking-wider block" style={{ color: textSec }}>
-                Add Topic to Curriculum
-              </label>
-              <div className="flex gap-2">
-                <select
-                  value={selectedToAdd}
-                  onChange={(e) => setSelectedToAdd(e.target.value)}
-                  className="flex-grow text-xs rounded-xl px-3 py-2 border outline-none cursor-pointer"
-                  style={{ background: isDark ? '#1e1f23' : '#F8FAFC', borderColor: border, color: textPri }}>
-                  <option value="">Select a topic to add…</option>
-                  {ALL_TOPICS.filter(t => !draftQueue.includes(t.id)).map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.level})
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={addTopicToPlan}
-                  disabled={!selectedToAdd}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 disabled:opacity-40 cursor-pointer shrink-0"
-                  style={{ background: '#6366F1', color: '#fff' }}>
-                  Add
-                </button>
-              </div>
-            </div>
+            {/* Add Topic Dropdown with Verified Prerequisite Inspection */}
+            {(() => {
+              const selectedObj = TOPIC_MAP[selectedToAdd];
+              const isComplex = selectedObj?.level === 'Advanced' || selectedObj?.level === 'Expert' || ['dp', 'graphs', 'trees', 'backtracking', 'trie', 'disjoint-set'].includes(selectedToAdd);
+              const mastery = checkFundamentalMastery();
+              const canAdd = selectedToAdd && (!isComplex || mastery.mastered);
+
+              return (
+                <div className="pt-3 border-t space-y-3" style={{ borderColor: border }}>
+                  <label className="text-[11px] font-bold uppercase tracking-wider block" style={{ color: textSec }}>
+                    Add Topic to Curriculum
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedToAdd}
+                      onChange={(e) => setSelectedToAdd(e.target.value)}
+                      className="flex-grow text-xs rounded-xl px-3 py-2 border outline-none cursor-pointer"
+                      style={{ background: isDark ? '#1e1f23' : '#F8FAFC', borderColor: border, color: textPri }}>
+                      <option value="">Select a topic to add…</option>
+                      {ALL_TOPICS.filter(t => !draftQueue.includes(t.id)).map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} ({t.level})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={addTopicToPlan}
+                      disabled={!canAdd}
+                      className="px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 disabled:opacity-40 cursor-pointer shrink-0"
+                      style={{ background: '#6366F1', color: '#fff' }}>
+                      Add
+                    </button>
+                  </div>
+
+                  {/* Feedback on selected topic */}
+                  {selectedObj && isComplex && !mastery.mastered && (
+                    <div className="p-3 rounded-xl border flex items-start gap-2 text-xs"
+                      style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)', color: '#EF4444' }}>
+                      <span className="material-symbols-outlined text-base shrink-0 mt-0.5">warning</span>
+                      <div>
+                        <p className="font-semibold">{selectedObj.name} is an advanced topic</p>
+                        <p className="text-[11px] opacity-90 mt-0.5 leading-relaxed">
+                          Prerequisites required: You must complete fundamental topics (Arrays, Two Pointers, Hash Tables) on AlgoMind first, or connect a LeetCode profile that has verified mastery.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedObj && isComplex && mastery.mastered && (
+                    <div className="p-3 rounded-xl border flex items-start gap-2 text-xs"
+                      style={{ background: 'rgba(34,197,94,0.08)', borderColor: 'rgba(34,197,94,0.25)', color: '#22C55E' }}>
+                      <span className="material-symbols-outlined text-base shrink-0 mt-0.5">verified</span>
+                      <div>
+                        <p className="font-semibold">Prerequisites Satisfied ({mastery.source})</p>
+                        <p className="text-[11px] opacity-90 mt-0.5 leading-relaxed">
+                          {mastery.reason}. You are approved to add this advanced topic.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-3 pt-4 mt-4 border-t" style={{ borderColor: border }}>
