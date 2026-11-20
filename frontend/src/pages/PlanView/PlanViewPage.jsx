@@ -1286,6 +1286,16 @@ function PlanViewPage({ theme, toggleTheme }) {
     });
   };
 
+  const moveTowardsBack = (index) => {
+    if (index >= draftQueue.length - 1) return;
+    setDraftQueue(prev => {
+      const next = [...prev];
+      const [item] = next.splice(index, 1);
+      next.splice(index + 1, 0, item);
+      return next;
+    });
+  };
+
   const addTopicToPlan = () => {
     if (!selectedToAdd) return;
     if (draftQueue.includes(selectedToAdd)) return;
@@ -1431,7 +1441,7 @@ function PlanViewPage({ theme, toggleTheme }) {
         {/* ── Topic Strip: Full Complete Plan Order Visible (No native scrollbar) ── */}
         <div className="flex items-center justify-between gap-3 mb-6">
           <div
-            className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none flex-grow min-w-0 pr-2 select-none"
+            className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none no-scrollbar flex-grow min-w-0 pr-2 select-none [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {/* Completed count badge */}
@@ -1443,26 +1453,28 @@ function PlanViewPage({ theme, toggleTheme }) {
               </div>
             )}
 
-            {/* Complete learning plan sequence — strict sequential progression */}
+            {/* Complete learning plan sequence — Movement permitted front-to-back only */}
             {topicQueue.map((id, idx) => {
               const t = TOPIC_MAP[id];
               if (!t) return null;
               const isActive = idx === currentIdx;
               const isPast   = completedSet.has(id);
               const isMaster2 = id.endsWith('-2') || id === 'dp-3';
-              const isLocked = !isPast && !isActive && (idx > currentIdx);
+              // Allow movement from front to back (idx > currentIdx), but disallow back to front (idx < currentIdx)
+              const isLocked = idx < currentIdx;
 
               const handleTopicClick = () => {
                 if (isActive) return;
-                if (isPast) {
-                  setCurrentIdx(idx);
+                if (idx < currentIdx) {
+                  // Disallow navigating backwards (back to front)
+                  setToast({
+                    msg: `Movement is allowed from front to back only. Backwards navigation to #${idx + 1} (${t.name}) is disabled.`,
+                    ok: false
+                  });
                   return;
                 }
-                // Disallow arbitrary skipping/jumping ahead to locked future topics
-                setToast({
-                  msg: `Topic #${idx + 1} (${t.name}) is locked. Complete #${currentIdx + 1} (${TOPIC_MAP[topicQueue[currentIdx]]?.name}) first.`,
-                  ok: false
-                });
+                // Allow advancing/moving forward (front to back)
+                setCurrentIdx(idx);
               };
 
               return (
@@ -1480,9 +1492,9 @@ function PlanViewPage({ theme, toggleTheme }) {
                     border: `1px solid ${isActive ? 'transparent' : isPast ? 'rgba(99,102,241,0.25)' : border}`,
                     boxShadow: isActive ? '0 4px 14px -4px rgba(99,102,241,0.5)' : 'none',
                     cursor: isLocked ? 'not-allowed' : 'pointer',
-                    opacity: isLocked ? 0.6 : 1,
+                    opacity: isLocked ? 0.55 : 1,
                   }}
-                  title={isLocked ? `Complete Topic #${currentIdx + 1} first to unlock` : t.name}
+                  title={isLocked ? `Topic #${idx + 1} (${t.name}) — Front-to-back only (backwards navigation locked)` : t.name}
                 >
                   {isPast ? (
                     <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1", color: '#22C55E' }}>check_circle</span>
@@ -1775,6 +1787,14 @@ function PlanViewPage({ theme, toggleTheme }) {
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0 ml-2">
+                      {idx < draftQueue.length - 1 && (
+                        <button
+                          onClick={() => moveTowardsBack(idx)}
+                          className="p-1 rounded hover:opacity-75 cursor-pointer text-indigo-400"
+                          title="Move topic towards back (front-to-back progression permitted)">
+                          <span className="material-symbols-outlined text-sm">arrow_downward</span>
+                        </button>
+                      )}
                       <button
                         onClick={() => removeTopic(id)}
                         disabled={draftQueue.length <= 1}

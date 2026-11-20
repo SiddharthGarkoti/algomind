@@ -312,6 +312,19 @@ html[data-theme="light"] #root {
 /* ════════════════════════════════════════════════════════════════
    MISC UTILITIES
    ════════════════════════════════════════════════════════════════ */
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+.scrollbar-none,
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
 .custom-scrollbar::-webkit-scrollbar       { width:5px; }
 .custom-scrollbar::-webkit-scrollbar-track { background:transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background:rgba(144,143,160,0.2); border-radius:10px; }

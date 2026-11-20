@@ -128,8 +128,11 @@ function AnalyticsPage({ theme, toggleTheme }) {
 
   /* Build solved stats for current tab */
   const statsFor = (platformName) => {
-    // Strictly isolate AlgoMind app streak from third-party platform streaks
-    const appStreak = typeof user?.streak === 'number' ? user.streak : (summary?.app_streak ?? 0);
+    // Top bar defaults to verified LeetCode streak; app streak is excluded from this KPI bar per requirement
+    const lcPlatform = platforms?.find(pl => pl.platform_name === 'leetcode');
+    const lcStats = lcPlatform?.stats ?? {};
+    const lcStreak = lcStats.streak ?? 0;
+    const lcMaxStreak = lcStats.max_streak || lcStreak || 0;
 
     if (platformName === 'total') {
       return {
@@ -138,9 +141,9 @@ function AnalyticsPage({ theme, toggleTheme }) {
         hard:          summary?.hard_solved   ?? platforms?.reduce((s,p)=>s+(p.stats?.hard_solved??0),0) ?? 0,
         total:         summary?.total_problems_solved ?? 0,
         rating:        summary?.average_rating ?? 0,
-        currentStreak: appStreak,
-        maxStreak:     appStreak,
-        streak:        appStreak,
+        currentStreak: lcStreak,
+        maxStreak:     lcMaxStreak,
+        streak:        lcMaxStreak,
         url:           null,
       };
     }
@@ -303,7 +306,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                 style={{ background: surface, border: `1px solid ${border}` }}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: textSec }}>
-                    {solvedTab === 'total' ? 'AlgoMind Streak' : `${solvedTab === 'leetcode' ? 'LeetCode' : 'Codeforces'} Streak`}
+                    {solvedTab === 'codeforces' ? 'Codeforces Streak' : 'LeetCode Streak'}
                   </span>
                   <span className="material-symbols-outlined text-sm" style={{ color: '#F59E0B' }}>local_fire_department</span>
                 </div>
@@ -312,7 +315,7 @@ function AnalyticsPage({ theme, toggleTheme }) {
                     {currentStats.currentStreak}d
                   </span>
                   <span className="text-xs" style={{ color: textSec }}>
-                    {solvedTab === 'total' ? 'in-app streak' : 'platform streak'}
+                    {solvedTab === 'codeforces' ? 'Codeforces platform' : 'LeetCode platform'}
                   </span>
                 </div>
                 <p className="text-[10px] font-medium" style={{ color: textSec }}>
