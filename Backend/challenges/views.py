@@ -180,6 +180,10 @@ class StartPartyView(APIView):
             return Response({'detail': 'Party cannot be started.'}, status=400)
         if party.questions.count() == 0:
             return Response({'detail': 'Add at least one question before starting.'}, status=400)
+        if party.duration_minutes <= 0:
+            return Response({'detail': 'Cannot start match: Duration must be greater than 0 minutes.'}, status=400)
+        if party.max_strikes <= 0:
+            return Response({'detail': 'Cannot start match: Allowed strikes must be greater than 0.'}, status=400)
         now = timezone.now()
         party.status = 'active'
         party.started_at = now
@@ -388,19 +392,32 @@ class KickMemberView(APIView):
 
 
 class RenamePartyView(APIView):
-    """Host can rename the party."""
+    """Host can rename the party or update configuration (duration, strikes) before start."""
     permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, code):
         party, err = _get_party_or_404(code)
         if err: return err
         if party.host_id != request.user.id:
-            return Response({'detail': 'Only the host can rename.'}, status=403)
-        name = request.data.get('name', '').strip()
-        if not name:
-            return Response({'detail': 'Name cannot be empty.'}, status=400)
-        party.name = name[:100]
-        party.save(update_fields=['name'])
+            return Response({'detail': 'Only the host can modify settings.'}, status=403)
+        if party.status != 'waiting':
+            return Response({'detail': 'Cannot modify after start.'}, status=400)
+
+        update_fields = []
+        if 'name' in request.data:
+            name = str(request.data['name']).strip()
+            if name:
+                party.name = name[:100]
+                update_fields.append('name')
+        if 'duration_minutes' in request.data:
+            party.duration_minutes = max(0, min(360, int(request.data['duration_minutes'])))
+            update_fields.append('duration_minutes')
+        if 'max_strikes' in request.data:
+            party.max_strikes = max(0, min(50, int(request.data['max_strikes'])))
+            update_fields.append('max_strikes')
+
+        if update_fields:
+            party.save(update_fields=update_fields)
         return Response(PartySerializer(party, context={'request': request}).data)
 
 

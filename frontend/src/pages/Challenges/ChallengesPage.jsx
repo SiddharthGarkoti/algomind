@@ -306,9 +306,22 @@ function InviteFriendsModal({ isDark, partyCode, onClose, onInvite }) {
 /* ══════════════════════════════════════════════════════════════════
    Party Lobby — waiting for host to start
 ══════════════════════════════════════════════════════════════════ */
-function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion, onRemoveQuestion, onKick, onRename, onInvite }) {
+function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion, onRemoveQuestion, onKick, onRename, onUpdateSettings, onInvite }) {
   const t = useTheme(isDark);
   const isHost = party.host_username === me;
+
+  const durationInvalid = (party.duration_minutes ?? 0) <= 0;
+  const strikesInvalid = (party.max_strikes ?? 0) <= 0;
+  const questionsInvalid = (party.questions?.length || 0) === 0;
+
+  const cannotStartReason = durationInvalid
+    ? 'Duration is 0 min. Set duration > 0 to start.'
+    : strikesInvalid
+    ? 'Allowed strikes is 0. Set strikes > 0 to start.'
+    : questionsInvalid
+    ? 'Add at least 1 question before starting.'
+    : null;
+  const canStart = !cannotStartReason;
 
   const [addOpen, setAddOpen] = useState(false);
   const [addMode, setAddMode] = useState('url');   // 'url' | 'lc_number' | 'cf_lookup'
@@ -404,11 +417,49 @@ function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion
                 )}
               </div>
             )}
-            <p className="text-xs" style={{ color: t.textSec }}>
-              {party.duration_minutes} min · {party.max_questions} questions · hosted by {party.host_username}
-            </p>
+            <div className="text-xs flex items-center gap-2 flex-wrap" style={{ color: t.textSec }}>
+              {party.duration_minutes > 0 ? (
+                <span>{party.duration_minutes} min</span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-amber-500 font-bold">
+                  <span>0 min (Required)</span>
+                  {isHost && (
+                    <button
+                      onClick={() => onUpdateSettings && onUpdateSettings({ duration_minutes: 60 })}
+                      className="px-2 py-0.5 rounded-md text-[10px] bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 ml-1 font-semibold"
+                    >
+                      Set 60m
+                    </button>
+                  )}
+                </span>
+              )}
+              <span>·</span>
+              <span>{party.max_questions} questions</span>
+              {party.is_ranked && (
+                <>
+                  <span>·</span>
+                  {party.max_strikes > 0 ? (
+                    <span>{party.max_strikes} strikes</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-amber-500 font-bold">
+                      <span>0 strikes (Required)</span>
+                      {isHost && (
+                        <button
+                          onClick={() => onUpdateSettings && onUpdateSettings({ max_strikes: 3 })}
+                          className="px-2 py-0.5 rounded-md text-[10px] bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 ml-1 font-semibold"
+                        >
+                          Set 3
+                        </button>
+                      )}
+                    </span>
+                  )}
+                </>
+              )}
+              <span>·</span>
+              <span>hosted by {party.host_username}</span>
+            </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <button onClick={() => setShowInvite(true)}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90"
               style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}>
@@ -416,15 +467,31 @@ function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion
               Invite
             </button>
             {isHost && (
-              <button onClick={onStart} disabled={party.questions.length === 0}
-                className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.03] disabled:opacity-40"
-                style={{
-                  background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff',
-                  boxShadow: '0 8px 24px -6px rgba(99,102,241,0.5)'
-                }}>
-                <span className="material-symbols-outlined text-sm">play_arrow</span>
-                Start Party
-              </button>
+              <div className="flex flex-col items-end gap-1">
+                <button
+                  onClick={onStart}
+                  disabled={!canStart}
+                  title={cannotStartReason || 'Start Party'}
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold transition-all hover:scale-[1.03] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  style={{
+                    background: party.is_ranked
+                      ? 'linear-gradient(135deg,#e63946,#c1121f)'
+                      : 'linear-gradient(135deg,#6366F1,#A855F7)',
+                    color: '#fff',
+                    boxShadow: canStart
+                      ? (party.is_ranked ? '0 8px 24px -6px rgba(230,57,70,0.5)' : '0 8px 24px -6px rgba(99,102,241,0.5)')
+                      : 'none'
+                  }}>
+                  <span className="material-symbols-outlined text-sm">play_arrow</span>
+                  Start Party
+                </button>
+                {!canStart && (
+                  <span className="text-[10px] text-amber-500 font-semibold flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[12px]">info</span>
+                    {cannotStartReason}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -1517,16 +1584,30 @@ function PartyTab({ isDark, isRankedView = false }) {
 
   const handleAddQuestion = async (form) => {
     try {
-      await api.post(`/challenges/party/${partyCode}/questions/add/`, form);
-      await refreshParty();
+      const newQ = await api.post(`/challenges/party/${partyCode}/questions/add/`, form);
+      if (newQ && newQ.id) {
+        setParty(prev => prev ? ({
+          ...prev,
+          questions: [...(prev.questions || []), newQ]
+        }) : prev);
+      } else {
+        await refreshParty();
+      }
     } catch (e) { setError(e?.detail ?? 'Failed to add question.'); }
   };
 
   const handleRemoveQuestion = async (qid) => {
+    // Optimistic instant removal: disappears from UI immediately in 0ms!
+    setParty(prev => prev ? ({
+      ...prev,
+      questions: (prev.questions || []).filter(q => q.id !== qid)
+    }) : prev);
     try {
       await api.delete(`/challenges/party/${partyCode}/questions/${qid}/remove/`);
+    } catch (e) {
+      setError(e?.detail ?? 'Failed to remove question.');
       await refreshParty();
-    } catch (e) { setError(e?.detail ?? 'Failed to remove.'); }
+    }
   };
 
   const handleKick = async (memberId) => {
@@ -1541,6 +1622,13 @@ function PartyTab({ isDark, isRankedView = false }) {
       const p = await api.patch(`/challenges/party/${partyCode}/rename/`, { name });
       setParty(p);
     } catch (e) { setError(e?.detail ?? 'Rename failed.'); }
+  };
+
+  const handleUpdateSettings = async (settings) => {
+    try {
+      const p = await api.patch(`/challenges/party/${partyCode}/rename/`, settings);
+      setParty(p);
+    } catch (e) { setError(e?.detail ?? 'Settings update failed.'); }
   };
 
   const handleInvite = async (receiverId) => {
@@ -1638,6 +1726,7 @@ function PartyTab({ isDark, isRankedView = false }) {
           onRemoveQuestion={handleRemoveQuestion}
           onKick={handleKick}
           onRename={handleRename}
+          onUpdateSettings={handleUpdateSettings}
           onInvite={handleInvite}
           isRanked={isRanked}
         />
@@ -2055,36 +2144,47 @@ function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked 
                 </label>
                 <input
                   type="number"
-                  min="10"
+                  min="0"
                   max="360"
                   step="5"
                   value={opts.duration_minutes}
-                  onChange={e => setOpts(o => ({ ...o, duration_minutes: Math.max(5, Math.min(360, +e.target.value || 60)) }))}
+                  onChange={e => {
+                    const raw = e.target.value;
+                    const val = raw === '' ? 0 : parseInt(raw, 10);
+                    setOpts(o => ({ ...o, duration_minutes: isNaN(val) ? 0 : Math.max(0, Math.min(360, val)) }));
+                  }}
                   className="w-full px-4 py-3 rounded-2xl outline-none text-sm font-semibold transition-all"
                   style={{
                     background: isDark ? '#1C1D21' : '#F8FAFC',
                     color: t.textPri,
-                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                    border: `1px solid ${opts.duration_minutes === 0 ? 'rgba(239,68,68,0.5)' : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
                   }}
                 />
-                <div className="flex gap-1.5 mt-2 flex-wrap">
-                  {[30, 45, 60, 90, 120].map(m => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setOpts(o => ({ ...o, duration_minutes: m }))}
-                      className="px-2.5 py-0.5 rounded-lg text-[11px] font-semibold transition-all"
-                      style={{
-                        background: opts.duration_minutes === m
-                          ? (modalIsRanked ? 'rgba(230,57,70,0.15)' : 'rgba(99,102,241,0.15)')
-                          : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
-                        color: opts.duration_minutes === m ? accentColor : t.textSec,
-                      }}
-                    >
-                      {m}m
-                    </button>
-                  ))}
-                </div>
+                {opts.duration_minutes === 0 ? (
+                  <p className="text-[11px] text-amber-500 font-medium mt-1.5 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[13px]">warning</span>
+                    Duration is 0. Match cannot be started until duration is &gt; 0 min.
+                  </p>
+                ) : (
+                  <div className="flex gap-1.5 mt-2 flex-wrap">
+                    {[30, 45, 60, 90, 120].map(m => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setOpts(o => ({ ...o, duration_minutes: m }))}
+                        className="px-2.5 py-0.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer"
+                        style={{
+                          background: opts.duration_minutes === m
+                            ? (modalIsRanked ? 'rgba(230,57,70,0.15)' : 'rgba(99,102,241,0.15)')
+                            : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
+                          color: opts.duration_minutes === m ? accentColor : t.textSec,
+                        }}
+                      >
+                        {m}m
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -2111,34 +2211,48 @@ function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked 
             </div>
           </div>
 
-          {/* Section: Allowed Strikes & Host Role */}
+          {/* Section: Allowed Strikes (Gauntlet only) & Host Role */}
           <div className="pt-4 border-t space-y-4" style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-bold tracking-wide uppercase" style={{ color: t.textSec }}>
-                  Allowed Strikes (Before Disqualification)
-                </label>
-                <span className="text-[11px] font-bold" style={{ color: modalIsRanked ? '#EF4444' : '#818CF8' }}>
-                  {opts.max_strikes} Strikes Allowed
-                </span>
+            {/* Allowed Strikes — ONLY in The Gauntlet, hidden in Playground */}
+            {modalIsRanked && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold tracking-wide uppercase" style={{ color: t.textSec }}>
+                    Allowed Strikes (Before Disqualification)
+                  </label>
+                  <span className="text-[11px] font-bold" style={{ color: opts.max_strikes === 0 ? '#EF4444' : '#818CF8' }}>
+                    {opts.max_strikes} Strikes Allowed
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={opts.max_strikes}
+                  onChange={e => {
+                    const raw = e.target.value;
+                    const val = raw === '' ? 0 : parseInt(raw, 10);
+                    setOpts(o => ({ ...o, max_strikes: isNaN(val) ? 0 : Math.max(0, Math.min(20, val)) }));
+                  }}
+                  className="w-full px-4 py-3 rounded-2xl outline-none text-sm font-semibold transition-all"
+                  style={{
+                    background: isDark ? '#1C1D21' : '#F8FAFC',
+                    color: t.textPri,
+                    border: `1px solid ${opts.max_strikes === 0 ? 'rgba(239,68,68,0.5)' : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                  }}
+                />
+                {opts.max_strikes === 0 ? (
+                  <p className="text-[11px] text-amber-500 font-medium mt-1.5 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[13px]">warning</span>
+                    Strikes is 0. Note: You cannot start the match until strikes are &gt; 0.
+                  </p>
+                ) : (
+                  <p className="text-[11px] mt-1.5" style={{ color: t.textSec }}>
+                    When a player accumulates this many strikes (tab switches, devtools, unauthorized clicks), they are automatically marked OUT.
+                  </p>
+                )}
               </div>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={opts.max_strikes}
-                onChange={e => setOpts(o => ({ ...o, max_strikes: Math.max(1, Math.min(20, +e.target.value || 1)) }))}
-                className="w-full px-4 py-3 rounded-2xl outline-none text-sm font-semibold transition-all"
-                style={{
-                  background: isDark ? '#1C1D21' : '#F8FAFC',
-                  color: t.textPri,
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                }}
-              />
-              <p className="text-[11px] mt-1.5" style={{ color: t.textSec }}>
-                When a player accumulates this many strikes (tab switches, devtools, unauthorized clicks), they are automatically marked OUT.
-              </p>
-            </div>
+            )}
 
             {/* Clear Host Role Selection Cards */}
             <div>

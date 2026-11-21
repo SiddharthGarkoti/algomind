@@ -90,11 +90,11 @@ class PartySerializer(serializers.ModelSerializer):
 
 class CreatePartySerializer(serializers.Serializer):
     name             = serializers.CharField(max_length=100, default='Code Party')
-    duration_minutes = serializers.IntegerField(min_value=5, max_value=300, default=60)
-    max_questions    = serializers.IntegerField(min_value=1, max_value=30, default=4)
+    duration_minutes = serializers.IntegerField(min_value=0, max_value=360, default=60)
+    max_questions    = serializers.IntegerField(min_value=1, max_value=50, default=4)
     question_mode    = serializers.ChoiceField(choices=['manual', 'shuffle'], default='shuffle')
     is_ranked        = serializers.BooleanField(default=False)
-    max_strikes      = serializers.IntegerField(min_value=1, max_value=10, default=3)
+    max_strikes      = serializers.IntegerField(min_value=0, max_value=50, default=3)
     host_spectator   = serializers.BooleanField(default=False)
 
 
