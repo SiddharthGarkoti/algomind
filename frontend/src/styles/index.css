@@ -216,9 +216,12 @@ html[data-theme="light"] #root {
   flex-shrink: 0;
 }
 .icon-container span {
-  font-size: 22px;
-  width: 22px;
-  height: 22px;
+  font-size: 20px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .submenu-container {
   max-height: 0;

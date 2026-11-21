@@ -84,10 +84,10 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
       onMouseLeave={() => { setIsHovered(false); if (!isPinned) { setIsPracticeOpen(false); } }}
     >
       {/* Brand */}
-      <div className="flex items-center h-16 shrink-0 overflow-hidden px-2" style={{ borderBottom: `1px solid ${borderCol}` }}>
-        <div className="icon-container">
+      <div className="flex items-center h-16 shrink-0 overflow-hidden" style={{ borderBottom: `1px solid ${borderCol}` }}>
+        <div className="w-[72px] h-16 flex items-center justify-center shrink-0">
           <button
-            className="w-10 h-10 flex items-center justify-center rounded-lg transition-colors hover:bg-white/5"
+            className="w-11 h-11 flex items-center justify-center rounded-xl transition-colors hover:bg-white/5"
             style={{ color: textMuted }}
             onClick={e => { e.stopPropagation(); setIsPinned(p => !p); }}
             title={isPinned ? 'Unpin Sidebar' : 'Pin Sidebar'}
@@ -244,17 +244,18 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
           </div>
 
           {/* Profile Button */}
-          <button
-            ref={profileBtnRef}
-            className="w-full flex items-center h-16 overflow-hidden transition-colors hover:opacity-80 px-2"
-            onClick={e => { e.stopPropagation(); if (isExpanded) setIsProfileOpen(p => !p); }}
-          >
-            <div className="icon-container">
-              <div className="h-8 w-8 rounded-full overflow-hidden shrink-0 border-2" style={{ borderColor: isDark ? 'rgba(99,102,241,0.4)' : 'rgba(99,102,241,0.3)' }}>
-                <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+          <div className="py-2">
+            <button
+              ref={profileBtnRef}
+              className="nav-item text-left overflow-hidden transition-all w-[calc(100%-16px)]"
+              onClick={e => { e.stopPropagation(); if (isExpanded) setIsProfileOpen(p => !p); }}
+            >
+              <div className="icon-container">
+                <div className="h-8 w-8 rounded-xl overflow-hidden shrink-0 border-2" style={{ borderColor: isDark ? 'rgba(99,102,241,0.4)' : 'rgba(99,102,241,0.3)' }}>
+                  <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                </div>
               </div>
-            </div>
-            <div className="sidebar-content-text flex-grow truncate text-left pl-1">
+              <div className="sidebar-content-text flex-grow truncate text-left pl-1">
               <p className="text-xs font-bold truncate" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
                 {user?.username ?? '...'}
               </p>
@@ -276,6 +277,7 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
               </div>
             </div>
           </button>
+          </div>
         </div>
       )}
     </aside>

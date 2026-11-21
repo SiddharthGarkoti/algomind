@@ -109,7 +109,9 @@ chrome.runtime.onMessage.addListener((msg) => {
     const banner = document.createElement('div');
     banner.id = `algomind-strike-banner-${Date.now()}`;
     banner.className = 'algomind-strike-banner';
-    banner.textContent = `⚡ AlgoMind Strike ${msg.strikes}/3 — ${msg.reason}`;
+    const max = msg.maxStrikes || 3;
+    const pct = Math.min(100, Math.round((msg.strikes / max) * 100));
+    banner.textContent = `AlgoMind Fair Play: ${pct}% Strike Limit Hit (${msg.strikes}/${max}) — ${msg.reason}`;
     document.body.appendChild(banner);
     setTimeout(() => banner.remove(), 5000);
   }

@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from analytics.models import PlatformProfile
-from .models import Party, PartyMember, PartyQuestion, QuestionCompletion
+from .models import Party, PartyMember, PartyQuestion, QuestionCompletion, PartyStrikeLog
 from .serializers import (
     PartySerializer, CreatePartySerializer, AddQuestionSerializer,
 )
@@ -84,22 +84,34 @@ def _check_cf_solved(handle: str, slug: str, since_ts: float) -> bool:
 def _get_party_or_404(code):
     try:
         return Party.objects.select_related('host').prefetch_related(
-            'members__user', 'members__completions__question', 'questions'
+            'members__user',
+            'members__user__profile',
+            'members__completions__question',
+            'members__strike_logs',
+            'questions'
         ).get(code=code.upper()), None
     except Party.DoesNotExist:
         return None, Response({'detail': 'Party not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 def _assign_ranks(party):
-    finished = list(party.members.filter(finished_at__isnull=False).order_by('finished_at'))
-    total = party.members.count()
-    for i, m in enumerate(finished, start=1):
-        if m.rank != i:
-            m.rank = i
+    completed = list(party.members.filter(finished_at__isnull=False, is_disqualified=False).order_by('finished_at'))
+    disqualified = list(party.members.filter(is_disqualified=True).order_by('finished_at'))
+    total = party.members.filter(is_spectator=False).count()
+
+    current_rank = 1
+    for m in completed:
+        if m.rank != current_rank:
+            m.rank = current_rank
             m.save(update_fields=['rank'])
         # Award contest win rating for ranked parties
         if party.is_ranked and not m.is_spectator:
-            m.user.award_contest_win(rank=i, total_participants=total)
+            m.user.award_contest_win(rank=current_rank, total_participants=total)
+        current_rank += 1
+
+    for m in disqualified:
+        m.rank = None
+        m.save(update_fields=['rank'])
 
 
 # ── Views ─────────────────────────────────────────────────────────────
@@ -425,29 +437,75 @@ class InviteFriendView(APIView):
         return Response({'detail': 'Invite sent.', 'join_url': join_url})
 
 
+_CF_PROBLEMS_CACHE = {'timestamp': 0, 'data': {}}
+
+def _get_cf_problems_map():
+    import time
+    now = time.time()
+    # Cache for 2 hours
+    if _CF_PROBLEMS_CACHE['data'] and (now - _CF_PROBLEMS_CACHE['timestamp']) < 7200:
+        return _CF_PROBLEMS_CACHE['data']
+    try:
+        r = requests.get('https://codeforces.com/api/problemset.problems', timeout=15)
+        if r.status_code == 200:
+            res = r.json()
+            if res.get('status') == 'OK':
+                pmap = {}
+                for p in res.get('result', {}).get('problems', []):
+                    c_id = str(p.get('contestId', ''))
+                    idx = str(p.get('index', '')).upper()
+                    key = f"{c_id}{idx}".lower()
+                    dash_key = f"{c_id}-{idx}".lower()
+                    pmap[key] = p
+                    pmap[dash_key] = p
+                _CF_PROBLEMS_CACHE['data'] = pmap
+                _CF_PROBLEMS_CACHE['timestamp'] = now
+                return pmap
+    except Exception:
+        pass
+    return _CF_PROBLEMS_CACHE.get('data', {})
+
+
 class LeetCodeProblemLookupView(APIView):
-    """Given a LeetCode problem number, fetch title/slug/difficulty via GraphQL."""
+    """Given a LeetCode problem number or slug, fetch title/slug/difficulty via GraphQL."""
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, number):
         query = '''
-        query problemsetQuestionList($filters: QuestionListFilterInput) {
+        query problemsetQuestionList($categorySlug: String, $limit: Int, $skip: Int, $filters: QuestionListFilterInput) {
           problemsetQuestionList: questionList(
-            categorySlug: "" skip: 0 limit: 3000
+            categorySlug: $categorySlug
+            limit: $limit
+            skip: $skip
             filters: $filters
           ) {
-            questions: data { frontendQuestionId: questionFrontendId title titleSlug difficulty }
+            questions: data {
+              frontendQuestionId: questionFrontendId
+              title
+              titleSlug
+              difficulty
+            }
           }
         }'''
         try:
             r = requests.post(
                 LEETCODE_GQL,
-                json={'query': query, 'variables': {'filters': {}}},
-                headers=LC_HEADERS, timeout=15,
+                json={
+                    'query': query,
+                    'variables': {
+                        'categorySlug': '',
+                        'skip': 0,
+                        'limit': 50,
+                        'filters': {'searchKeywords': str(number)}
+                    }
+                },
+                headers=LC_HEADERS, timeout=12,
             )
             questions = r.json().get('data', {}).get('problemsetQuestionList', {}).get('questions', [])
+            target_str = str(number).strip()
+            # 1. Exact match on frontendQuestionId
             for q in questions:
-                if str(q.get('frontendQuestionId')) == str(number):
+                if str(q.get('frontendQuestionId')).strip() == target_str:
                     slug = q['titleSlug']
                     diff = q['difficulty'].lower()
                     return Response({
@@ -456,10 +514,88 @@ class LeetCodeProblemLookupView(APIView):
                         'difficulty': diff,
                         'url': f'https://leetcode.com/problems/{slug}/',
                         'platform': 'leetcode',
+                        'frontend_id': q.get('frontendQuestionId'),
                     })
+            # 2. Match on titleSlug
+            for q in questions:
+                if q.get('titleSlug') == target_str.lower():
+                    diff = q['difficulty'].lower()
+                    return Response({
+                        'title': q['title'],
+                        'slug': q['titleSlug'],
+                        'difficulty': diff,
+                        'url': f'https://leetcode.com/problems/{q["titleSlug"]}/',
+                        'platform': 'leetcode',
+                        'frontend_id': q.get('frontendQuestionId'),
+                    })
+            # 3. If only one question returned, return it
+            if len(questions) == 1:
+                q = questions[0]
+                diff = q['difficulty'].lower()
+                return Response({
+                    'title': q['title'],
+                    'slug': q['titleSlug'],
+                    'difficulty': diff,
+                    'url': f'https://leetcode.com/problems/{q["titleSlug"]}/',
+                    'platform': 'leetcode',
+                    'frontend_id': q.get('frontendQuestionId'),
+                })
             return Response({'detail': f'Problem #{number} not found.'}, status=404)
         except Exception as e:
             return Response({'detail': f'LeetCode API error: {e}'}, status=502)
+
+
+class CodeforcesProblemLookupView(APIView):
+    """Given a Codeforces problem query (e.g. '158A', '158-A', '4A', or URL), fetch metadata."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, query):
+        q = str(query).strip()
+        import re
+        url_match = re.search(r'codeforces\.com/(?:problemset/problem|contest)/(\d+)/(?:problem/)?([A-Za-z0-9]+)', q)
+        if url_match:
+            contest_id = url_match.group(1)
+            index = url_match.group(2).upper()
+        else:
+            match = re.match(r'^(\d+)[-_]?([A-Za-z0-9]+)$', q)
+            if not match:
+                return Response({'detail': 'Invalid Codeforces problem format. Use e.g. 158A or problem URL.'}, status=400)
+            contest_id = match.group(1)
+            index = match.group(2).upper()
+
+        pmap = _get_cf_problems_map()
+        lookup_key = f"{contest_id}{index}".lower()
+        prob = pmap.get(lookup_key)
+
+        if prob:
+            name = prob.get('name', f'Problem {contest_id}{index}')
+            rating = prob.get('rating')
+            if rating is None:
+                diff = 'medium'
+            elif rating < 1400:
+                diff = 'easy'
+            elif rating < 1900:
+                diff = 'medium'
+            else:
+                diff = 'hard'
+
+            slug = f"{contest_id}-{index}"
+            return Response({
+                'title': f"{contest_id}{index} - {name}",
+                'slug': slug,
+                'difficulty': diff,
+                'url': f"https://codeforces.com/problemset/problem/{contest_id}/{index}",
+                'platform': 'codeforces',
+                'rating': rating,
+            })
+
+        return Response({
+            'title': f"Codeforces {contest_id}{index}",
+            'slug': f"{contest_id}-{index}",
+            'difficulty': 'medium',
+            'url': f"https://codeforces.com/problemset/problem/{contest_id}/{index}",
+            'platform': 'codeforces',
+        })
 
 
 class TopicListView(APIView):
@@ -513,8 +649,7 @@ class ReportStrikeView(APIView):
     Body: { "reason": "..." }
 
     Called by the frontend when the extension reports a violation.
-    Persists the strike count to the DB so all participants can see it.
-    Auto-forfeits the user when strikes >= party.max_strikes.
+    Persists the strike count and reason to DB. Auto-disqualifies when strikes >= party.max_strikes.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -540,17 +675,113 @@ class ReportStrikeView(APIView):
         member.strikes = min(member.strikes + 1, party.max_strikes)
         member.save(update_fields=['strikes'])
 
-        # Auto-forfeit if threshold reached
+        # Record strike audit log
+        PartyStrikeLog.objects.create(
+            party=party,
+            member=member,
+            strike_number=member.strikes,
+            reason=reason
+        )
+
+        # Auto-disqualify if threshold reached
         if member.strikes >= party.max_strikes:
             member.finished_at = timezone.now()
-            member.save(update_fields=['finished_at'])
+            member.is_disqualified = True
+            member.disqualified_reason = f'Strike limit exceeded: {reason}'
+            member.save(update_fields=['finished_at', 'is_disqualified', 'disqualified_reason'])
             _assign_ranks(party)
             return Response({
                 'strikes': member.strikes,
                 'forfeited': True,
-                'detail': f'Auto-forfeited: {reason}',
+                'is_disqualified': True,
+                'detail': f'Auto-disqualified: {reason}',
                 'party': PartySerializer(party, context={'request': request}).data,
             })
+
+        return Response({
+            'strikes': member.strikes,
+            'forfeited': False,
+            'max_strikes': party.max_strikes,
+            'remaining': party.max_strikes - member.strikes,
+            'party': PartySerializer(party, context={'request': request}).data,
+        })
+
+
+class HostDisqualifyMemberView(APIView):
+    """
+    POST /challenges/party/<code>/disqualify/
+    Body: { "member_id": 123, "reason": "Host moderation" }
+    Host makes a participant OUT (same effect as hitting strike limit).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, code):
+        party, err = _get_party_or_404(code)
+        if err: return err
+
+        if party.host_id != request.user.id and not request.user.is_staff:
+            return Response({'detail': 'Only the host can disqualify competitors.'}, status=403)
+
+        member_id = request.data.get('member_id')
+        if not member_id:
+            return Response({'detail': 'member_id is required.'}, status=400)
+
+        try:
+            member = party.members.get(id=member_id)
+        except PartyMember.DoesNotExist:
+            return Response({'detail': 'Member not found.'}, status=404)
+
+        if member.user_id == party.host_id:
+            return Response({'detail': 'Cannot disqualify the host.'}, status=400)
+
+        reason = request.data.get('reason', 'Disqualified by host')
+        member.is_disqualified = True
+        member.disqualified_reason = reason
+        member.finished_at = timezone.now()
+        member.strikes = party.max_strikes  # Mark strike limit reached
+        member.save(update_fields=['is_disqualified', 'disqualified_reason', 'finished_at', 'strikes'])
+
+        PartyStrikeLog.objects.create(
+            party=party,
+            member=member,
+            strike_number=party.max_strikes,
+            reason=f"Host Disqualification: {reason}",
+        )
+
+        _assign_ranks(party)
+
+        return Response({
+            'detail': f'Member {member.user.username} has been disqualified and made OUT.',
+            'party': PartySerializer(party, context={'request': request}).data
+        })
+
+
+class ReportActiveQuestionView(APIView):
+    """
+    POST /challenges/party/<code>/active-question/
+    Body: { "slug": "two-sum", "title": "Two Sum" }
+    Tracks which question each participant is actively working on.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, code):
+        party, err = _get_party_or_404(code)
+        if err: return err
+
+        try:
+            member = party.members.get(user=request.user)
+        except PartyMember.DoesNotExist:
+            return Response({'detail': 'Not a member.'}, status=404)
+
+        title = request.data.get('title', '')
+        slug = request.data.get('slug', '')
+        if title:
+            member.current_question_title = title[:300]
+        if slug:
+            member.current_question_slug = slug[:300]
+        member.save(update_fields=['current_question_title', 'current_question_slug'])
+
+        return Response({'status': 'ok'})
 
         return Response({
             'strikes': member.strikes,

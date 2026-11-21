@@ -6,6 +6,7 @@ from .views import (
     EndPartyView, ForfeitPartyView, KickMemberView, RenamePartyView,
     InviteFriendView, LeetCodeProblemLookupView, ShuffleWithFilterView,
     TopicListView, ExtensionPulseView, ReportStrikeView,
+    CodeforcesProblemLookupView, HostDisqualifyMemberView, ReportActiveQuestionView,
 )
 
 urlpatterns = [
@@ -19,6 +20,8 @@ urlpatterns = [
     path('party/<str:code>/forfeit/',                      ForfeitPartyView.as_view(),          name='party_forfeit'),
     path('party/<str:code>/pulse/',                        ExtensionPulseView.as_view(),        name='party_pulse'),
     path('party/<str:code>/strike/',                       ReportStrikeView.as_view(),          name='party_strike'),
+    path('party/<str:code>/disqualify/',                   HostDisqualifyMemberView.as_view(),  name='party_disqualify'),
+    path('party/<str:code>/active-question/',              ReportActiveQuestionView.as_view(),  name='party_active_question'),
     path('party/<str:code>/rename/',                       RenamePartyView.as_view(),           name='party_rename'),
     path('party/<str:code>/invite/',                       InviteFriendView.as_view(),          name='party_invite'),
     path('party/<str:code>/kick/<int:member_id>/',         KickMemberView.as_view(),            name='party_kick'),
@@ -27,6 +30,7 @@ urlpatterns = [
     path('party/<str:code>/questions/shuffle-filter/',     ShuffleWithFilterView.as_view(),     name='party_shuffle_filter'),
     path('party/<str:code>/questions/<int:qid>/remove/',   RemoveQuestionView.as_view(),        name='party_remove_question'),
     path('party/<str:code>/questions/<int:qid>/check/',    CheckCompletionView.as_view(),       name='party_check'),
-    path('leetcode-problem/<int:number>/',                 LeetCodeProblemLookupView.as_view(), name='lc_problem_lookup'),
+    path('leetcode-problem/<str:number>/',                 LeetCodeProblemLookupView.as_view(), name='lc_problem_lookup'),
+    path('codeforces-problem/<str:query>/',                CodeforcesProblemLookupView.as_view(), name='cf_problem_lookup'),
     path('topics/',                                        TopicListView.as_view(),             name='party_topics'),
 ]

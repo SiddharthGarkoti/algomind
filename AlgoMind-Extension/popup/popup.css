@@ -104,39 +104,59 @@ body {
 
 .mono { font-family: 'SFMono-Regular', 'Consolas', monospace; }
 
-/* Strike Indicators */
-.strikes {
+/* ── Strike Risk Progress Bar ── */
+.strike-risk-container {
   display: flex;
+  flex-direction: column;
   gap: 8px;
+  background: rgba(22, 27, 34, 0.7);
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #30363d;
 }
 
-.strike {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+.strike-risk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.strike-pct {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #e6edf3;
+}
+
+.strike-progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 9999px;
   background: #21262d;
-  border: 2px solid #30363d;
-  transition: all 0.3s ease;
+  overflow: hidden;
   position: relative;
 }
 
-.strike::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  background: transparent;
-  transition: background 0.3s;
+.strike-progress-bar {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s ease, box-shadow 0.4s ease;
 }
 
-.strike--active {
-  border-color: #e63946;
-  background: rgba(230, 57, 70, 0.2);
-  box-shadow: 0 0 8px rgba(230, 57, 70, 0.4);
+.strike-risk-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
 }
 
-.strike--active::after {
-  background: #e63946;
+.strike-ratio {
+  color: #8b949e;
+  font-weight: 500;
+}
+
+.strike-status-text {
+  font-weight: 600;
+  letter-spacing: 0.2px;
 }
 
 /* ── Idle Section ── */

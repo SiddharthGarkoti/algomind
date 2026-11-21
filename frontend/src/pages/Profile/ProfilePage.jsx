@@ -394,16 +394,23 @@ function ProfilePage({ theme, toggleTheme }) {
                         <span className="material-symbols-outlined text-[13px]">open_in_new</span>
                       </a>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t"
+                    {s.rating > 0 && (
+                      <div className="flex items-center justify-between text-xs px-1 mb-2">
+                        <span className="text-[10px] uppercase font-semibold" style={{ color: textSec }}>Contest Rating</span>
+                        <span className="font-bold text-amber-500 font-mono">{s.rating}</span>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-4 gap-1.5 text-center pt-2 border-t"
                       style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }}>
                       {[
-                        { label: 'Solved',         val: s.problems_solved ?? 0 },
-                        { label: 'Current Streak', val: `${s.streak ?? 0}d` },
-                        { label: 'Rating',         val: s.rating > 0 ? s.rating : '—' },
-                      ].map(({ label, val }) => (
-                        <div key={label}>
-                          <p className="text-sm font-bold" style={{ color: textPri }}>{val}</p>
-                          <p className="text-[10px] uppercase font-medium mt-0.5" style={{ color: textSec }}>{label}</p>
+                        { label: 'Solved', val: s.problems_solved ?? 0, color: textPri },
+                        { label: 'Easy',   val: s.easy_solved ?? 0,     color: '#22C55E' },
+                        { label: 'Medium', val: (s.medium_solved !== undefined && s.medium_solved !== null) ? s.medium_solved : Math.max(0, (s.problems_solved ?? 0) - (s.easy_solved ?? 0) - (s.hard_solved ?? 0)), color: '#F59E0B' },
+                        { label: 'Hard',   val: s.hard_solved ?? 0,     color: '#EF4444' },
+                      ].map(({ label, val, color }) => (
+                        <div key={label} className="p-1.5 rounded-lg" style={{ background: surface }}>
+                          <p className="text-xs font-bold" style={{ color }}>{val}</p>
+                          <p className="text-[9px] uppercase font-medium mt-0.5" style={{ color: textSec }}>{label}</p>
                         </div>
                       ))}
                     </div>

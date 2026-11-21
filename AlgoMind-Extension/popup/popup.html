@@ -23,12 +23,17 @@
         <span class="label">Party Code</span>
         <span id="party-code" class="value mono">—</span>
       </div>
-      <div class="info-row">
-        <span class="label">Strikes</span>
-        <div id="strikes-display" class="strikes">
-          <span class="strike" data-index="0"></span>
-          <span class="strike" data-index="1"></span>
-          <span class="strike" data-index="2"></span>
+      <div class="strike-risk-container">
+        <div class="strike-risk-header">
+          <span class="label">Strike Limit Used</span>
+          <span id="strike-pct" class="strike-pct font-mono">0%</span>
+        </div>
+        <div class="strike-progress-track">
+          <div id="strike-progress-bar" class="strike-progress-bar" style="width: 0%"></div>
+        </div>
+        <div class="strike-risk-footer">
+          <span id="strike-ratio" class="strike-ratio">0 / 3 Strikes</span>
+          <span id="strike-status-text" class="strike-status-text">Clean</span>
         </div>
       </div>
     </div>

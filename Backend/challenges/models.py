@@ -55,6 +55,10 @@ class PartyMember(models.Model):
     rank         = models.IntegerField(null=True, blank=True)
     strikes      = models.IntegerField(default=0)       # fair-play violation count
     is_spectator = models.BooleanField(default=False)   # spectating host or future watchers
+    is_disqualified        = models.BooleanField(default=False)
+    disqualified_reason    = models.CharField(max_length=255, blank=True, default='')
+    current_question_slug  = models.CharField(max_length=300, blank=True, default='')
+    current_question_title = models.CharField(max_length=300, blank=True, default='')
 
     class Meta:
         unique_together = [['party', 'user']]
@@ -66,6 +70,20 @@ class PartyMember(models.Model):
     @property
     def completed_count(self):
         return self.completions.filter(verified=True).count()
+
+
+class PartyStrikeLog(models.Model):
+    party         = models.ForeignKey(Party, on_delete=models.CASCADE, related_name='strike_logs')
+    member        = models.ForeignKey(PartyMember, on_delete=models.CASCADE, related_name='strike_logs')
+    strike_number = models.IntegerField(default=1)
+    reason        = models.CharField(max_length=255)
+    created_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.member.user.username} - strike #{self.strike_number}: {self.reason}'
 
 
 class PartyQuestion(models.Model):

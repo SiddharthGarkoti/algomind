@@ -311,11 +311,14 @@ function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion
   const isHost = party.host_username === me;
 
   const [addOpen, setAddOpen] = useState(false);
-  const [addMode, setAddMode] = useState('url');   // 'url' | 'number'
+  const [addMode, setAddMode] = useState('url');   // 'url' | 'lc_number' | 'cf_lookup'
   const [addForm, setAddForm] = useState({ title: '', platform: 'leetcode', url: '', slug: '', difficulty: 'medium' });
   const [lcNumber, setLcNumber] = useState('');
   const [lcLookupBusy, setLcLookupBusy] = useState(false);
   const [lcLookupErr, setLcLookupErr] = useState('');
+  const [cfQuery, setCfQuery] = useState('');
+  const [cfLookupBusy, setCfLookupBusy] = useState(false);
+  const [cfLookupErr, setCfLookupErr] = useState('');
   const [addBusy, setAddBusy] = useState(false);
   const [showShuffle, setShowShuffle] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
@@ -329,6 +332,7 @@ function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion
     await onAddQuestion(addForm);
     setAddForm({ title: '', platform: 'leetcode', url: '', slug: '', difficulty: 'medium' });
     setLcNumber('');
+    setCfQuery('');
     setAddOpen(false);
     setAddBusy(false);
   };
@@ -340,9 +344,22 @@ function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion
       const res = await api.get(`/challenges/leetcode-problem/${lcNumber.trim()}/`);
       setAddForm({ title: res.title, platform: 'leetcode', url: res.url, slug: res.slug, difficulty: res.difficulty });
     } catch (e) {
-      setLcLookupErr(e?.detail ?? 'Problem not found');
+      setLcLookupErr(e?.detail ?? 'LeetCode problem not found');
     } finally {
       setLcLookupBusy(false);
+    }
+  };
+
+  const lookupCfProblem = async () => {
+    if (!cfQuery.trim()) return;
+    setCfLookupBusy(true); setCfLookupErr('');
+    try {
+      const res = await api.get(`/challenges/codeforces-problem/${cfQuery.trim()}/`);
+      setAddForm({ title: res.title, platform: 'codeforces', url: res.url, slug: res.slug, difficulty: res.difficulty });
+    } catch (e) {
+      setCfLookupErr(e?.detail ?? 'Codeforces problem not found');
+    } finally {
+      setCfLookupBusy(false);
     }
   };
 
@@ -476,7 +493,7 @@ function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion
               style={{ background: t.surfLow, border: `1px solid ${t.border}` }}>
               {/* Mode toggle */}
               <div className="flex gap-1 p-1 rounded-xl mb-1" style={{ background: t.surface }}>
-                {[['url', 'By URL'], ['number', 'LC Number']].map(([mode, label]) => (
+                {[['url', 'By URL'], ['lc_number', 'LeetCode ID / Slug'], ['cf_lookup', 'Codeforces ID']].map(([mode, label]) => (
                   <button key={mode} type="button" onClick={() => setAddMode(mode)}
                     className="flex-1 py-1 rounded-lg text-[10px] font-bold transition-all"
                     style={addMode === mode ? { background: '#6366F1', color: '#fff' } : { color: t.textSec }}>
@@ -485,27 +502,52 @@ function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion
                 ))}
               </div>
 
-              {addMode === 'number' ? (
+              {addMode === 'lc_number' ? (
                 <div>
                   <div className="flex gap-2">
-                    <input placeholder="e.g. 1" value={lcNumber} type="number"
+                    <input placeholder="e.g. 128 or longest-consecutive-sequence" value={lcNumber} type="text"
                       onChange={e => { setLcNumber(e.target.value); setLcLookupErr(''); setAddForm(f => ({ ...f, title: '', slug: '', url: '' })); }}
                       className="flex-1 px-3 py-2 rounded-xl text-sm outline-none bg-transparent border"
                       style={{ color: t.textPri, borderColor: t.border }} />
-                    <button type="button" onClick={lookupLcNumber} disabled={lcLookupBusy || !lcNumber}
+                    <button type="button" onClick={lookupLcNumber} disabled={lcLookupBusy || !lcNumber.trim()}
                       className="px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50"
                       style={{ background: '#6366F1', color: '#fff' }}>
                       {lcLookupBusy ? '…' : 'Fetch'}
                     </button>
                   </div>
                   {lcLookupErr && <p className="text-[10px] text-red-400 mt-1">{lcLookupErr}</p>}
-                  {addForm.title && (
+                  {addForm.title && addForm.platform === 'leetcode' && (
                     <div className="mt-2 p-2 rounded-xl flex items-center gap-2"
                       style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}>
                       <span className="material-symbols-outlined text-sm" style={{ color: '#6366F1' }}>check_circle</span>
                       <div>
                         <p className="text-xs font-bold" style={{ color: t.textPri }}>{addForm.title}</p>
-                        <p className="text-[10px]" style={{ color: t.textSec }}>{addForm.difficulty} · {addForm.slug}</p>
+                        <p className="text-[10px]" style={{ color: t.textSec }}>LeetCode · {addForm.difficulty} · {addForm.slug}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : addMode === 'cf_lookup' ? (
+                <div>
+                  <div className="flex gap-2">
+                    <input placeholder="e.g. 158A, 4A, or CF problem URL" value={cfQuery} type="text"
+                      onChange={e => { setCfQuery(e.target.value); setCfLookupErr(''); setAddForm(f => ({ ...f, title: '', slug: '', url: '', platform: 'codeforces' })); }}
+                      className="flex-1 px-3 py-2 rounded-xl text-sm outline-none bg-transparent border"
+                      style={{ color: t.textPri, borderColor: t.border }} />
+                    <button type="button" onClick={lookupCfProblem} disabled={cfLookupBusy || !cfQuery.trim()}
+                      className="px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50"
+                      style={{ background: '#3B82F6', color: '#fff' }}>
+                      {cfLookupBusy ? '…' : 'Fetch CF'}
+                    </button>
+                  </div>
+                  {cfLookupErr && <p className="text-[10px] text-red-400 mt-1">{cfLookupErr}</p>}
+                  {addForm.title && addForm.platform === 'codeforces' && (
+                    <div className="mt-2 p-2 rounded-xl flex items-center gap-2"
+                      style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                      <span className="material-symbols-outlined text-sm" style={{ color: '#3B82F6' }}>check_circle</span>
+                      <div>
+                        <p className="text-xs font-bold" style={{ color: t.textPri }}>{addForm.title}</p>
+                        <p className="text-[10px]" style={{ color: t.textSec }}>Codeforces · {addForm.difficulty} · {addForm.slug}</p>
                       </div>
                     </div>
                   )}
@@ -610,16 +652,32 @@ function PartyLobby({ party, me, isDark, onStart, onShuffleFilter, onAddQuestion
 /* ══════════════════════════════════════════════════════════════════
    Active Party Room
 ══════════════════════════════════════════════════════════════════ */
-function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit, timeLeft, isRanked }) {
+function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit, onDisqualify, timeLeft, isRanked }) {
   const t = useTheme(isDark);
 
   const isHost = party.host_username === me;
-  const myMember = party.members.find(m => m.username === me);
+  const myMember = (party.members || []).find(m => m.username === me);
   const myDoneIds = new Set((myMember?.completions ?? []).filter(c => c.verified).map(c => c.question_id));
   const totalQ = party.questions.length;
+  const maxStrikes = party.max_strikes || 3;
 
-  // Sorted leaderboard — track prev ranks for slide animation
-  const sorted = [...party.members].sort((a, b) => {
+  // View toggle for host: admin command center vs problem list
+  const [hostViewMode, setHostViewMode] = useState(isHost ? 'admin' : 'problems');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterTab, setFilterTab] = useState('all'); // 'all' | 'active' | 'out' | 'strikes'
+  const [auditLogMember, setAuditLogMember] = useState(null);
+  const [disqualifyTarget, setDisqualifyTarget] = useState(null);
+  const [disqualifyReason, setDisqualifyReason] = useState('Host moderation: fair-play rule violation');
+  const [disqualifyBusy, setDisqualifyBusy] = useState(false);
+
+  // All members including spectators for host admin overview
+  const memberList = party.all_members && party.all_members.length > 0 ? party.all_members : (party.members || []);
+  const competitors = memberList.filter(m => !m.is_spectator && m.username !== party.host_username);
+
+  // Sorted leaderboard for competitors view
+  const sorted = [...(party.members || [])].sort((a, b) => {
+    if (a.is_disqualified && !b.is_disqualified) return 1;
+    if (!a.is_disqualified && b.is_disqualified) return -1;
     if (b.completed_count !== a.completed_count) return b.completed_count - a.completed_count;
     if (a.finished_at && b.finished_at) return new Date(a.finished_at) - new Date(b.finished_at);
     if (a.finished_at) return -1;
@@ -628,7 +686,7 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
   });
 
   const prevRanksRef = useRef({});
-  const [rankAnims, setRankAnims] = useState({}); // memberId → 'up'|'down'|null
+  const [rankAnims, setRankAnims] = useState({});
 
   useEffect(() => {
     const newAnims = {};
@@ -644,163 +702,654 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
       setTimeout(() => setRankAnims({}), 800);
     }
     prevRanksRef.current = Object.fromEntries(sorted.map((m, i) => [m.id, i]));
-  }, [party.members.map(m => m.completed_count).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [(party.members || []).map(m => m.completed_count).join(',')]);
 
-  const winner = sorted[0]?.finished_at ? sorted[0] : null;
+  const winner = sorted.find(m => m.finished_at && !m.is_disqualified && m.completed_count >= totalQ);
+
+  // Filtered competitors for Host Admin Panel (Comfortably supports 100+ players!)
+  const filteredCompetitors = competitors.filter(m => {
+    const matchesSearch = m.username.toLowerCase().includes(searchQuery.toLowerCase().trim());
+    if (!matchesSearch) return false;
+    if (filterTab === 'active') return !m.finished_at && !m.is_disqualified;
+    if (filterTab === 'out') return m.is_disqualified || (m.strikes >= maxStrikes);
+    if (filterTab === 'strikes') return (m.strikes || 0) > 0;
+    return true;
+  });
+
+  // Track active question click
+  const handleProblemClick = (q) => {
+    if (!party.code) return;
+    api.post(`/challenges/party/${party.code}/active-question/`, { slug: q.slug, title: q.title }).catch(() => {});
+  };
+
+  const confirmDisqualify = async () => {
+    if (!disqualifyTarget || !onDisqualify) return;
+    setDisqualifyBusy(true);
+    try {
+      await onDisqualify(disqualifyTarget.id, disqualifyReason);
+      setDisqualifyTarget(null);
+    } finally {
+      setDisqualifyBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Apple-grade Navigation & Status Header */}
       <GlassCard isDark={isDark} className="p-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#22C55E' }} />
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#22C55E' }}>LIVE</span>
-              <span className="text-xs ml-1" style={{ color: t.textSec }}>Code Party · {party.code}</span>
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#22C55E' }}>LIVE MATCH</span>
+              <span className="text-xs px-2 py-0.5 rounded-md font-mono" style={{ background: t.surfLow, color: t.textSec }}>
+                ROOM #{party.code}
+              </span>
+              {isRanked && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md" style={{ background: 'rgba(230,57,70,0.12)', color: '#EF4444' }}>
+                  Anti-Cheat Active · Max {maxStrikes} Strikes
+                </span>
+              )}
+              {isHost && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  Host Administrator
+                </span>
+              )}
             </div>
-            <h2 className="text-xl font-bold" style={{ color: t.textPri }}>{party.name}</h2>
+            <h2 className="text-2xl font-bold tracking-tight" style={{ color: t.textPri }}>{party.name}</h2>
           </div>
+
           <div className="flex items-center gap-3">
+            {isHost && (
+              <div className="flex p-1 rounded-xl" style={{ background: t.surfLow, border: `1px solid ${t.border}` }}>
+                <button
+                  type="button"
+                  onClick={() => setHostViewMode('admin')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+                  style={hostViewMode === 'admin' ? { background: '#6366F1', color: '#fff' } : { color: t.textSec }}
+                >
+                  <span className="material-symbols-outlined text-sm">shield_person</span>
+                  Host Admin Panel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHostViewMode('problems')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5"
+                  style={hostViewMode === 'problems' ? { background: '#6366F1', color: '#fff' } : { color: t.textSec }}
+                >
+                  <span className="material-symbols-outlined text-sm">terminal</span>
+                  Problems View
+                </button>
+              </div>
+            )}
+
             <Countdown seconds={timeLeft} isDark={isDark} />
+
             {isHost ? (
-              <button onClick={() => { if (window.confirm('End party for everyone?')) onEndParty(); }}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-90"
-                style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)' }}>
-                End Party
+              <button
+                onClick={() => { if (window.confirm('End party for all participants?')) onEndParty(); }}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 flex items-center gap-1.5"
+                style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)' }}
+              >
+                <span className="material-symbols-outlined text-sm">power_settings_new</span>
+                End Match
               </button>
-            ) : !myMember?.finished_at ? (
-              <button onClick={() => { if (window.confirm('Forfeit this challenge?')) onForfeit(); }}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-90"
-                style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+            ) : !myMember?.finished_at && !myMember?.is_disqualified ? (
+              <button
+                onClick={() => { if (window.confirm('Forfeit this challenge?')) onForfeit(); }}
+                className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 flex items-center gap-1.5"
+                style={{ background: 'rgba(239,68,68,0.08)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}
+              >
+                <span className="material-symbols-outlined text-sm">flag</span>
                 Forfeit
               </button>
             ) : (
-              <span className="px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
-                <span className="material-symbols-outlined text-sm">cancel</span> Forfeited
+              <span className="px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
+                <span className="material-symbols-outlined text-sm">cancel</span>
+                {myMember?.is_disqualified ? 'OUT (Disqualified)' : 'Finished'}
               </span>
             )}
           </div>
         </div>
-        <div className="mt-4">
-          <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: t.surfLow }}>
-            <div className="h-full rounded-full transition-all duration-1000"
+
+        {/* Live Match Progress Bar */}
+        <div className="mt-5">
+          <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: t.surfLow }}>
+            <div
+              className="h-full rounded-full transition-all duration-1000"
               style={{
                 width: `${Math.max(0, (1 - timeLeft / (party.duration_minutes * 60)) * 100)}%`,
                 background: 'linear-gradient(90deg, #6366F1, #A855F7)',
-              }} />
+              }}
+            />
           </div>
         </div>
       </GlassCard>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Questions */}
-        <div className="lg:col-span-2 space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-widest px-1" style={{ color: t.textSec }}>Problems</h3>
-          {party.questions.map((q, i) => {
-            const done = myDoneIds.has(q.id);
-            return (
-              <GlassCard key={q.id} isDark={isDark} className="p-5" style={{ opacity: done ? 0.7 : 1 }}>
-                <div className="flex items-start gap-4">
-                  <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 text-sm font-black"
-                    style={{ background: done ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.12)', color: done ? '#22C55E' : '#6366F1' }}>
-                    {done ? '✓' : i + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-sm font-bold" style={{ color: t.textPri }}>{q.title}</span>
-                      <DiffBadge diff={q.difficulty} />
-                      <span className="text-[9px] px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1' }}>{q.platform}</span>
-                    </div>
-                    {done ? (
-                      <span className="text-xs font-semibold" style={{ color: '#22C55E' }}>✓ Verified complete</span>
-                    ) : myMember?.finished_at ? (
-                      <span className="text-xs font-semibold" style={{ color: '#EF4444' }}>Locked (Finished/Forfeited)</span>
-                    ) : (
-                      <div className="flex items-center gap-2 mt-2">
-                        <a href={q.url} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-90"
-                          style={{ background: '#6366F1', color: '#fff' }}>
-                          <span className="material-symbols-outlined text-sm">open_in_new</span>
-                          Solve on {q.platform === 'leetcode' ? 'LeetCode' : 'Codeforces'}
-                        </a>
-                        <button onClick={() => onCheckCompletion(q.id)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:opacity-90"
-                          style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}>
-                          <span className="material-symbols-outlined text-sm">verified</span>
-                          I solved it!
-                        </button>
-                      </div>
-                    )}
-                  </div>
+      {/* ─── HOST ADMIN PANEL (MODERATION & OBSERVABILITY) ─── */}
+      {isHost && hostViewMode === 'admin' ? (
+        <div className="space-y-6">
+          {/* KPI Dashboard */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { label: 'Total Players', val: competitors.length, sub: '100+ Concurrent Scale', icon: 'groups', color: '#6366F1' },
+              { label: 'Active Solvers', val: competitors.filter(m => !m.finished_at && !m.is_disqualified).length, sub: 'Currently solving', icon: 'psychology', color: '#22C55E' },
+              { label: 'Finished All', val: competitors.filter(m => m.completed_count >= totalQ && !m.is_disqualified).length, sub: 'Completed', icon: 'check_circle', color: '#8B5CF6' },
+              { label: 'Made OUT', val: competitors.filter(m => m.is_disqualified || m.strikes >= maxStrikes).length, sub: 'Disqualified', icon: 'cancel', color: '#EF4444' },
+              { label: 'Violations', val: competitors.reduce((acc, m) => acc + (m.strikes || 0), 0), sub: 'Strikes registered', icon: 'warning', color: '#F59E0B' },
+            ].map(({ label, val, sub, icon, color }) => (
+              <GlassCard key={label} isDark={isDark} className="p-4 rounded-2xl">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: t.textSec }}>{label}</span>
+                  <span className="material-symbols-outlined text-base" style={{ color }}>{icon}</span>
                 </div>
+                <p className="text-2xl font-extrabold tracking-tight" style={{ color: t.textPri }}>{val}</p>
+                <p className="text-[10px] mt-0.5 truncate" style={{ color: t.textSec }}>{sub}</p>
               </GlassCard>
-            );
-          })}
-        </div>
+            ))}
+          </div>
 
-        {/* Live Leaderboard */}
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-widest mb-4 px-1" style={{ color: t.textSec }}>Live Rankings</h3>
-          {winner && (
-            <GlassCard isDark={isDark} className="p-4 mb-3 text-center"
-              style={{ background: 'rgba(250,204,21,0.08)', borderColor: 'rgba(250,204,21,0.3)' }}>
-              <span className="text-2xl">🏆</span>
-              <p className="text-sm font-bold mt-1" style={{ color: '#EAB308' }}>{winner.username} finished first!</p>
-            </GlassCard>
-          )}
-          <div className="space-y-2">
-            {sorted.map((m, i) => {
-              const anim = rankAnims[m.id];
+          {/* Player Management Roster */}
+          <GlassCard isDark={isDark} className="p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-base font-bold tracking-tight" style={{ color: t.textPri }}>
+                  Competitor Roster &amp; Live Telemetry
+                </h3>
+                <p className="text-xs" style={{ color: t.textSec }}>
+                  Monitor participant question progress, live fair-play strikes, violation audit trails, and moderate players.
+                </p>
+              </div>
+
+              {/* Search & Filter */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-2.5 text-sm" style={{ color: t.textSec }}>search</span>
+                  <input
+                    type="text"
+                    placeholder="Search player username..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="pl-8 pr-3 py-1.5 rounded-xl text-xs outline-none bg-transparent border w-48 sm:w-60"
+                    style={{ borderColor: t.border, color: t.textPri }}
+                  />
+                </div>
+
+                <div className="flex p-1 rounded-xl text-xs" style={{ background: t.surfLow, border: `1px solid ${t.border}` }}>
+                  {[
+                    ['all', `All (${competitors.length})`],
+                    ['active', `Active (${competitors.filter(m => !m.finished_at && !m.is_disqualified).length})`],
+                    ['out', `OUT (${competitors.filter(m => m.is_disqualified || m.strikes >= maxStrikes).length})`],
+                    ['strikes', `Violations (${competitors.filter(m => (m.strikes || 0) > 0).length})`],
+                  ].map(([tab, label]) => (
+                    <button
+                      key={tab}
+                      onClick={() => setFilterTab(tab)}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all"
+                      style={filterTab === tab ? { background: '#6366F1', color: '#fff' } : { color: t.textSec }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Roster Table / List */}
+            {filteredCompetitors.length === 0 ? (
+              <div className="text-center py-12 rounded-2xl" style={{ background: t.surfLow }}>
+                <span className="material-symbols-outlined text-4xl block mb-2" style={{ color: t.textSec, opacity: 0.5 }}>group_off</span>
+                <p className="text-sm font-semibold" style={{ color: t.textPri }}>No participants match the selected filter</p>
+                <p className="text-xs mt-1" style={{ color: t.textSec }}>Share the room code #{party.code} to let players join.</p>
+              </div>
+            ) : (
+              <div className="divide-y" style={{ borderColor: t.border }}>
+                {filteredCompetitors.map((m, idx) => {
+                  const strikePct = Math.min(100, Math.round(((m.strikes || 0) / maxStrikes) * 100));
+                  const isOut = m.is_disqualified || (m.strikes >= maxStrikes);
+                  const isFinished = m.completed_count >= totalQ && !isOut;
+
+                  return (
+                    <div key={m.id} className="py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-colors hover:bg-white/[0.01]">
+                      {/* Left: Player Info & Status */}
+                      <div className="flex items-center gap-3.5 min-w-[220px]">
+                        <span className="text-xs font-mono font-bold w-6 text-center" style={{ color: t.textSec }}>
+                          #{idx + 1}
+                        </span>
+                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-sm shrink-0 overflow-hidden shadow-sm"
+                          style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)', color: '#fff' }}>
+                          {m.avatar ? (
+                            <img src={m.avatar} alt={m.username} className="w-full h-full object-cover" />
+                          ) : (
+                            m.username[0].toUpperCase()
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold truncate" style={{ color: t.textPri }}>{m.username}</p>
+                            {isOut ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-500/10 text-red-400 border border-red-500/20">
+                                OUT
+                              </span>
+                            ) : isFinished ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                FINISHED
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                SOLVING
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] truncate mt-0.5" style={{ color: t.textSec }}>
+                            Joined {new Date(m.joined_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Middle: Active Question & Progress */}
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 px-2">
+                        {/* Currently Working On */}
+                        <div className="p-3 rounded-xl" style={{ background: t.surfLow }}>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider block mb-1" style={{ color: t.textSec }}>
+                            Active Problem
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-sm text-indigo-400">terminal</span>
+                            <p className="text-xs font-bold truncate" style={{ color: t.textPri }}>
+                              {m.current_question_title || 'Browsing problem pool…'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Problems Solved Progress */}
+                        <div className="p-3 rounded-xl" style={{ background: t.surfLow }}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: t.textSec }}>
+                              Solve Progress
+                            </span>
+                            <span className="text-xs font-bold font-mono" style={{ color: t.textPri }}>
+                              {m.completed_count} / {totalQ}
+                            </span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full overflow-hidden bg-black/20">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${totalQ > 0 ? (m.completed_count / totalQ) * 100 : 0}%`,
+                                background: isFinished ? '#22C55E' : '#6366F1'
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Fair-Play Strikes & Moderation Actions */}
+                      <div className="flex items-center gap-4 min-w-[280px] justify-between sm:justify-end">
+                        {/* Strike Percentage Bar */}
+                        <div className="min-w-[130px]">
+                          <div className="flex items-center justify-between text-[11px] mb-1 font-semibold">
+                            <span style={{ color: (m.strikes || 0) > 0 ? '#EF4444' : t.textSec }}>
+                              {m.strikes || 0} / {maxStrikes} Strikes
+                            </span>
+                            <span className="font-mono text-[10px]" style={{ color: strikePct >= 100 ? '#EF4444' : strikePct > 0 ? '#F59E0B' : '#22C55E' }}>
+                              {strikePct}%
+                            </span>
+                          </div>
+                          <div className="w-full h-2 rounded-full overflow-hidden bg-black/20">
+                            <div
+                              className="h-full rounded-full transition-all duration-300"
+                              style={{
+                                width: `${strikePct}%`,
+                                background: strikePct >= 100 ? '#EF4444' : strikePct >= 50 ? '#F59E0B' : '#22C55E',
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Audit Log Button */}
+                        <button
+                          type="button"
+                          onClick={() => setAuditLogMember(m)}
+                          className="px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition-all hover:opacity-80 flex items-center gap-1"
+                          style={{ background: t.surfLow, border: `1px solid ${t.border}`, color: t.textPri }}
+                          title="View strike violation audit log"
+                        >
+                          <span className="material-symbols-outlined text-xs">history</span>
+                          <span>Logs ({m.strike_logs?.length || m.strikes || 0})</span>
+                        </button>
+
+                        {/* Disqualify / Make OUT button */}
+                        {isOut ? (
+                          <div className="px-3 py-1.5 rounded-xl text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 text-center">
+                            OUT
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setDisqualifyTarget(m)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
+                            title="Make this player OUT immediately"
+                          >
+                            <span className="material-symbols-outlined text-sm">gavel</span>
+                            Make OUT
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </GlassCard>
+        </div>
+      ) : (
+        /* ─── COMPETITOR VIEW & PROBLEMS LIST (APPLE CLEAN UI, NO EMOJIS) ─── */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Questions Column */}
+          <div className="lg:col-span-2 space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: t.textSec }}>
+                Problem Set ({party.questions.length})
+              </h3>
+              <span className="text-[11px]" style={{ color: t.textSec }}>
+                Submit on platform, then click "Verify Solve"
+              </span>
+            </div>
+
+            {party.questions.map((q, i) => {
+              const done = myDoneIds.has(q.id);
               return (
-                <GlassCard key={m.id} isDark={isDark} className="p-4"
-                  style={{
-                    transition: 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1)',
-                    transform: anim === 'up' ? 'translateY(-4px) scale(1.02)' : anim === 'down' ? 'translateY(4px)' : 'none',
-                    borderColor: anim === 'up' ? 'rgba(34,197,94,0.4)' : undefined,
-                  }}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-black w-6 text-center flex items-center gap-0.5">
-                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}
-                      {anim === 'up' && <span className="text-[9px] text-green-400 animate-bounce">↑</span>}
-                      {anim === 'down' && <span className="text-[9px] text-red-400">↓</span>}
-                    </span>
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                      style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff' }}>
-                      {m.username[0].toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold truncate" style={{ color: m.username === me ? '#6366F1' : t.textPri }}>
-                        {m.username}{m.username === me ? ' (you)' : ''}
-                      </p>
-                      <p className="text-[10px]" style={{ color: t.textSec }}>{m.completed_count}/{totalQ} done</p>
-                    </div>
-                    {/* Strike badges — only shown in ranked parties */}
-                    {isRanked && (m.strikes ?? 0) > 0 && (
-                      <span
-                        className="flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)' }}
-                        title={`${m.strikes} fair-play violation${m.strikes > 1 ? 's' : ''}`}
-                      >
-                        ⚡ {m.strikes}
-                      </span>
-                    )}
-                    {m.finished_at && <span className="text-[10px]" style={{ color: '#22C55E' }}>✓</span>}
-                  </div>
-                  <div className="mt-2 h-1 rounded-full overflow-hidden" style={{ background: t.surfLow }}>
-                    <div className="h-full rounded-full transition-all duration-700"
+                <GlassCard
+                  key={q.id}
+                  isDark={isDark}
+                  className="p-5.5 transition-all rounded-3xl"
+                  style={{ opacity: done ? 0.75 : 1 }}
+                  onClick={() => handleProblemClick(q)}
+                >
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-sm font-black border"
                       style={{
-                        width: `${totalQ > 0 ? (m.completed_count / totalQ) * 100 : 0}%`,
-                        background: m.username === me ? '#6366F1' : '#A855F7',
-                      }} />
+                        background: done ? 'rgba(34,197,94,0.12)' : 'rgba(99,102,241,0.1)',
+                        borderColor: done ? 'rgba(34,197,94,0.3)' : 'rgba(99,102,241,0.2)',
+                        color: done ? '#22C55E' : '#818CF8'
+                      }}
+                    >
+                      {done ? <span className="material-symbols-outlined text-lg">check</span> : i + 1}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className="text-base font-bold tracking-tight" style={{ color: t.textPri }}>{q.title}</span>
+                        <DiffBadge diff={q.difficulty} />
+                        <span
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded-lg uppercase tracking-wider"
+                          style={{
+                            background: q.platform === 'leetcode' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(59, 130, 246, 0.12)',
+                            color: q.platform === 'leetcode' ? '#F59E0B' : '#3B82F6',
+                            border: `1px solid ${q.platform === 'leetcode' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(59, 130, 246, 0.25)'}`,
+                          }}
+                        >
+                          {q.platform}
+                        </span>
+                      </div>
+
+                      {done ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 pt-1">
+                          <span className="material-symbols-outlined text-sm">verified</span>
+                          Verified Solved
+                        </span>
+                      ) : myMember?.finished_at ? (
+                        <span className="text-xs font-semibold text-red-400 pt-1">Locked (Match Finished)</span>
+                      ) : (
+                        <div className="flex items-center gap-2.5 mt-3 flex-wrap">
+                          <a
+                            href={q.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => handleProblemClick(q)}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 shadow-sm"
+                            style={{ background: '#6366F1', color: '#fff' }}
+                          >
+                            <span className="material-symbols-outlined text-sm">open_in_new</span>
+                            Solve on {q.platform === 'leetcode' ? 'LeetCode' : 'Codeforces'}
+                          </a>
+                          <button
+                            onClick={() => { handleProblemClick(q); onCheckCompletion(q.id); }}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90"
+                            style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}
+                          >
+                            <span className="material-symbols-outlined text-sm text-emerald-400">verified</span>
+                            I solved it!
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </GlassCard>
               );
             })}
           </div>
+
+          {/* Live Rankings Column */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-widest px-1" style={{ color: t.textSec }}>
+              Live Standings
+            </h3>
+
+            {winner && (
+              <GlassCard isDark={isDark} className="p-4 text-center rounded-2xl"
+                style={{ background: 'rgba(250,204,21,0.08)', borderColor: 'rgba(250,204,21,0.3)' }}>
+                <span className="material-symbols-outlined text-2xl text-amber-400 block mb-1">workspace_premium</span>
+                <p className="text-sm font-bold" style={{ color: '#EAB308' }}>{winner.username} cleared all problems!</p>
+              </GlassCard>
+            )}
+
+            <div className="space-y-2">
+              {sorted.map((m, i) => {
+                const anim = rankAnims[m.id];
+                const isOut = m.is_disqualified || (m.strikes >= maxStrikes);
+
+                return (
+                  <GlassCard
+                    key={m.id}
+                    isDark={isDark}
+                    className="p-3.5 rounded-2xl"
+                    style={{
+                      transition: 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+                      transform: anim === 'up' ? 'translateY(-4px) scale(1.02)' : anim === 'down' ? 'translateY(4px)' : 'none',
+                      borderColor: anim === 'up' ? 'rgba(34,197,94,0.4)' : undefined,
+                      opacity: isOut ? 0.6 : 1,
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="text-xs font-black w-6 text-center shrink-0 px-1 py-0.5 rounded-md"
+                        style={{
+                          color: i === 0 ? '#F59E0B' : i === 1 ? '#94A3B8' : i === 2 ? '#B45309' : t.textSec,
+                          background: i < 3 ? 'rgba(255,255,255,0.04)' : 'transparent',
+                        }}
+                      >
+                        #{i + 1}
+                      </span>
+
+                      <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden"
+                        style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff' }}
+                      >
+                        {m.avatar ? <img src={m.avatar} alt={m.username} className="w-full h-full object-cover" /> : m.username[0].toUpperCase()}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold truncate" style={{ color: m.username === me ? '#6366F1' : t.textPri }}>
+                            {m.username}{m.username === me ? ' (you)' : ''}
+                          </p>
+                          {isOut && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-red-500/10 text-red-400">
+                              OUT
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px]" style={{ color: t.textSec }}>
+                          {m.completed_count}/{totalQ} solved
+                        </p>
+                      </div>
+
+                      {/* Strikes pill */}
+                      {isRanked && (m.strikes ?? 0) > 0 && (
+                        <span
+                          className="flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)' }}
+                          title={`${m.strikes} fair-play violations recorded`}
+                        >
+                          <span className="material-symbols-outlined text-[11px]">warning</span>
+                          {m.strikes}
+                        </span>
+                      )}
+
+                      {m.finished_at && !isOut && (
+                        <span className="material-symbols-outlined text-xs text-emerald-400">check_circle</span>
+                      )}
+                    </div>
+
+                    <div className="mt-2.5 h-1 rounded-full overflow-hidden" style={{ background: t.surfLow }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${totalQ > 0 ? (m.completed_count / totalQ) * 100 : 0}%`,
+                          background: m.username === me ? '#6366F1' : '#A855F7',
+                        }}
+                      />
+                    </div>
+                  </GlassCard>
+                );
+              })}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ─── MODAL: Strike Reasons Audit Log ─── */}
+      {auditLogMember && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setAuditLogMember(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-4"
+            style={{ background: isDark ? '#161719' : '#FFFFFF', border: `1px solid ${t.border}` }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: t.border }}>
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-amber-500">warning</span>
+                <div>
+                  <h4 className="text-base font-bold" style={{ color: t.textPri }}>
+                    Fair-Play Violation History
+                  </h4>
+                  <p className="text-xs" style={{ color: t.textSec }}>
+                    Participant: <strong>@{auditLogMember.username}</strong> · Total Strikes: {auditLogMember.strikes || 0}/{maxStrikes}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setAuditLogMember(null)} className="opacity-60 hover:opacity-100">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="max-h-72 overflow-y-auto space-y-2 py-1">
+              {(!auditLogMember.strike_logs || auditLogMember.strike_logs.length === 0) ? (
+                <div className="p-4 text-center text-xs" style={{ color: t.textSec }}>
+                  {(auditLogMember.strikes || 0) === 0 ? 'No violations detected. Player is clean!' : `${auditLogMember.strikes} strike(s) registered.`}
+                </div>
+              ) : (
+                auditLogMember.strike_logs.map((log, i) => (
+                  <div key={log.id || i} className="p-3 rounded-xl flex items-start gap-3" style={{ background: t.surfLow }}>
+                    <span className="text-xs font-mono font-bold px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 shrink-0">
+                      #{log.strike_number || i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold" style={{ color: t.textPri }}>{log.reason}</p>
+                      <p className="text-[10px] mt-0.5 font-mono" style={{ color: t.textSec }}>
+                        {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <button
+              onClick={() => setAuditLogMember(null)}
+              className="w-full py-2.5 rounded-xl text-xs font-bold text-white transition-opacity hover:opacity-90"
+              style={{ background: '#6366F1' }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL: Disqualify / Make OUT Confirmation ─── */}
+      {disqualifyTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setDisqualifyTarget(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-4"
+            style={{ background: isDark ? '#161719' : '#FFFFFF', border: '1px solid rgba(239,68,68,0.3)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 text-red-500">
+              <span className="material-symbols-outlined text-2xl">gavel</span>
+              <h4 className="text-lg font-bold" style={{ color: t.textPri }}>
+                Disqualify &amp; Make OUT
+              </h4>
+            </div>
+
+            <p className="text-xs leading-relaxed" style={{ color: t.textSec }}>
+              Are you sure you want to make <strong>@{disqualifyTarget.username}</strong> OUT of this challenge?
+              Their status will transition to Disqualified immediately, just like when the strike limit is reached.
+            </p>
+
+            <div>
+              <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>
+                Disqualification Reason (Host Audit)
+              </label>
+              <input
+                type="text"
+                value={disqualifyReason}
+                onChange={e => setDisqualifyReason(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-xs outline-none bg-transparent border"
+                style={{ borderColor: t.border, color: t.textPri }}
+              />
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setDisqualifyTarget(null)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all"
+                style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDisqualify}
+                disabled={disqualifyBusy}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition-all bg-red-600 hover:bg-red-700 disabled:opacity-60 flex items-center justify-center gap-1.5"
+              >
+                {disqualifyBusy && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                Confirm OUT
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1027,6 +1576,17 @@ function PartyTab({ isDark, isRankedView = false }) {
     } catch (e) { setError(e?.detail ?? 'Forfeit failed.'); }
   };
 
+  const handleDisqualify = async (memberId, reason = 'Disqualified by host') => {
+    try {
+      const res = await api.post(`/challenges/party/${partyCode}/disqualify/`, { member_id: memberId, reason });
+      if (res?.party) setParty(res.party);
+      else await refreshParty();
+    } catch (e) {
+      setError(e?.detail ?? 'Disqualification failed.');
+      setTimeout(() => setError(''), 4000);
+    }
+  };
+
   // ── Extension auto-forfeit listener ─────────────────────────────────
   // When the extension sends ALGOMIND_TRIGGER_FORFEIT (3 strikes reached),
   // automatically call the backend forfeit API without user confirmation.
@@ -1099,6 +1659,7 @@ function PartyTab({ isDark, isRankedView = false }) {
           onCheckCompletion={handleCheckCompletion}
           onEndParty={handleEndParty}
           onForfeit={handleForfeit}
+          onDisqualify={handleDisqualify}
         />
         <button onClick={handleLeave} className="mt-4 text-xs hover:underline" style={{ color: t.textSec }}>
           Leave party
@@ -1111,14 +1672,13 @@ function PartyTab({ isDark, isRankedView = false }) {
     const totalQ = party.questions.length;
     const sorted = [...party.members].sort((a, b) => {
       // Finished (non-forfeit) by rank first, then forfeit/DNF
-      const aFinished = a.completed_count >= totalQ;
-      const bFinished = b.completed_count >= totalQ;
+      const aFinished = a.completed_count >= totalQ && !a.is_disqualified;
+      const bFinished = b.completed_count >= totalQ && !b.is_disqualified;
       if (aFinished && bFinished) return (a.rank ?? 99) - (b.rank ?? 99);
       if (aFinished) return -1;
       if (bFinished) return 1;
       return b.completed_count - a.completed_count;
     });
-    const medals = ['🥇', '🥈', '🥉'];
 
     // Time taken = finished_at - started_at
     const startedAt = party.started_at ? new Date(party.started_at).getTime() : null;
@@ -1130,27 +1690,39 @@ function PartyTab({ isDark, isRankedView = false }) {
     };
 
     return (
-      <GlassCard isDark={isDark} className="p-8 max-w-lg mx-auto">
+      <GlassCard isDark={isDark} className="p-8 max-w-lg mx-auto rounded-3xl">
         <div className="text-center mb-6">
-          <span className="text-5xl block mb-3">🏁</span>
-          <h2 className="text-2xl font-bold mb-1" style={{ color: t.textPri }}>Party Over!</h2>
-          <p className="text-sm" style={{ color: t.textSec }}>Final Results — {party.name}</p>
+          <div className="w-14 h-14 rounded-3xl mx-auto mb-3 flex items-center justify-center bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <span className="material-symbols-outlined text-3xl">sports_score</span>
+          </div>
+          <h2 className="text-2xl font-bold mb-1 tracking-tight" style={{ color: t.textPri }}>Match Concluded</h2>
+          <p className="text-xs font-medium" style={{ color: t.textSec }}>Official Results — {party.name}</p>
         </div>
 
         <div className="space-y-3 mb-8">
           {sorted.map((m, i) => {
-            const completed = m.completed_count >= totalQ;
+            const completed = m.completed_count >= totalQ && !m.is_disqualified;
             const timeTaken = completed ? fmtTime(m.finished_at) : null;
+            const isDisqualified = m.is_disqualified;
+
             return (
               <div key={m.id} className="flex items-center gap-3 p-4 rounded-2xl"
-                style={{ background: t.surfLow, border: `1px solid ${completed ? 'rgba(34,197,94,0.2)' : t.border}` }}>
-                <span className="text-xl shrink-0">{completed ? (medals[i] ?? `#${i + 1}`) : '—'}</span>
+                style={{ background: t.surfLow, border: `1px solid ${completed ? 'rgba(34,197,94,0.2)' : isDisqualified ? 'rgba(239,68,68,0.2)' : t.border}` }}>
+                <span
+                  className="text-xs font-black shrink-0 px-2 py-1 rounded-lg"
+                  style={{
+                    color: completed && i === 0 ? '#F59E0B' : completed && i === 1 ? '#94A3B8' : completed && i === 2 ? '#B45309' : t.textSec,
+                    background: completed && i < 3 ? 'rgba(255,255,255,0.06)' : 'transparent',
+                  }}
+                >
+                  {isDisqualified ? 'OUT' : completed ? `#${i + 1}` : '—'}
+                </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold truncate" style={{ color: m.username === me ? '#6366F1' : t.textPri }}>
                     {m.username}{m.username === me ? ' (you)' : ''}
                   </p>
                   <p className="text-[10px] mt-0.5" style={{ color: t.textSec }}>
-                    {m.completed_count}/{totalQ} solved{timeTaken ? ` · ${timeTaken}` : ''}
+                    {isDisqualified ? `Disqualified (${m.disqualified_reason || 'Strike limit exceeded'})` : `${m.completed_count}/${totalQ} solved${timeTaken ? ` · ${timeTaken}` : ''}`}
                   </p>
                 </div>
                 <span className="text-[10px] font-bold shrink-0 px-2 py-0.5 rounded-full"
@@ -1402,24 +1974,25 @@ function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked 
     question_mode: 'shuffle',
     is_ranked: modalIsRanked,
     max_strikes: 3,
-    host_spectator: false,
+    host_spectator: true, // Default host as supervisor per user requirement
   });
+  const [customQuestionCount, setCustomQuestionCount] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose}>
-      <div className="w-full max-w-md mx-4 rounded-3xl overflow-hidden shadow-2xl"
+      <div className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
         style={{ background: isDark ? '#18181b' : '#fff', border: `1px solid ${modalIsRanked ? 'rgba(230,57,70,0.3)' : 'rgba(99,102,241,0.2)'}` }}
         onClick={e => e.stopPropagation()}>
-        <div className="p-8">
-          <div className="flex items-center justify-between mb-6">
+        <div className="p-7">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h3 className="text-xl font-bold" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
+              <h3 className="text-xl font-bold tracking-tight" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
                 {modalIsRanked ? 'Create The Gauntlet' : 'Create Playground'}
               </h3>
-              {modalIsRanked && (
-                <p className="text-xs mt-0.5" style={{ color: '#e63946' }}>Fair Play extension required to play</p>
-              )}
+              <p className="text-xs mt-0.5" style={{ color: modalIsRanked ? '#e63946' : t.textSec }}>
+                {modalIsRanked ? 'Anti-cheat monitoring enabled · 100+ player scale' : 'Casual collaborative coding room · 100+ player scale'}
+              </p>
             </div>
             <button onClick={onClose}><span className="material-symbols-outlined" style={{ color: t.textSec }}>close</span></button>
           </div>
@@ -1428,92 +2001,125 @@ function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked 
             <div>
               <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>Match Name</label>
               <input value={opts.name} onChange={e => setOpts(o => ({ ...o, name: e.target.value }))}
-                className="w-full px-4 py-3 rounded-xl outline-none text-sm"
+                className="w-full px-4 py-2.5 rounded-xl outline-none text-sm"
                 style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>Duration (min)</label>
+                <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>Duration</label>
                 <select value={opts.duration_minutes}
                   onChange={e => setOpts(o => ({ ...o, duration_minutes: +e.target.value }))}
-                  className="w-full px-3 py-3 rounded-xl outline-none text-sm"
+                  className="w-full px-3 py-2.5 rounded-xl outline-none text-sm"
                   style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}>
-                  {[15, 30, 45, 60, 90, 120].map(v => <option key={v} value={v}>{v} min</option>)}
+                  {[15, 30, 45, 60, 90, 120, 180].map(v => <option key={v} value={v}>{v} min</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>Questions</label>
-                <select value={opts.max_questions}
-                  onChange={e => setOpts(o => ({ ...o, max_questions: +e.target.value }))}
-                  className="w-full px-3 py-3 rounded-xl outline-none text-sm"
-                  style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}>
-                  {[2, 3, 4, 5, 6].map(v => <option key={v} value={v}>{v} problems</option>)}
-                </select>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold" style={{ color: t.textSec }}>Questions</label>
+                  <button
+                    type="button"
+                    onClick={() => setCustomQuestionCount(c => !c)}
+                    className="text-[10px] font-bold text-indigo-400 hover:underline"
+                  >
+                    {customQuestionCount ? 'Presets' : 'Custom'}
+                  </button>
+                </div>
+                {customQuestionCount ? (
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    value={opts.max_questions}
+                    onChange={e => setOpts(o => ({ ...o, max_questions: Math.max(1, Math.min(30, +e.target.value || 1)) }))}
+                    className="w-full px-3 py-2.5 rounded-xl outline-none text-sm"
+                    style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}
+                  />
+                ) : (
+                  <select value={opts.max_questions}
+                    onChange={e => setOpts(o => ({ ...o, max_questions: +e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl outline-none text-sm"
+                    style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25].map(v => (
+                      <option key={v} value={v}>{v} {v === 1 ? 'problem' : 'problems'}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold block mb-2" style={{ color: t.textSec }}>Question Mode</label>
+              <label className="text-xs font-semibold block mb-2" style={{ color: t.textSec }}>Question Selection</label>
               <div className="grid grid-cols-2 gap-2">
                 {[['shuffle', 'AI Shuffle', 'auto_awesome'], ['manual', 'Manual Pick', 'edit']].map(([val, label, icon]) => (
                   <button key={val} type="button"
                     onClick={() => setOpts(o => ({ ...o, question_mode: val }))}
-                    className="p-4 rounded-xl text-left transition-all"
+                    className="p-3 rounded-xl text-left transition-all"
                     style={{
                       background: opts.question_mode === val ? 'rgba(99,102,241,0.15)' : t.surfLow,
                       border: `1px solid ${opts.question_mode === val ? '#6366F1' : t.border}`,
                       color: opts.question_mode === val ? '#6366F1' : t.textSec,
                     }}>
-                    <span className="material-symbols-outlined text-xl block mb-1">{icon}</span>
+                    <span className="material-symbols-outlined text-lg block mb-0.5">{icon}</span>
                     <span className="text-xs font-bold">{label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Ranked-only options */}
-            {modalIsRanked && (
-              <div className="space-y-3 pt-2 border-t" style={{ borderColor: 'rgba(230,57,70,0.2)' }}>
-                <p className="text-xs font-bold uppercase tracking-wider" style={{ color: '#e63946' }}>The Gauntlet Settings</p>
+            {/* Configurable Strikes & Host Role for both Playground & Gauntlet */}
+            <div className="pt-2 border-t space-y-3" style={{ borderColor: t.border }}>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>
+                    Allowed Strikes
+                  </label>
+                  <select
+                    value={opts.max_strikes}
+                    onChange={e => setOpts(o => ({ ...o, max_strikes: +e.target.value }))}
+                    className="w-full px-3 py-2.5 rounded-xl outline-none text-sm font-semibold"
+                    style={{ background: t.surfLow, color: modalIsRanked ? '#e63946' : t.textPri, border: `1px solid ${t.border}` }}
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v => (
+                      <option key={v} value={v}>{v} {v === 1 ? 'strike' : 'strikes'}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] mt-1" style={{ color: t.textSec }}>
+                    Strike limit before OUT
+                  </p>
+                </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>Max Strikes</label>
-                    <select value={opts.max_strikes}
-                      onChange={e => setOpts(o => ({ ...o, max_strikes: +e.target.value }))}
-                      className="w-full px-3 py-3 rounded-xl outline-none text-sm"
-                      style={{ background: t.surfLow, color: '#e63946', border: '1px solid rgba(230,57,70,0.3)' }}>
-                      {[1, 2, 3, 4, 5].map(v => <option key={v} value={v}>{v} {v === 1 ? 'strike' : 'strikes'}</option>)}
-                    </select>
-                  </div>
-                  <div className="flex flex-col justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setOpts(o => ({ ...o, host_spectator: !o.host_spectator }))}
-                      className="w-full px-3 py-3 rounded-xl text-xs font-semibold text-left flex items-center gap-2 transition-all"
-                      style={{
-                        background: opts.host_spectator ? 'rgba(230,57,70,0.1)' : t.surfLow,
-                        border: `1px solid ${opts.host_spectator ? 'rgba(230,57,70,0.4)' : t.border}`,
-                        color: opts.host_spectator ? '#e63946' : t.textSec,
-                      }}>
-                      <span className="material-symbols-outlined text-sm">
-                        {opts.host_spectator ? 'visibility' : 'visibility_off'}
-                      </span>
-                      {opts.host_spectator ? 'Spectating' : 'Play as Host'}
-                    </button>
-                    <p className="text-[10px] mt-1 px-1" style={{ color: t.textSec }}>
-                      {opts.host_spectator ? 'You watch, not ranked' : 'You compete like others'}
-                    </p>
-                  </div>
+                <div>
+                  <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>
+                    Host Role
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setOpts(o => ({ ...o, host_spectator: !o.host_spectator }))}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs font-semibold text-left flex items-center justify-between transition-all"
+                    style={{
+                      background: opts.host_spectator ? 'rgba(99,102,241,0.15)' : t.surfLow,
+                      border: `1px solid ${opts.host_spectator ? '#6366F1' : t.border}`,
+                      color: opts.host_spectator ? '#818CF8' : t.textSec,
+                    }}
+                  >
+                    <span>{opts.host_spectator ? 'Admin (No Play)' : 'Play as Host'}</span>
+                    <span className="material-symbols-outlined text-sm">
+                      {opts.host_spectator ? 'shield_person' : 'sports_esports'}
+                    </span>
+                  </button>
+                  <p className="text-[10px] mt-1" style={{ color: t.textSec }}>
+                    {opts.host_spectator ? 'Host monitors & moderates' : 'Host also competes'}
+                  </p>
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
           <button onClick={() => onCreate(opts)} disabled={busy}
-            className="w-full mt-6 py-3 rounded-2xl font-bold text-white disabled:opacity-60 flex items-center justify-center gap-2"
-            style={{ background: modalIsRanked ? 'linear-gradient(135deg,#e63946,#c1121f)' : 'linear-gradient(135deg,#6366F1,#A855F7)' }}>
+            className="w-full mt-6 py-3 rounded-2xl font-bold text-white disabled:opacity-60 flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-md"
+            style={{ background: modalIsRanked ? 'linear-gradient(135deg,#e63946,#c1121f)' : 'linear-gradient(135deg,#6366F1,#8B5CF6)' }}>
             {busy && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
             {modalIsRanked ? 'Create The Gauntlet' : 'Create Playground'}
           </button>
