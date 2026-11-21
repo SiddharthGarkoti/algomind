@@ -780,6 +780,7 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
     if (filterTab === 'active') return !m.finished_at && !m.is_disqualified;
     if (filterTab === 'out') return m.is_disqualified || (m.strikes >= maxStrikes);
     if (filterTab === 'strikes') return (m.strikes || 0) > 0;
+    if (filterTab === 'finished') return m.completed_count >= totalQ;
     return true;
   });
 
@@ -896,26 +897,6 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
       {/* ─── HOST ADMIN PANEL (MODERATION & OBSERVABILITY) ─── */}
       {isHost && hostViewMode === 'admin' ? (
         <div className="space-y-6">
-          {/* KPI Dashboard */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            {[
-              { label: 'Total Players', val: competitors.length, sub: '100+ Concurrent Scale', icon: 'groups', color: '#6366F1' },
-              { label: 'Active Solvers', val: competitors.filter(m => !m.finished_at && !m.is_disqualified).length, sub: 'Currently solving', icon: 'psychology', color: '#22C55E' },
-              { label: 'Finished All', val: competitors.filter(m => m.completed_count >= totalQ && !m.is_disqualified).length, sub: 'Completed', icon: 'check_circle', color: '#8B5CF6' },
-              { label: 'Made OUT', val: competitors.filter(m => m.is_disqualified || m.strikes >= maxStrikes).length, sub: 'Disqualified', icon: 'cancel', color: '#EF4444' },
-              { label: 'Violations', val: competitors.reduce((acc, m) => acc + (m.strikes || 0), 0), sub: 'Strikes registered', icon: 'warning', color: '#F59E0B' },
-            ].map(({ label, val, sub, icon, color }) => (
-              <GlassCard key={label} isDark={isDark} className="p-4 rounded-2xl">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: t.textSec }}>{label}</span>
-                  <span className="material-symbols-outlined text-base" style={{ color }}>{icon}</span>
-                </div>
-                <p className="text-2xl font-extrabold tracking-tight" style={{ color: t.textPri }}>{val}</p>
-                <p className="text-[10px] mt-0.5 truncate" style={{ color: t.textSec }}>{sub}</p>
-              </GlassCard>
-            ))}
-          </div>
-
           {/* Player Management Roster */}
           <GlassCard isDark={isDark} className="p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -924,7 +905,9 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
                   Competitor Roster &amp; Live Telemetry
                 </h3>
                 <p className="text-xs" style={{ color: t.textSec }}>
-                  Monitor participant question progress, live fair-play strikes, violation audit trails, and moderate players.
+                  {isRanked
+                    ? 'Check individual player questions, live strike counts, violation reason logs, and disqualify players.'
+                    : 'Check individual player active questions, solve progress, and playground participation.'}
                 </p>
               </div>
 
@@ -943,17 +926,21 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
                 </div>
 
                 <div className="flex p-1 rounded-xl text-xs" style={{ background: t.surfLow, border: `1px solid ${t.border}` }}>
-                  {[
+                  {(isRanked ? [
                     ['all', `All (${competitors.length})`],
                     ['active', `Active (${competitors.filter(m => !m.finished_at && !m.is_disqualified).length})`],
                     ['out', `OUT (${competitors.filter(m => m.is_disqualified || m.strikes >= maxStrikes).length})`],
-                    ['strikes', `Violations (${competitors.filter(m => (m.strikes || 0) > 0).length})`],
-                  ].map(([tab, label]) => (
+                    ['strikes', `Strikes (${competitors.filter(m => (m.strikes || 0) > 0).length})`],
+                  ] : [
+                    ['all', `All (${competitors.length})`],
+                    ['active', `Active (${competitors.filter(m => !m.finished_at).length})`],
+                    ['finished', `Finished (${competitors.filter(m => m.completed_count >= totalQ).length})`],
+                  ]).map(([tabKey, label]) => (
                     <button
-                      key={tab}
-                      onClick={() => setFilterTab(tab)}
-                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all"
-                      style={filterTab === tab ? { background: '#6366F1', color: '#fff' } : { color: t.textSec }}
+                      key={tabKey}
+                      onClick={() => setFilterTab(tabKey)}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                      style={filterTab === tabKey ? { background: '#6366F1', color: '#fff' } : { color: t.textSec }}
                     >
                       {label}
                     </button>
@@ -1051,58 +1038,72 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
                         </div>
                       </div>
 
-                      {/* Right: Fair-Play Strikes & Moderation Actions */}
-                      <div className="flex items-center gap-4 min-w-[280px] justify-between sm:justify-end">
-                        {/* Strike Percentage Bar */}
-                        <div className="min-w-[130px]">
-                          <div className="flex items-center justify-between text-[11px] mb-1 font-semibold">
-                            <span style={{ color: (m.strikes || 0) > 0 ? '#EF4444' : t.textSec }}>
-                              {m.strikes || 0} / {maxStrikes} Strikes
-                            </span>
-                            <span className="font-mono text-[10px]" style={{ color: strikePct >= 100 ? '#EF4444' : strikePct > 0 ? '#F59E0B' : '#22C55E' }}>
-                              {strikePct}%
-                            </span>
+                      {/* Right: Fair-Play Strikes & Moderation Actions (Ranked/Gauntlet only) */}
+                      {isRanked ? (
+                        <div className="flex items-center gap-4 min-w-[280px] justify-between sm:justify-end">
+                          {/* Strike Percentage Bar */}
+                          <div className="min-w-[130px]">
+                            <div className="flex items-center justify-between text-[11px] mb-1 font-semibold">
+                              <span style={{ color: (m.strikes || 0) > 0 ? '#EF4444' : t.textSec }}>
+                                {m.strikes || 0} / {maxStrikes} Strikes
+                              </span>
+                              <span className="font-mono text-[10px]" style={{ color: strikePct >= 100 ? '#EF4444' : strikePct > 0 ? '#F59E0B' : '#22C55E' }}>
+                                {strikePct}%
+                              </span>
+                            </div>
+                            <div className="w-full h-2 rounded-full overflow-hidden bg-black/20">
+                              <div
+                                className="h-full rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${strikePct}%`,
+                                  background: strikePct >= 100 ? '#EF4444' : strikePct >= 50 ? '#F59E0B' : '#22C55E',
+                                }}
+                              />
+                            </div>
                           </div>
-                          <div className="w-full h-2 rounded-full overflow-hidden bg-black/20">
-                            <div
-                              className="h-full rounded-full transition-all duration-300"
-                              style={{
-                                width: `${strikePct}%`,
-                                background: strikePct >= 100 ? '#EF4444' : strikePct >= 50 ? '#F59E0B' : '#22C55E',
-                              }}
-                            />
-                          </div>
-                        </div>
 
-                        {/* Audit Log Button */}
-                        <button
-                          type="button"
-                          onClick={() => setAuditLogMember(m)}
-                          className="px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition-all hover:opacity-80 flex items-center gap-1"
-                          style={{ background: t.surfLow, border: `1px solid ${t.border}`, color: t.textPri }}
-                          title="View strike violation audit log"
-                        >
-                          <span className="material-symbols-outlined text-xs">history</span>
-                          <span>Logs ({m.strike_logs?.length || m.strikes || 0})</span>
-                        </button>
-
-                        {/* Disqualify / Make OUT button */}
-                        {isOut ? (
-                          <div className="px-3 py-1.5 rounded-xl text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 text-center">
-                            OUT
-                          </div>
-                        ) : (
+                          {/* Audit Log Button */}
                           <button
                             type="button"
-                            onClick={() => setDisqualifyTarget(m)}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20"
-                            title="Make this player OUT immediately"
+                            onClick={() => setAuditLogMember(m)}
+                            className="px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition-all hover:opacity-80 flex items-center gap-1 cursor-pointer"
+                            style={{ background: t.surfLow, border: `1px solid ${t.border}`, color: t.textPri }}
+                            title="View strike violation audit log"
                           >
-                            <span className="material-symbols-outlined text-sm">gavel</span>
-                            Make OUT
+                            <span className="material-symbols-outlined text-xs">history</span>
+                            <span>Logs ({m.strike_logs?.length || m.strikes || 0})</span>
                           </button>
-                        )}
-                      </div>
+
+                          {/* Disqualify / Make OUT button */}
+                          {isOut ? (
+                            <div className="px-3 py-1.5 rounded-xl text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 text-center">
+                              OUT
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setDisqualifyTarget(m)}
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 text-red-400 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 cursor-pointer"
+                              title="Make this player OUT immediately"
+                            >
+                              <span className="material-symbols-outlined text-sm">gavel</span>
+                              Make OUT
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 min-w-[120px] justify-end">
+                          {isFinished ? (
+                            <span className="text-xs font-bold text-emerald-400 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                              Completed All
+                            </span>
+                          ) : (
+                            <span className="text-xs font-semibold px-3 py-1.5 rounded-xl" style={{ background: t.surfLow, color: t.textSec }}>
+                              Solving
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
