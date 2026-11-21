@@ -30,6 +30,7 @@ function Header({ theme, toggleTheme, onOpenChat }) {
 
   // ── streak (LeetCode verified streak by default) ──────────────────
   const [lcStreak, setLcStreak] = useState(0);
+  const streak = lcStreak;
 
   useEffect(() => {
     if (!isAuthenticated) return;
