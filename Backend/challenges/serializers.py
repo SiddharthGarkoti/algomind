@@ -38,13 +38,17 @@ class PartyMemberSerializer(serializers.ModelSerializer):
     current_question_slug  = serializers.CharField(read_only=True)
     current_question_title = serializers.CharField(read_only=True)
     strike_logs            = PartyStrikeLogSerializer(many=True, read_only=True)
+    hint_fouls_seconds     = serializers.IntegerField(read_only=True)
+    hints_used             = serializers.IntegerField(read_only=True)
+    gave_up                = serializers.BooleanField(read_only=True)
 
     class Meta:
         model  = PartyMember
         fields = ['id', 'username', 'avatar', 'completed_count', 'total_questions',
                   'completions', 'finished_at', 'rank', 'is_host', 'joined_at',
                   'strikes', 'is_spectator', 'is_disqualified', 'disqualified_reason',
-                  'current_question_slug', 'current_question_title', 'strike_logs']
+                  'current_question_slug', 'current_question_title', 'strike_logs',
+                  'hint_fouls_seconds', 'hints_used', 'gave_up']
 
     def get_avatar(self, obj):
         req = self.context.get('request')
@@ -73,7 +77,8 @@ class PartySerializer(serializers.ModelSerializer):
         fields = ['id', 'code', 'name', 'host_id', 'host_username', 'status', 'question_mode',
                   'duration_minutes', 'max_questions', 'created_at', 'started_at',
                   'ends_at', 'time_remaining', 'members', 'all_members', 'questions', 'member_count',
-                  'is_ranked', 'max_strikes', 'host_spectator']
+                  'is_ranked', 'max_strikes', 'host_spectator',
+                  'match_type', 'versus_mode', 'versus_topic', 'versus_selection', 'versus_q_data']
 
     def get_members(self, obj):
         """Exclude spectators from leaderboard/active competitor list."""
@@ -92,10 +97,15 @@ class CreatePartySerializer(serializers.Serializer):
     name             = serializers.CharField(max_length=100, default='Code Party')
     duration_minutes = serializers.IntegerField(min_value=0, max_value=360, default=60)
     max_questions    = serializers.IntegerField(min_value=1, max_value=50, default=4)
-    question_mode    = serializers.ChoiceField(choices=['manual', 'shuffle'], default='shuffle')
+    question_mode    = serializers.ChoiceField(choices=['manual', 'shuffle', 'versus'], default='shuffle')
     is_ranked        = serializers.BooleanField(default=False)
     max_strikes      = serializers.IntegerField(min_value=0, max_value=50, default=3)
     host_spectator   = serializers.BooleanField(default=False)
+    match_type       = serializers.CharField(max_length=20, default='standard', required=False)
+    versus_mode      = serializers.CharField(max_length=20, default='competitive', required=False)
+    versus_topic     = serializers.CharField(max_length=100, default='', required=False, allow_blank=True)
+    versus_selection = serializers.CharField(max_length=20, default='topic', required=False)
+    versus_q_data    = serializers.JSONField(default=dict, required=False)
 
 
 class AddQuestionSerializer(serializers.Serializer):

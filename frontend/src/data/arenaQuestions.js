@@ -137,7 +137,8 @@ var majorityElement = function(nums) {
 You may assume that each input would have exactly one solution, and you may not use the same element twice. You can return the answer in any order.`,
     hints: [
       'A brute force approach checks all pairs in O(N^2) time. Can we do better?',
-      'Can a hash map help us check whether target - nums[i] has already been seen in O(1) time?'
+      'Can a hash map help us check whether target - nums[i] has already been seen in O(1) time?',
+      'Store each number and its index in a hash map as you iterate. Check if (target - num) exists in the map.'
     ],
     examples: [
       {
@@ -257,7 +258,8 @@ An input string is valid if:
 3. Every close bracket has a corresponding open bracket of the same type.`,
     hints: [
       'Use a stack to track open brackets.',
-      'When you see a closing bracket, check whether the top of the stack matches its corresponding open bracket.'
+      'When you see a closing bracket, check whether the top of the stack matches its corresponding open bracket.',
+      'If the stack is empty when encountering a closing bracket, or if the stack is not empty at the end, the string is invalid.'
     ],
     examples: [
       {
@@ -393,7 +395,8 @@ You want to maximize your profit by choosing a single day to buy one stock and c
 Return the maximum profit you can achieve from this transaction. If you cannot achieve any profit, return 0.`,
     hints: [
       'Track the minimum price seen so far as you iterate.',
-      'At each day, the maximum profit if selling today is currentPrice - minPriceSoFar.'
+      'At each day, the maximum profit if selling today is currentPrice - minPriceSoFar.',
+      'Update minPrice = min(minPrice, price) and maxProfit = max(maxProfit, price - minPrice) in a single pass.'
     ],
     examples: [
       {
@@ -495,7 +498,8 @@ public:
 A subarray is a contiguous non-empty sequence of elements within an array.`,
     hints: [
       "Kadane's Algorithm maintains a running sum. If the running sum drops below zero, reset it to zero.",
-      'At each index, decide whether to extend the previous subarray or start fresh from current element.'
+      'At each index, decide whether to extend the previous subarray or start fresh from current element.',
+      'currentSum = max(nums[i], currentSum + nums[i]) and update overall maxSum at every step.'
     ],
     examples: [
       {
@@ -594,7 +598,8 @@ public:
     statement: `Given the head of a singly linked list, reverse the list, and return the reversed list.`,
     hints: [
       'Maintain three pointers: prev, current, and next.',
-      'Reverse the pointer direction one node at a time.'
+      'Reverse the pointer direction one node at a time.',
+      'Store current.next in nextTemp, set current.next = prev, advance prev = current and current = nextTemp.'
     ],
     examples: [
       {
@@ -708,7 +713,8 @@ public:
 A substring is a contiguous non-empty sequence of characters within a string.`,
     hints: [
       'Use a sliding window with left and right pointers.',
-      'Maintain a set or frequency map of characters in the current window.'
+      'Maintain a set or frequency map of characters in the current window.',
+      'When a duplicate is encountered at right, advance the left pointer until the duplicate character is removed from the window.'
     ],
     examples: [
       {
@@ -825,7 +831,8 @@ public:
 You must write an algorithm with O(log n) runtime complexity.`,
     hints: [
       'Use mid = left + (right - left) / 2 to avoid integer overflow.',
-      'If nums[mid] == target, return mid; if nums[mid] < target search right; else search left.'
+      'If nums[mid] == target, return mid; if nums[mid] < target search right; else search left.',
+      'Terminate when left > right; if the target is not found in the loop, return -1.'
     ],
     examples: [
       {
@@ -938,7 +945,8 @@ public:
 Each time you can either climb 1 or 2 steps. In how many distinct ways can you climb to the top?`,
     hints: [
       'To reach step n, you can either take 1 step from n - 1 or 2 steps from n - 2.',
-      'This is equivalent to the Fibonacci recurrence: ways(n) = ways(n-1) + ways(n-2).'
+      'This is equivalent to the Fibonacci recurrence: ways(n) = ways(n-1) + ways(n-2).',
+      'Optimize space to O(1) by maintaining two variables for the previous two step counts.'
     ],
     examples: [
       {
@@ -1045,7 +1053,8 @@ public:
 Notice that the solution set must not contain duplicate triplets.`,
     hints: [
       'Sort the array first so two pointers can be used.',
-      'Fix the first element nums[i] and use two pointers (left and right) to find pairs summing to -nums[i].'
+      'Fix the first element nums[i] and use two pointers (left and right) to find pairs summing to -nums[i].',
+      'Skip duplicate values for both nums[i] and the pointers after finding a triplet to avoid duplicate results.'
     ],
     examples: [
       {

@@ -7,6 +7,7 @@ from .views import (
     InviteFriendView, LeetCodeProblemLookupView, ShuffleWithFilterView,
     TopicListView, ExtensionPulseView, ReportStrikeView,
     CodeforcesProblemLookupView, HostDisqualifyMemberView, ReportActiveQuestionView,
+    VersusSubmitView, VersusHintFoulView, VersusGiveUpView,
 )
 
 urlpatterns = [
@@ -25,6 +26,9 @@ urlpatterns = [
     path('party/<str:code>/rename/',                       RenamePartyView.as_view(),           name='party_rename'),
     path('party/<str:code>/invite/',                       InviteFriendView.as_view(),          name='party_invite'),
     path('party/<str:code>/kick/<int:member_id>/',         KickMemberView.as_view(),            name='party_kick'),
+    path('party/<str:code>/versus-submit/',                VersusSubmitView.as_view(),          name='party_versus_submit'),
+    path('party/<str:code>/versus-hint/',                  VersusHintFoulView.as_view(),        name='party_versus_hint'),
+    path('party/<str:code>/versus-giveup/',                VersusGiveUpView.as_view(),          name='party_versus_giveup'),
     path('party/<str:code>/questions/add/',                AddQuestionView.as_view(),           name='party_add_question'),
     path('party/<str:code>/questions/shuffle/',            ShuffleQuestionsView.as_view(),      name='party_shuffle'),
     path('party/<str:code>/questions/shuffle-filter/',     ShuffleWithFilterView.as_view(),     name='party_shuffle_filter'),

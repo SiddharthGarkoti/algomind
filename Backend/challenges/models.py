@@ -24,6 +24,13 @@ class Party(models.Model):
     is_ranked        = models.BooleanField(default=False)   # ranked = extension enforcement on
     max_strikes      = models.IntegerField(default=3)       # host-configurable (1-5)
     host_spectator   = models.BooleanField(default=False)   # host watches, doesn't compete
+
+    # 1v1 Versus mode fields
+    match_type       = models.CharField(max_length=20, default='standard') # 'standard' | 'versus'
+    versus_mode      = models.CharField(max_length=20, default='competitive') # 'competitive' | 'casual'
+    versus_topic     = models.CharField(max_length=100, blank=True, default='')
+    versus_selection = models.CharField(max_length=20, default='topic') # 'topic' | 'balanced'
+    versus_q_data    = models.JSONField(default=dict, blank=True)
     created_at       = models.DateTimeField(auto_now_add=True)
     started_at       = models.DateTimeField(null=True, blank=True)
     ends_at          = models.DateTimeField(null=True, blank=True)
@@ -59,6 +66,9 @@ class PartyMember(models.Model):
     disqualified_reason    = models.CharField(max_length=255, blank=True, default='')
     current_question_slug  = models.CharField(max_length=300, blank=True, default='')
     current_question_title = models.CharField(max_length=300, blank=True, default='')
+    hint_fouls_seconds     = models.IntegerField(default=0)
+    hints_used             = models.IntegerField(default=0)
+    gave_up                = models.BooleanField(default=False)
 
     class Meta:
         unique_together = [['party', 'user']]

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import DashboardLayout from '../../components/layout/DashboardLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import api from '../../utils/api.js';
+import VersusTab from './VersusTab.jsx';
 import {
   dispatchChallengeStart,
   dispatchChallengeEnd,
@@ -809,8 +810,7 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#22C55E' }} />
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#22C55E' }}>LIVE MATCH</span>
+              <span className="w-2 h-2 rounded-full" style={{ background: '#22C55E' }} />
               <span className="text-xs px-2 py-0.5 rounded-md font-mono" style={{ background: t.surfLow, color: t.textSec }}>
                 ROOM #{party.code}
               </span>
@@ -1480,7 +1480,7 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
 ══════════════════════════════════════════════════════════════════ */
 const PARTY_SESSION_KEY = 'algomind_party_session';
 
-function PartyTab({ isDark, isRankedView = false }) {
+function PartyTab({ isDark, isRankedView = false, onActiveMatchChange }) {
   const t = useTheme(isDark);
   const { user } = useAuth();
 
@@ -1503,14 +1503,26 @@ function PartyTab({ isDark, isRankedView = false }) {
   // isRankedFlow: true if this tab is the Ranked tab OR if host explicitly chose ranked
   const [isRankedFlow, setIsRankedFlow] = useState(isRankedView);
 
+  // partyCode MUST be derived before any hooks that use it
+  const partyCode = party?.code;
+  const pollRef = useRef(null);
+
+  // Notify parent of active challenge to prevent switching tabs
+  useEffect(() => {
+    if (view === 'room' && partyCode && party?.status === 'active') {
+      onActiveMatchChange?.({
+        mode: isRankedView ? 'The Gauntlet' : 'Playground',
+        code: partyCode,
+      });
+    } else {
+      onActiveMatchChange?.(null);
+    }
+  }, [view, partyCode, party?.status, isRankedView, onActiveMatchChange]);
+
   // Auto-set isRanked when entering the Ranked tab
   useEffect(() => {
     if (isRankedView) setIsRankedFlow(true);
   }, [isRankedView]);
-
-  // partyCode MUST be derived before any hooks that use it
-  const partyCode = party?.code;
-  const pollRef = useRef(null);
 
   // Extension detection — used to guard ranked start
   const { extensionInstalled, extensionInvalidated } = useAlgoMindExtension();
@@ -2456,56 +2468,88 @@ function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked 
 }
 
 /* ═════════════════════════════════════════════════════════════════
-   Main Page — 3 tabs: Playground, The Gauntlet, Contests
+   Main Page — Tabs: Playground, The Gauntlet, 1v1 Versus, Contests
 ═════════════════════════════════════════════════════════════════ */
 function ChallengesPage({ theme, toggleTheme }) {
   const isDark = theme === 'dark';
   const t = useTheme(isDark);
   const [tab, setTab] = useState('casual');
+  const [activeMatch, setActiveMatch] = useState(null); // { mode, code }
 
   const TABS = [
     { id: 'casual', label: 'Playground',    icon: 'sports_esports', color: '#6366F1' },
     { id: 'ranked', label: 'The Gauntlet',  icon: 'swords',         color: '#e63946' },
+    { id: 'versus', label: '1v1 Versus',    icon: 'bolt',           color: '#7C3AED' },
     { id: 'contest', label: 'Contests',     icon: 'emoji_events',  color: '#F59E0B' },
   ];
+
+  const handleTabClick = (tabId) => {
+    if (activeMatch && tab !== tabId) {
+      alert(`A match is currently in progress (${activeMatch.mode} #${activeMatch.code}). Finish or leave your active room before switching challenge modes.`);
+      return;
+    }
+    setTab(tabId);
+  };
 
   return (
     <DashboardLayout theme={theme} toggleTheme={toggleTheme}>
       <div className="max-w-5xl mx-auto space-y-6 pb-12">
 
         {/* Page header */}
-        <div>
-          <h1 className="text-3xl font-black tracking-tight mb-1" style={{ color: t.textPri }}>Challenges</h1>
-          <p className="text-sm" style={{ color: t.textSec }}>Compete with friends and test your skills</p>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight mb-1" style={{ color: t.textPri }}>Challenges</h1>
+            <p className="text-sm" style={{ color: t.textSec }}>Compete with friends, battle 1v1 in the in-app IDE, and test your skills</p>
+          </div>
+
+          {activeMatch && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span className="w-2 h-2 rounded-full animate-pulse bg-emerald-400" />
+              <span>Active Match: {activeMatch.mode} (#{activeMatch.code})</span>
+            </div>
+          )}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 p-1 rounded-2xl w-fit"
+        <div className="flex gap-2 p-1 rounded-2xl w-fit flex-wrap"
           style={{ background: t.surfLow, border: `1px solid ${t.border}` }}>
           {TABS.map(tab_ => {
             const active = tab === tab_.id;
+            const isLocked = activeMatch && !active;
             const bg = tab_.id === 'ranked'
               ? 'linear-gradient(135deg,#e63946,#c1121f)'
-              : tab_.id === 'contest'
-                ? 'linear-gradient(135deg,#F59E0B,#D97706)'
-                : 'linear-gradient(135deg,#6366F1,#A855F7)';
+              : tab_.id === 'versus'
+                ? 'linear-gradient(135deg,#7C3AED,#9333EA)'
+                : tab_.id === 'contest'
+                  ? 'linear-gradient(135deg,#F59E0B,#D97706)'
+                  : 'linear-gradient(135deg,#6366F1,#A855F7)';
             return (
               <button key={tab_.id}
-                onClick={() => setTab(tab_.id)}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                disabled={isLocked}
+                onClick={() => handleTabClick(tab_.id)}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  isLocked ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+                }`}
                 style={active
                   ? { background: bg, color: '#fff', boxShadow: `0 4px 16px -4px ${tab_.color}80` }
                   : { color: t.textSec }}>
                 <span className="material-symbols-outlined text-sm">{tab_.icon}</span>
-                {tab_.label}
+                <span>{tab_.label}</span>
+                {active && activeMatch && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white ml-0.5" title="Match in Progress" />
+                )}
+                {isLocked && (
+                  <span className="material-symbols-outlined text-xs opacity-70">lock</span>
+                )}
               </button>
             );
           })}
         </div>
 
         {/* Tab content */}
-        {tab === 'casual'  && <PartyTab isDark={isDark} isRankedView={false} />}
-        {tab === 'ranked'  && <PartyTab isDark={isDark} isRankedView={true} />}
+        {tab === 'casual'  && <PartyTab isDark={isDark} isRankedView={false} onActiveMatchChange={setActiveMatch} />}
+        {tab === 'ranked'  && <PartyTab isDark={isDark} isRankedView={true} onActiveMatchChange={setActiveMatch} />}
+        {tab === 'versus'  && <VersusTab isDark={isDark} onActiveMatchChange={setActiveMatch} />}
         {tab === 'contest' && <ContestTab isDark={isDark} />}
       </div>
     </DashboardLayout>

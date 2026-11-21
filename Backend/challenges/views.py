@@ -132,6 +132,11 @@ class CreatePartyView(APIView):
             is_ranked=d.get('is_ranked', False),
             max_strikes=d.get('max_strikes', 3),
             host_spectator=d.get('host_spectator', False),
+            match_type=d.get('match_type', 'standard'),
+            versus_mode=d.get('versus_mode', 'competitive'),
+            versus_topic=d.get('versus_topic', ''),
+            versus_selection=d.get('versus_selection', 'topic'),
+            versus_q_data=d.get('versus_q_data', {}),
         )
         PartyMember.objects.create(
             party=party,
@@ -150,6 +155,9 @@ class JoinPartyView(APIView):
         if err: return err
         if party.status != 'waiting':
             return Response({'detail': 'Party already started or finished.'}, status=400)
+        if party.match_type == 'versus':
+            if party.members.count() >= 2 and not party.members.filter(user=request.user).exists():
+                return Response({'detail': 'This 1v1 Versus room is already full (2/2 players).'}, status=400)
         member, created = PartyMember.objects.get_or_create(party=party, user=request.user)
         return Response(PartySerializer(party, context={'request': request}).data,
                         status=201 if created else 200)
@@ -178,11 +186,17 @@ class StartPartyView(APIView):
             return Response({'detail': 'Only the host can start.'}, status=403)
         if party.status != 'waiting':
             return Response({'detail': 'Party cannot be started.'}, status=400)
-        if party.questions.count() == 0:
-            return Response({'detail': 'Add at least one question before starting.'}, status=400)
+        if party.match_type == 'versus':
+            if party.members.count() < 2:
+                return Response({'detail': '1v1 Versus requires 2 players. Invite an opponent first.'}, status=400)
+            if not party.versus_q_data:
+                return Response({'detail': 'No question configured for this Versus match.'}, status=400)
+        else:
+            if party.questions.count() == 0:
+                return Response({'detail': 'Add at least one question before starting.'}, status=400)
         if party.duration_minutes <= 0:
             return Response({'detail': 'Cannot start match: Duration must be greater than 0 minutes.'}, status=400)
-        if party.max_strikes <= 0:
+        if party.match_type != 'versus' and party.max_strikes <= 0:
             return Response({'detail': 'Cannot start match: Allowed strikes must be greater than 0.'}, status=400)
         now = timezone.now()
         party.status = 'active'
@@ -415,6 +429,18 @@ class RenamePartyView(APIView):
         if 'max_strikes' in request.data:
             party.max_strikes = max(0, min(50, int(request.data['max_strikes'])))
             update_fields.append('max_strikes')
+        if 'versus_q_data' in request.data:
+            party.versus_q_data = request.data['versus_q_data']
+            update_fields.append('versus_q_data')
+        if 'versus_mode' in request.data:
+            party.versus_mode = str(request.data['versus_mode'])
+            update_fields.append('versus_mode')
+        if 'versus_topic' in request.data:
+            party.versus_topic = str(request.data['versus_topic'])
+            update_fields.append('versus_topic')
+        if 'versus_selection' in request.data:
+            party.versus_selection = str(request.data['versus_selection'])
+            update_fields.append('versus_selection')
 
         if update_fields:
             party.save(update_fields=update_fields)
@@ -877,4 +903,96 @@ class ExtensionPulseView(APIView):
             })
 
         return Response({'members': results})
+
+
+class VersusSubmitView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, code):
+        party, err = _get_party_or_404(code)
+        if err: return err
+        if party.status != 'active':
+            return Response({'detail': 'Match is not active.'}, status=400)
+        try:
+            member = party.members.get(user=request.user)
+        except PartyMember.DoesNotExist:
+            return Response({'detail': 'You are not in this match.'}, status=403)
+
+        passed = request.data.get('passed', False)
+        if not passed:
+            return Response({'detail': 'Solution did not pass all test cases.'}, status=400)
+
+        now = timezone.now()
+        if not member.finished_at:
+            member.finished_at = now
+            # First one to finish gets rank 1
+            has_first = party.members.filter(rank=1).exists()
+            member.rank = 2 if has_first else 1
+            member.save(update_fields=['finished_at', 'rank'])
+
+            if member.rank == 1 and party.versus_mode == 'competitive':
+                diff = party.versus_q_data.get('diff', 'medium')
+                request.user.award_question_rating(diff)
+
+            # Check if all competitors finished
+            all_done = not party.members.filter(finished_at__isnull=True).exists()
+            if all_done:
+                party.status = 'finished'
+                party.save(update_fields=['status'])
+
+        return Response(PartySerializer(party, context={'request': request}).data)
+
+
+class VersusHintFoulView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, code):
+        party, err = _get_party_or_404(code)
+        if err: return err
+        try:
+            member = party.members.get(user=request.user)
+        except PartyMember.DoesNotExist:
+            return Response({'detail': 'Not a member.'}, status=403)
+
+        hint_idx = request.data.get('hint_index', 0)
+        penalty = request.data.get('penalty_seconds', 180) # +3 min default penalty
+        member.hints_used += 1
+        member.hint_fouls_seconds += penalty
+        member.save(update_fields=['hints_used', 'hint_fouls_seconds'])
+
+        PartyStrikeLog.objects.create(
+            party=party,
+            member=member,
+            strike_number=member.hints_used,
+            reason=f'Hint #{hint_idx + 1} taken (+{penalty // 60}m time penalty)'
+        )
+        return Response(PartySerializer(party, context={'request': request}).data)
+
+
+class VersusGiveUpView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, code):
+        party, err = _get_party_or_404(code)
+        if err: return err
+        try:
+            member = party.members.get(user=request.user)
+        except PartyMember.DoesNotExist:
+            return Response({'detail': 'Not a member.'}, status=403)
+
+        now = timezone.now()
+        member.gave_up = True
+        member.finished_at = now
+        member.rank = 2
+        member.save(update_fields=['gave_up', 'finished_at', 'rank'])
+
+        # Opponent gets rank 1 if they haven't finished
+        opponents = party.members.exclude(id=member.id)
+        for opp in opponents:
+            if not opp.rank:
+                opp.rank = 1
+                opp.save(update_fields=['rank'])
+
+        return Response(PartySerializer(party, context={'request': request}).data)
+
 
