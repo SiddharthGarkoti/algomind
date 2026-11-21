@@ -730,6 +730,7 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
 
   // View toggle for host: admin command center vs problem list
   const [hostViewMode, setHostViewMode] = useState(isHost ? 'admin' : 'problems');
+  const [competitorTab, setCompetitorTab] = useState('problems'); // 'problems' | 'standings'
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTab, setFilterTab] = useState('all'); // 'all' | 'active' | 'out' | 'strikes'
   const [auditLogMember, setAuditLogMember] = useState(null);
@@ -1112,190 +1113,242 @@ function PartyRoom({ party, me, isDark, onCheckCompletion, onEndParty, onForfeit
           </GlassCard>
         </div>
       ) : (
-        /* ─── COMPETITOR VIEW & PROBLEMS LIST (APPLE CLEAN UI, NO EMOJIS) ─── */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Questions Column */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: t.textSec }}>
-                Problem Set ({party.questions.length})
-              </h3>
-              <span className="text-[11px]" style={{ color: t.textSec }}>
-                Submit on platform, then click "Verify Solve"
-              </span>
+        /* ─── COMPETITOR VIEW & PROBLEMS LIST (FULL-WIDTH, NATURAL TYPOGRAPHY) ─── */
+        <div className="space-y-6">
+          {/* View Switcher Tabs: Problem Set vs Live Standings */}
+          <div
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b"
+            style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}
+          >
+            <div className="flex p-1 rounded-2xl w-fit" style={{ background: t.surfLow, border: `1px solid ${t.border}` }}>
+              <button
+                type="button"
+                onClick={() => setCompetitorTab('problems')}
+                className="px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer"
+                style={competitorTab === 'problems' ? { background: '#6366F1', color: '#fff' } : { color: t.textSec }}
+              >
+                <span className="material-symbols-outlined text-sm">code</span>
+                <span>Problem Set ({party.questions.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCompetitorTab('standings')}
+                className="px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer"
+                style={competitorTab === 'standings' ? { background: '#6366F1', color: '#fff' } : { color: t.textSec }}
+              >
+                <span className="material-symbols-outlined text-sm">leaderboard</span>
+                <span>Live Standings ({sorted.length})</span>
+              </button>
             </div>
 
-            {party.questions.map((q, i) => {
-              const done = myDoneIds.has(q.id);
-              return (
-                <GlassCard
-                  key={q.id}
-                  isDark={isDark}
-                  className="p-5.5 transition-all rounded-3xl"
-                  style={{ opacity: done ? 0.75 : 1 }}
-                  onClick={() => handleProblemClick(q)}
-                >
-                  <div className="flex items-start gap-4">
-                    <div
-                      className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-sm font-black border"
-                      style={{
-                        background: done ? 'rgba(34,197,94,0.12)' : 'rgba(99,102,241,0.1)',
-                        borderColor: done ? 'rgba(34,197,94,0.3)' : 'rgba(99,102,241,0.2)',
-                        color: done ? '#22C55E' : '#818CF8'
-                      }}
-                    >
-                      {done ? <span className="material-symbols-outlined text-lg">check</span> : i + 1}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className="text-base font-bold tracking-tight" style={{ color: t.textPri }}>{q.title}</span>
-                        <DiffBadge diff={q.difficulty} />
-                        <span
-                          className="text-[10px] font-semibold px-2 py-0.5 rounded-lg uppercase tracking-wider"
-                          style={{
-                            background: q.platform === 'leetcode' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(59, 130, 246, 0.12)',
-                            color: q.platform === 'leetcode' ? '#F59E0B' : '#3B82F6',
-                            border: `1px solid ${q.platform === 'leetcode' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(59, 130, 246, 0.25)'}`,
-                          }}
-                        >
-                          {q.platform}
-                        </span>
-                      </div>
-
-                      {done ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 pt-1">
-                          <span className="material-symbols-outlined text-sm">verified</span>
-                          Verified Solved
-                        </span>
-                      ) : myMember?.finished_at ? (
-                        <span className="text-xs font-semibold text-red-400 pt-1">Locked (Match Finished)</span>
-                      ) : (
-                        <div className="flex items-center gap-2.5 mt-3 flex-wrap">
-                          <a
-                            href={q.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={() => handleProblemClick(q)}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90 shadow-sm"
-                            style={{ background: '#6366F1', color: '#fff' }}
-                          >
-                            <span className="material-symbols-outlined text-sm">open_in_new</span>
-                            Solve on {q.platform === 'leetcode' ? 'LeetCode' : 'Codeforces'}
-                          </a>
-                          <button
-                            onClick={() => { handleProblemClick(q); onCheckCompletion(q.id); }}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all hover:opacity-90"
-                            style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}
-                          >
-                            <span className="material-symbols-outlined text-sm text-emerald-400">verified</span>
-                            I solved it!
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </GlassCard>
-              );
-            })}
+            <div className="flex items-center gap-2 text-xs" style={{ color: t.textSec }}>
+              <span className="material-symbols-outlined text-xs">info</span>
+              <span>
+                {competitorTab === 'problems'
+                  ? `${myDoneIds.size} of ${party.questions.length} problems solved`
+                  : 'Rankings update automatically in real-time'}
+              </span>
+            </div>
           </div>
 
-          {/* Live Rankings Column */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest px-1" style={{ color: t.textSec }}>
-              Live Standings
-            </h3>
-
-            {winner && (
-              <GlassCard isDark={isDark} className="p-4 text-center rounded-2xl"
-                style={{ background: 'rgba(250,204,21,0.08)', borderColor: 'rgba(250,204,21,0.3)' }}>
-                <span className="material-symbols-outlined text-2xl text-amber-400 block mb-1">workspace_premium</span>
-                <p className="text-sm font-bold" style={{ color: '#EAB308' }}>{winner.username} cleared all problems!</p>
-              </GlassCard>
-            )}
-
-            <div className="space-y-2">
-              {sorted.map((m, i) => {
-                const anim = rankAnims[m.id];
-                const isOut = m.is_disqualified || (m.strikes >= maxStrikes);
-
+          {competitorTab === 'problems' ? (
+            /* Full-width Problem List with Extended Horizontal Card */
+            <div className="space-y-3">
+              {party.questions.map((q, i) => {
+                const done = myDoneIds.has(q.id);
                 return (
                   <GlassCard
-                    key={m.id}
+                    key={q.id}
                     isDark={isDark}
-                    className="p-3.5 rounded-2xl"
+                    className="p-4 sm:px-6 sm:py-4.5 transition-all rounded-2xl border"
                     style={{
-                      transition: 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1)',
-                      transform: anim === 'up' ? 'translateY(-4px) scale(1.02)' : anim === 'down' ? 'translateY(4px)' : 'none',
-                      borderColor: anim === 'up' ? 'rgba(34,197,94,0.4)' : undefined,
-                      opacity: isOut ? 0.6 : 1,
+                      opacity: done ? 0.8 : 1,
+                      borderColor: done ? 'rgba(34,197,94,0.3)' : t.border,
+                      background: done
+                        ? (isDark ? 'rgba(34,197,94,0.04)' : 'rgba(34,197,94,0.025)')
+                        : t.surface,
                     }}
+                    onClick={() => handleProblemClick(q)}
                   >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="text-xs font-black w-6 text-center shrink-0 px-1 py-0.5 rounded-md"
-                        style={{
-                          color: i === 0 ? '#F59E0B' : i === 1 ? '#94A3B8' : i === 2 ? '#B45309' : t.textSec,
-                          background: i < 3 ? 'rgba(255,255,255,0.04)' : 'transparent',
-                        }}
-                      >
-                        #{i + 1}
-                      </span>
-
-                      <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden"
-                        style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff' }}
-                      >
-                        {m.avatar ? <img src={m.avatar} alt={m.username} className="w-full h-full object-cover" /> : m.username[0].toUpperCase()}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold truncate" style={{ color: m.username === me ? '#6366F1' : t.textPri }}>
-                            {m.username}{m.username === me ? ' (you)' : ''}
-                          </p>
-                          {isOut && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-red-500/10 text-red-400">
-                              OUT
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[10px]" style={{ color: t.textSec }}>
-                          {m.completed_count}/{totalQ} solved
-                        </p>
-                      </div>
-
-                      {/* Strikes pill */}
-                      {isRanked && (m.strikes ?? 0) > 0 && (
-                        <span
-                          className="flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                          style={{ background: 'rgba(239,68,68,0.12)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)' }}
-                          title={`${m.strikes} fair-play violations recorded`}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      {/* Left: Number, Title, Difficulty, Platform */}
+                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                        <div
+                          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-mono font-semibold"
+                          style={{
+                            background: done ? 'rgba(34,197,94,0.15)' : t.surfLow,
+                            color: done ? '#22C55E' : t.textSec,
+                            border: `1px solid ${done ? 'rgba(34,197,94,0.3)' : t.border}`,
+                          }}
                         >
-                          <span className="material-symbols-outlined text-[11px]">warning</span>
-                          {m.strikes}
-                        </span>
-                      )}
+                          {done ? <span className="material-symbols-outlined text-sm">check</span> : i + 1}
+                        </div>
 
-                      {m.finished_at && !isOut && (
-                        <span className="material-symbols-outlined text-xs text-emerald-400">check_circle</span>
-                      )}
-                    </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <span className="text-sm font-semibold tracking-tight" style={{ color: t.textPri }}>
+                              {q.title}
+                            </span>
+                            <DiffBadge diff={q.difficulty} />
+                            <span
+                              className="text-[10px] font-medium px-2 py-0.5 rounded-md"
+                              style={{
+                                background: q.platform === 'leetcode' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                color: q.platform === 'leetcode' ? '#F59E0B' : '#3B82F6',
+                                border: `1px solid ${q.platform === 'leetcode' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(59, 130, 246, 0.2)'}`,
+                              }}
+                            >
+                              {q.platform === 'leetcode' ? 'LeetCode' : 'Codeforces'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
 
-                    <div className="mt-2.5 h-1 rounded-full overflow-hidden" style={{ background: t.surfLow }}>
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{
-                          width: `${totalQ > 0 ? (m.completed_count / totalQ) * 100 : 0}%`,
-                          background: m.username === me ? '#6366F1' : '#A855F7',
-                        }}
-                      />
+                      {/* Right: Actions */}
+                      <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center">
+                        {done ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 px-3.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                            <span className="material-symbols-outlined text-sm">task_alt</span>
+                            Solved
+                          </span>
+                        ) : myMember?.finished_at ? (
+                          <span className="text-xs font-medium text-red-400 px-3 py-1.5">
+                            Match Ended
+                          </span>
+                        ) : (
+                          <>
+                            <a
+                              href={q.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => handleProblemClick(q)}
+                              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 shadow-sm"
+                              style={{ background: '#6366F1', color: '#fff' }}
+                            >
+                              <span>Solve Problem</span>
+                              <span className="material-symbols-outlined text-xs">arrow_outward</span>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => { handleProblemClick(q); onCheckCompletion(q.id); }}
+                              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all hover:bg-emerald-500/10 hover:text-emerald-400 cursor-pointer"
+                              style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}
+                            >
+                              <span className="material-symbols-outlined text-xs text-emerald-400">task_alt</span>
+                              <span>Verify Solve</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </GlassCard>
                 );
               })}
             </div>
-          </div>
+          ) : (
+            /* Full-width Live Standings Leaderboard */
+            <div className="space-y-4">
+              {winner && (
+                <GlassCard
+                  isDark={isDark}
+                  className="p-5 text-center rounded-2xl border"
+                  style={{ background: 'rgba(250,204,21,0.06)', borderColor: 'rgba(250,204,21,0.25)' }}
+                >
+                  <div className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: '#EAB308' }}>
+                    <span className="material-symbols-outlined text-xl">workspace_premium</span>
+                    <span>{winner.username} has solved all problems first!</span>
+                  </div>
+                </GlassCard>
+              )}
+
+              <div className="space-y-2.5">
+                {sorted.map((m, i) => {
+                  const anim = rankAnims[m.id];
+                  const isOut = m.is_disqualified || (m.strikes >= maxStrikes);
+
+                  return (
+                    <GlassCard
+                      key={m.id}
+                      isDark={isDark}
+                      className="p-4 rounded-2xl border transition-all"
+                      style={{
+                        transition: 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+                        transform: anim === 'up' ? 'translateY(-3px)' : anim === 'down' ? 'translateY(3px)' : 'none',
+                        borderColor: anim === 'up' ? 'rgba(34,197,94,0.4)' : t.border,
+                        opacity: isOut ? 0.6 : 1,
+                      }}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <span
+                            className="text-xs font-mono font-bold w-7 text-center shrink-0 px-1 py-0.5 rounded-md"
+                            style={{
+                              color: i === 0 ? '#F59E0B' : i === 1 ? '#94A3B8' : i === 2 ? '#B45309' : t.textSec,
+                              background: i < 3 ? 'rgba(255,255,255,0.05)' : 'transparent',
+                            }}
+                          >
+                            #{i + 1}
+                          </span>
+
+                          <div
+                            className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-semibold shrink-0 overflow-hidden"
+                            style={{ background: 'linear-gradient(135deg,#6366F1,#A855F7)', color: '#fff' }}
+                          >
+                            {m.avatar ? <img src={m.avatar} alt={m.username} className="w-full h-full object-cover" /> : m.username[0].toUpperCase()}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold truncate" style={{ color: m.username === me ? '#6366F1' : t.textPri }}>
+                                {m.username}{m.username === me ? ' (you)' : ''}
+                              </p>
+                              {isOut && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20">
+                                  OUT
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs" style={{ color: t.textSec }}>
+                              {m.completed_count} of {totalQ} completed
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 shrink-0 sm:w-64">
+                          <div className="flex-1">
+                            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: t.surfLow }}>
+                              <div
+                                className="h-full rounded-full transition-all duration-700"
+                                style={{
+                                  width: `${totalQ > 0 ? (m.completed_count / totalQ) * 100 : 0}%`,
+                                  background: m.username === me ? '#6366F1' : '#A855F7',
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {isRanked && (m.strikes ?? 0) > 0 && (
+                            <span
+                              className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md"
+                              style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.2)' }}
+                              title={`${m.strikes} fair-play violations`}
+                            >
+                              <span className="material-symbols-outlined text-xs">warning</span>
+                              {m.strikes}
+                            </span>
+                          )}
+
+                          {m.finished_at && !isOut && (
+                            <span className="material-symbols-outlined text-sm text-emerald-400">task_alt</span>
+                          )}
+                        </div>
+                      </div>
+                    </GlassCard>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
