@@ -306,27 +306,7 @@ function Dashboard({ theme, toggleTheme }) {
   const textPri = isDark ? '#F8FAFC' : '#0F172A';
   const textSec = isDark ? '#94A3B8' : '#64748B';
 
-  /* Mastery overview — filter out any residual *broken tags */
-  const skills = weakAreas
-    .filter(t => !t.topic_name.startsWith('*') && !t.topic_slug.startsWith('*'))
-    .slice(0, 6)
-    .map((t, i) => {
-      const max = Math.max(...weakAreas.map(x => x.problems_solved), 1);
-      const pct = Math.max(5, Math.round((t.problems_solved / max) * 100));
-      const isWeak = t.status === 'weak';
-      const isStrength = t.status === 'strength';
-      return {
-        id: i,
-        name: t.topic_name,
-        badge: isStrength ? 'Mastered' : isWeak ? 'Needs Focus' : 'In Progress',
-        badgeColor: isStrength ? '#A855F7' : isWeak ? '#94A3B8' : '#818CF8',
-        badgeBg: isStrength ? 'rgba(168,85,247,0.12)' : isWeak ? 'rgba(148,163,184,0.1)' : 'rgba(99,102,241,0.1)',
-        subtitle: `${t.problems_solved} problem${t.problems_solved !== 1 ? 's' : ''} solved`,
-        barColor: isStrength ? 'linear-gradient(90deg, #6366F1, #A855F7)' : isWeak ? 'rgba(168,85,247,0.35)' : '#818CF8',
-        progress: `${pct}%`,
-        topicSlug: t.topic_slug,
-      };
-    });
+
 
   return (
     <div className="dashboard-layout min-h-screen flex" style={{ background: bg, color: textPri }}>
@@ -427,7 +407,7 @@ function Dashboard({ theme, toggleTheme }) {
                       </div>
                       <h1 className="font-headline font-bold leading-snug max-w-2xl"
                         style={{ fontSize: '1.25rem', color: textPri }}>
-                        Solid progress across your connected profiles. Keep solving to advance your mastery breakdown.
+                        Solid progress across your connected profiles. Keep solving to elevate your ranking.
                       </h1>
                       <div className="flex items-center gap-3 mt-4">
                         <button
@@ -524,51 +504,7 @@ function Dashboard({ theme, toggleTheme }) {
                 </div>
               </div>
 
-              {/* Mastery Overview — Apple Card */}
-              {skills.length > 0 && (
-                <div className="p-6 rounded-2xl border backdrop-blur-xl"
-                  style={{ background: surface, borderColor: border, boxShadow: isDark ? '0 4px 20px -2px rgba(0,0,0,0.3)' : '0 4px 16px -4px rgba(0,0,0,0.06)' }}>
-                  <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>Mastery Overview</h3>
-                    <span className="text-xs font-medium cursor-pointer hover:underline" style={{ color: '#818CF8' }} onClick={() => navigate('/analytics')}>
-                      Full Analysis →
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 max-w-4xl">
-                    {skills.map((skill, i) => (
-                      <div key={skill.id}
-                        className={`space-y-2.5 page-enter stagger-${i + 1} cursor-pointer group`}
-                        onClick={() => window.open(`https://leetcode.com/tag/${skill.topicSlug}/`, '_blank', 'noopener noreferrer')}
-                        title={`Practice ${skill.name} on LeetCode`}>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-semibold flex items-center gap-2 group-hover:text-indigo-400 transition-colors" style={{ color: textPri }}>
-                            {skill.name}
-                          </span>
-                          <span className="text-xs px-2 py-0.5 rounded-md font-medium"
-                            style={{ background: skill.badgeBg, color: skill.badgeColor }}>
-                            {skill.badge}
-                          </span>
-                        </div>
-                        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0' }}>
-                          <div className="h-full rounded-full transition-all duration-700"
-                            style={{ width: skill.progress, background: skill.barColor }} />
-                        </div>
-                        <p className="text-xs" style={{ color: textSec }}>{skill.subtitle}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-              {/* Fallback when no topic data yet */}
-              {!loading && skills.length === 0 && platforms.length > 0 && (
-                <div className="p-6 rounded-2xl text-center"
-                  style={{ background: surface, border: `1px solid ${border}` }}>
-                  <p className="text-sm" style={{ color: textSec }}>
-                    Topic analysis loading — refresh analytics after connecting platforms.
-                  </p>
-                </div>
-              )}
 
             </div>
 

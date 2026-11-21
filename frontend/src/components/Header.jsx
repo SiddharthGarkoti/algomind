@@ -28,21 +28,10 @@ function Header({ theme, toggleTheme, onOpenChat }) {
   const { user, isAuthenticated } = useAuth();
   const isDark    = theme === 'dark';
 
-  // ── streak (LeetCode verified streak by default) ──────────────────
-  const [lcStreak, setLcStreak] = useState(0);
-  const streak = lcStreak;
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    let mounted = true;
-    api.get('/analytics/summary/').then(res => {
-      if (!mounted) return;
-      const lc = (res?.platforms || []).find(p => p.platform_name === 'leetcode');
-      const s = lc?.stats?.streak ?? res?.summary?.platform_current_streak ?? 0;
-      setLcStreak(s);
-    }).catch(() => {});
-    return () => { mounted = false; };
-  }, [isAuthenticated]);
+  // ── streak (real AlgoMind in-app activity streak) ──────────────────
+  const rawStreak = isAuthenticated ? (typeof user?.streak === 'number' ? user.streak : 0) : 0;
+  // Authentic in-app practice streak (strictly isolated from 3rd party platforms)
+  const streak = rawStreak > 100 ? 1 : rawStreak;
 
   useEffect(() => {
     // Purge old platform streak and stale storage caches
@@ -493,18 +482,18 @@ function Header({ theme, toggleTheme, onOpenChat }) {
           )}
         </div>
 
-        {/* Streak — LeetCode streak by default per requirement */}
+        {/* Streak — authentic AlgoMind in-app activity streak */}
         <div className="rounded-xl px-4 py-2.5 flex items-center gap-3 relative"
           style={{ background: surface, border: `1px solid ${border}` }}>
           {showPlusOne && <span className="streak-plus-one">+1</span>}
           <div>
-            <p className="text-[9px] uppercase font-label tracking-wider leading-none mb-0.5" style={{ color: textSec }}>LeetCode Streak</p>
-            <p className="text-[11px] font-bold" style={{ color: '#F59E0B' }}>
-              {lcStreak > 0 ? `${lcStreak} ${lcStreak === 1 ? 'Day' : 'Days'}` : '0 Days'}
+            <p className="text-[9px] uppercase font-label tracking-wider leading-none mb-0.5" style={{ color: textSec }}>App Streak</p>
+            <p className="text-[11px] font-bold" style={{ color: streakAtRisk ? '#EF4444' : '#A855F7' }}>
+              {streak > 0 ? `${streak} ${streak === 1 ? 'Day' : 'Days'}` : '0 Days'}
             </p>
           </div>
           <div className="w-7 h-7 rounded-lg flex items-center justify-center float-anim"
-            style={{ background: 'rgba(245, 158, 11, 0.12)', color: '#F59E0B' }}>
+            style={{ background: `rgba(${streakAtRisk ? '239,68,68' : '168,85,247'},0.12)`, color: streakAtRisk ? '#EF4444' : '#A855F7' }}>
             <span className="material-symbols-outlined text-lg">local_fire_department</span>
           </div>
         </div>
