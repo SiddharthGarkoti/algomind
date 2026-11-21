@@ -1963,7 +1963,7 @@ function PartyTab({ isDark, isRankedView = false }) {
 }
 
 /* ═════════════════════════════════════════════════════════════════
-   Create party modal (Casual + Ranked variants)
+   Create party modal (Casual + Ranked variants) — Clean Apple Design
 ═════════════════════════════════════════════════════════════════ */
 function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked = false }) {
   const t = useTheme(isDark);
@@ -1976,153 +1976,311 @@ function CreateModal({ isDark, onClose, onCreate, busy, isRanked: modalIsRanked 
     max_strikes: 3,
     host_spectator: true, // Default host as supervisor per user requirement
   });
-  const [customQuestionCount, setCustomQuestionCount] = useState(false);
+
+  const accentColor = modalIsRanked ? '#e63946' : '#6366F1';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 overflow-y-auto"
       onClick={onClose}>
-      <div className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
-        style={{ background: isDark ? '#18181b' : '#fff', border: `1px solid ${modalIsRanked ? 'rgba(230,57,70,0.3)' : 'rgba(99,102,241,0.2)'}` }}
-        onClick={e => e.stopPropagation()}>
-        <div className="p-7">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h3 className="text-xl font-bold tracking-tight" style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}>
-                {modalIsRanked ? 'Create The Gauntlet' : 'Create Playground'}
-              </h3>
-              <p className="text-xs mt-0.5" style={{ color: modalIsRanked ? '#e63946' : t.textSec }}>
-                {modalIsRanked ? 'Anti-cheat monitoring enabled · 100+ player scale' : 'Casual collaborative coding room · 100+ player scale'}
-              </p>
+      <div
+        className="w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl transition-all my-8"
+        style={{
+          background: isDark ? '#141417' : '#FFFFFF',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+          boxShadow: isDark ? '0 25px 50px -12px rgba(0,0,0,0.7)' : '0 25px 50px -12px rgba(0,0,0,0.15)',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-8 pt-8 pb-5 flex items-start justify-between border-b"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[11px] font-bold tracking-widest uppercase px-2.5 py-0.5 rounded-full"
+                style={{
+                  background: modalIsRanked ? 'rgba(230,57,70,0.12)' : 'rgba(99,102,241,0.12)',
+                  color: accentColor,
+                }}>
+                {modalIsRanked ? 'Ranked Gauntlet' : 'Collaborative Playground'}
+              </span>
+              <span className="text-[11px] font-medium" style={{ color: t.textSec }}>
+                100+ Player Capacity
+              </span>
             </div>
-            <button onClick={onClose}><span className="material-symbols-outlined" style={{ color: t.textSec }}>close</span></button>
+            <h3 className="text-2xl font-bold tracking-tight" style={{ color: t.textPri }}>
+              {modalIsRanked ? 'Configure The Gauntlet' : 'Create Playground Room'}
+            </h3>
+            <p className="text-xs mt-1 leading-relaxed" style={{ color: t.textSec }}>
+              {modalIsRanked
+                ? 'Strict competitive arena with automated extension integrity and host supervision.'
+                : 'Open multi-player practice room. Test algorithms together in real time.'}
+            </p>
           </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-75"
+            style={{ background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', color: t.textSec }}
+          >
+            <span className="material-symbols-outlined text-base">close</span>
+          </button>
+        </div>
 
+        {/* Body */}
+        <div className="px-8 py-6 space-y-6 max-h-[75vh] overflow-y-auto">
+          {/* Section: Room Details */}
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>Match Name</label>
-              <input value={opts.name} onChange={e => setOpts(o => ({ ...o, name: e.target.value }))}
-                className="w-full px-4 py-2.5 rounded-xl outline-none text-sm"
-                style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }} />
+              <label className="text-xs font-bold tracking-wide uppercase block mb-1.5" style={{ color: t.textSec }}>
+                Room Title
+              </label>
+              <input
+                type="text"
+                value={opts.name}
+                onChange={e => setOpts(o => ({ ...o, name: e.target.value }))}
+                placeholder="e.g. Weekend DSA Sprint"
+                className="w-full px-4 py-3 rounded-2xl outline-none text-sm transition-all font-medium"
+                style={{
+                  background: isDark ? '#1C1D21' : '#F8FAFC',
+                  color: t.textPri,
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                }}
+              />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Direct Number Input: Duration & Questions */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>Duration</label>
-                <select value={opts.duration_minutes}
-                  onChange={e => setOpts(o => ({ ...o, duration_minutes: +e.target.value }))}
-                  className="w-full px-3 py-2.5 rounded-xl outline-none text-sm"
-                  style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}>
-                  {[15, 30, 45, 60, 90, 120, 180].map(v => <option key={v} value={v}>{v} min</option>)}
-                </select>
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold" style={{ color: t.textSec }}>Questions</label>
-                  <button
-                    type="button"
-                    onClick={() => setCustomQuestionCount(c => !c)}
-                    className="text-[10px] font-bold text-indigo-400 hover:underline"
-                  >
-                    {customQuestionCount ? 'Presets' : 'Custom'}
-                  </button>
+                <label className="text-xs font-bold tracking-wide uppercase block mb-1.5" style={{ color: t.textSec }}>
+                  Duration (Minutes)
+                </label>
+                <input
+                  type="number"
+                  min="10"
+                  max="360"
+                  step="5"
+                  value={opts.duration_minutes}
+                  onChange={e => setOpts(o => ({ ...o, duration_minutes: Math.max(5, Math.min(360, +e.target.value || 60)) }))}
+                  className="w-full px-4 py-3 rounded-2xl outline-none text-sm font-semibold transition-all"
+                  style={{
+                    background: isDark ? '#1C1D21' : '#F8FAFC',
+                    color: t.textPri,
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                  }}
+                />
+                <div className="flex gap-1.5 mt-2 flex-wrap">
+                  {[30, 45, 60, 90, 120].map(m => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setOpts(o => ({ ...o, duration_minutes: m }))}
+                      className="px-2.5 py-0.5 rounded-lg text-[11px] font-semibold transition-all"
+                      style={{
+                        background: opts.duration_minutes === m
+                          ? (modalIsRanked ? 'rgba(230,57,70,0.15)' : 'rgba(99,102,241,0.15)')
+                          : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'),
+                        color: opts.duration_minutes === m ? accentColor : t.textSec,
+                      }}
+                    >
+                      {m}m
+                    </button>
+                  ))}
                 </div>
-                {customQuestionCount ? (
-                  <input
-                    type="number"
-                    min="1"
-                    max="30"
-                    value={opts.max_questions}
-                    onChange={e => setOpts(o => ({ ...o, max_questions: Math.max(1, Math.min(30, +e.target.value || 1)) }))}
-                    className="w-full px-3 py-2.5 rounded-xl outline-none text-sm"
-                    style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}
-                  />
-                ) : (
-                  <select value={opts.max_questions}
-                    onChange={e => setOpts(o => ({ ...o, max_questions: +e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl outline-none text-sm"
-                    style={{ background: t.surfLow, color: t.textPri, border: `1px solid ${t.border}` }}>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 25].map(v => (
-                      <option key={v} value={v}>{v} {v === 1 ? 'problem' : 'problems'}</option>
-                    ))}
-                  </select>
-                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-bold tracking-wide uppercase block mb-1.5" style={{ color: t.textSec }}>
+                  Number of Questions
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={opts.max_questions}
+                  onChange={e => setOpts(o => ({ ...o, max_questions: Math.max(1, Math.min(50, +e.target.value || 1)) }))}
+                  className="w-full px-4 py-3 rounded-2xl outline-none text-sm font-semibold transition-all"
+                  style={{
+                    background: isDark ? '#1C1D21' : '#F8FAFC',
+                    color: t.textPri,
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                  }}
+                />
+                <p className="text-[11px] mt-1.5" style={{ color: t.textSec }}>
+                  Directly type any question count (1 to 50)
+                </p>
               </div>
             </div>
+          </div>
 
+          {/* Section: Allowed Strikes & Host Role */}
+          <div className="pt-4 border-t space-y-4" style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }}>
             <div>
-              <label className="text-xs font-semibold block mb-2" style={{ color: t.textSec }}>Question Selection</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[['shuffle', 'AI Shuffle', 'auto_awesome'], ['manual', 'Manual Pick', 'edit']].map(([val, label, icon]) => (
-                  <button key={val} type="button"
-                    onClick={() => setOpts(o => ({ ...o, question_mode: val }))}
-                    className="p-3 rounded-xl text-left transition-all"
-                    style={{
-                      background: opts.question_mode === val ? 'rgba(99,102,241,0.15)' : t.surfLow,
-                      border: `1px solid ${opts.question_mode === val ? '#6366F1' : t.border}`,
-                      color: opts.question_mode === val ? '#6366F1' : t.textSec,
-                    }}>
-                    <span className="material-symbols-outlined text-lg block mb-0.5">{icon}</span>
-                    <span className="text-xs font-bold">{label}</span>
-                  </button>
-                ))}
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold tracking-wide uppercase" style={{ color: t.textSec }}>
+                  Allowed Strikes (Before Disqualification)
+                </label>
+                <span className="text-[11px] font-bold" style={{ color: modalIsRanked ? '#EF4444' : '#818CF8' }}>
+                  {opts.max_strikes} Strikes Allowed
+                </span>
               </div>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={opts.max_strikes}
+                onChange={e => setOpts(o => ({ ...o, max_strikes: Math.max(1, Math.min(20, +e.target.value || 1)) }))}
+                className="w-full px-4 py-3 rounded-2xl outline-none text-sm font-semibold transition-all"
+                style={{
+                  background: isDark ? '#1C1D21' : '#F8FAFC',
+                  color: t.textPri,
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                }}
+              />
+              <p className="text-[11px] mt-1.5" style={{ color: t.textSec }}>
+                When a player accumulates this many strikes (tab switches, devtools, unauthorized clicks), they are automatically marked OUT.
+              </p>
             </div>
 
-            {/* Configurable Strikes & Host Role for both Playground & Gauntlet */}
-            <div className="pt-2 border-t space-y-3" style={{ borderColor: t.border }}>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>
-                    Allowed Strikes
-                  </label>
-                  <select
-                    value={opts.max_strikes}
-                    onChange={e => setOpts(o => ({ ...o, max_strikes: +e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl outline-none text-sm font-semibold"
-                    style={{ background: t.surfLow, color: modalIsRanked ? '#e63946' : t.textPri, border: `1px solid ${t.border}` }}
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v => (
-                      <option key={v} value={v}>{v} {v === 1 ? 'strike' : 'strikes'}</option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] mt-1" style={{ color: t.textSec }}>
-                    Strike limit before OUT
+            {/* Clear Host Role Selection Cards */}
+            <div>
+              <label className="text-xs font-bold tracking-wide uppercase block mb-2" style={{ color: t.textSec }}>
+                Host Mode (How do you want to participate?)
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div
+                  onClick={() => setOpts(o => ({ ...o, host_spectator: true }))}
+                  className="p-4 rounded-2xl cursor-pointer transition-all border text-left"
+                  style={{
+                    background: opts.host_spectator
+                      ? (isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.06)')
+                      : (isDark ? '#1C1D21' : '#F8FAFC'),
+                    borderColor: opts.host_spectator ? '#6366F1' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'),
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="material-symbols-outlined text-lg" style={{ color: opts.host_spectator ? '#6366F1' : t.textSec }}>
+                      shield_person
+                    </span>
+                    <span className="text-sm font-bold" style={{ color: opts.host_spectator ? t.textPri : t.textSec }}>
+                      Host &amp; Supervise
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed" style={{ color: t.textSec }}>
+                    You supervise the match with the Host Admin Panel: view player progress, inspect strike logs, and moderate. You do not solve problems.
                   </p>
                 </div>
 
-                <div>
-                  <label className="text-xs font-semibold block mb-1" style={{ color: t.textSec }}>
-                    Host Role
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setOpts(o => ({ ...o, host_spectator: !o.host_spectator }))}
-                    className="w-full px-3 py-2.5 rounded-xl text-xs font-semibold text-left flex items-center justify-between transition-all"
-                    style={{
-                      background: opts.host_spectator ? 'rgba(99,102,241,0.15)' : t.surfLow,
-                      border: `1px solid ${opts.host_spectator ? '#6366F1' : t.border}`,
-                      color: opts.host_spectator ? '#818CF8' : t.textSec,
-                    }}
-                  >
-                    <span>{opts.host_spectator ? 'Admin (No Play)' : 'Play as Host'}</span>
-                    <span className="material-symbols-outlined text-sm">
-                      {opts.host_spectator ? 'shield_person' : 'sports_esports'}
+                <div
+                  onClick={() => setOpts(o => ({ ...o, host_spectator: false }))}
+                  className="p-4 rounded-2xl cursor-pointer transition-all border text-left"
+                  style={{
+                    background: !opts.host_spectator
+                      ? (isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.06)')
+                      : (isDark ? '#1C1D21' : '#F8FAFC'),
+                    borderColor: !opts.host_spectator ? '#6366F1' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'),
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="material-symbols-outlined text-lg" style={{ color: !opts.host_spectator ? '#6366F1' : t.textSec }}>
+                      sports_esports
                     </span>
-                  </button>
-                  <p className="text-[10px] mt-1" style={{ color: t.textSec }}>
-                    {opts.host_spectator ? 'Host monitors & moderates' : 'Host also competes'}
+                    <span className="text-sm font-bold" style={{ color: !opts.host_spectator ? t.textPri : t.textSec }}>
+                      Compete as Player
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed" style={{ color: t.textSec }}>
+                    You actively solve problems, submit code, and compete on the leaderboard alongside all participants.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Clear Question Mode Selection Cards */}
+            <div>
+              <label className="text-xs font-bold tracking-wide uppercase block mb-2" style={{ color: t.textSec }}>
+                Question Pool Selection
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div
+                  onClick={() => setOpts(o => ({ ...o, question_mode: 'shuffle' }))}
+                  className="p-4 rounded-2xl cursor-pointer transition-all border text-left"
+                  style={{
+                    background: opts.question_mode === 'shuffle'
+                      ? (isDark ? 'rgba(168,85,247,0.12)' : 'rgba(168,85,247,0.06)')
+                      : (isDark ? '#1C1D21' : '#F8FAFC'),
+                    borderColor: opts.question_mode === 'shuffle' ? '#A855F7' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'),
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="material-symbols-outlined text-lg" style={{ color: opts.question_mode === 'shuffle' ? '#A855F7' : t.textSec }}>
+                      auto_awesome
+                    </span>
+                    <span className="text-sm font-bold" style={{ color: opts.question_mode === 'shuffle' ? t.textPri : t.textSec }}>
+                      Curated AI Shuffle
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed" style={{ color: t.textSec }}>
+                    AlgoMind automatically picks fresh, unsolved LeetCode &amp; Codeforces questions suited to the group.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => setOpts(o => ({ ...o, question_mode: 'manual' }))}
+                  className="p-4 rounded-2xl cursor-pointer transition-all border text-left"
+                  style={{
+                    background: opts.question_mode === 'manual'
+                      ? (isDark ? 'rgba(168,85,247,0.12)' : 'rgba(168,85,247,0.06)')
+                      : (isDark ? '#1C1D21' : '#F8FAFC'),
+                    borderColor: opts.question_mode === 'manual' ? '#A855F7' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'),
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="material-symbols-outlined text-lg" style={{ color: opts.question_mode === 'manual' ? '#A855F7' : t.textSec }}>
+                      playlist_add
+                    </span>
+                    <span className="text-sm font-bold" style={{ color: opts.question_mode === 'manual' ? t.textPri : t.textSec }}>
+                      Custom Lobby Selection
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed" style={{ color: t.textSec }}>
+                    Pick your own questions in the lobby by typing LeetCode numbers, URLs, or Codeforces problem IDs.
                   </p>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <button onClick={() => onCreate(opts)} disabled={busy}
-            className="w-full mt-6 py-3 rounded-2xl font-bold text-white disabled:opacity-60 flex items-center justify-center gap-2 transition-all hover:opacity-90 shadow-md"
-            style={{ background: modalIsRanked ? 'linear-gradient(135deg,#e63946,#c1121f)' : 'linear-gradient(135deg,#6366F1,#8B5CF6)' }}>
-            {busy && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-            {modalIsRanked ? 'Create The Gauntlet' : 'Create Playground'}
-          </button>
+        {/* Footer Actions */}
+        <div className="px-8 py-5 border-t flex flex-col sm:flex-row items-center justify-between gap-3"
+          style={{ borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', background: isDark ? '#101013' : '#F8FAFC' }}>
+          <p className="text-[11px]" style={{ color: t.textSec }}>
+            Code can be shared with up to 100+ competitors.
+          </p>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-2xl text-xs font-semibold hover:opacity-75 transition-opacity"
+              style={{ color: t.textSec }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => onCreate(opts)}
+              disabled={busy || !opts.name.trim()}
+              className="px-6 py-2.5 rounded-2xl text-xs font-bold text-white disabled:opacity-50 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] cursor-pointer shadow-lg"
+              style={{
+                background: modalIsRanked
+                  ? 'linear-gradient(135deg, #e63946, #c1121f)'
+                  : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                boxShadow: modalIsRanked ? '0 8px 24px -6px rgba(230,57,70,0.5)' : '0 8px 24px -6px rgba(99,102,241,0.5)',
+              }}
+            >
+              {busy && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              <span>{modalIsRanked ? 'Launch The Gauntlet' : 'Create Room'}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

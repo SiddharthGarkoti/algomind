@@ -85,7 +85,7 @@ def _get_party_or_404(code):
     try:
         return Party.objects.select_related('host').prefetch_related(
             'members__user',
-            'members__user__profile',
+            'members__user__platform_profiles',
             'members__completions__question',
             'members__strike_logs',
             'questions'
