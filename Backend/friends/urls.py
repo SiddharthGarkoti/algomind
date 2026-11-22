@@ -4,6 +4,7 @@ from .views import (SendFriendRequestView, AcceptFriendRequestView,
                     FriendsListView, RemoveFriendView)
 
 urlpatterns = [
+    path('',                         FriendsListView.as_view(),          name='friends_list_root'),
     path('send/',                    SendFriendRequestView.as_view(),   name='send_friend_request'),
     path('requests/',                PendingRequestsView.as_view(),     name='pending_requests'),
     path('requests/<int:pk>/accept/', AcceptFriendRequestView.as_view(), name='accept_request'),

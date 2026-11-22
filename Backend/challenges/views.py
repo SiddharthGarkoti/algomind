@@ -470,12 +470,12 @@ class InviteFriendView(APIView):
         join_url = f"/challenges?join={party.code}"
         Notification.objects.create(
             recipient=receiver,
-            notif_type='system',
-            title=f'{request.user.username} invited you',
-            body=f'Join "{party.name}" — code: {party.code}',
+            notif_type='party_invite',
+            title=f'{request.user.username} invited you to {party.name}',
+            body=f'{request.user.username} invited you to join room code: {party.code}',
             related_id=party.id,
             avatar_text=request.user.username[:2].upper(),
-            color='#6366F1',
+            color='#7C3AED' if party.match_type == 'versus' else '#6366F1',
         )
         return Response({'detail': 'Invite sent.', 'join_url': join_url})
 

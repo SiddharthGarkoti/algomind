@@ -217,10 +217,52 @@ function Header({ theme, toggleTheme, onOpenChat }) {
   };
 
   const deleteNotif = async (e, id, isRead) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     setNotifications(prev => prev.filter(n => n.id !== id));
     if (!isRead) setUnread(prev => Math.max(0, prev - 1));
-    try { await api.delete(`/auth/notifications/${id}/delete/`); } catch {}
+    try {
+      await api.delete(`/auth/notifications/${id}/delete/`);
+    } catch {
+      try {
+        await api.post(`/auth/notifications/${id}/delete/`, {});
+      } catch {}
+    }
+  };
+
+  const handleAcceptFriendRequest = async (e, notif) => {
+    e.stopPropagation();
+    markRead(notif.id);
+    if (notif.related_id) {
+      try {
+        await api.post(`/friends/requests/${notif.related_id}/accept/`, {});
+      } catch {}
+    }
+    deleteNotif(e, notif.id, true);
+  };
+
+  const handleDeclineFriendRequest = async (e, notif) => {
+    e.stopPropagation();
+    if (notif.related_id) {
+      try {
+        await api.post(`/friends/requests/${notif.related_id}/reject/`, {});
+      } catch {}
+    }
+    deleteNotif(e, notif.id, notif.read);
+  };
+
+  const handleAcceptPartyInvite = async (e, notif, code) => {
+    e.stopPropagation();
+    markRead(notif.id);
+    setShowNotifDrop(false);
+    try {
+      await api.post(`/challenges/party/${code}/join/`, {});
+    } catch {}
+    navigate(`/challenges?join=${code}`);
+  };
+
+  const handleDeclinePartyInvite = async (e, notif) => {
+    e.stopPropagation();
+    deleteNotif(e, notif.id, notif.read);
   };
 
   const markAllRead = async () => {
@@ -417,51 +459,75 @@ function Header({ theme, toggleTheme, onOpenChat }) {
                             <p className="text-xs font-semibold" style={{ color: textPri }}>{notif.title}</p>
                             <p className="text-[11px] leading-tight mt-0.5" style={{ color: textSec }}>{notif.body}</p>
                             <p className="text-[9px] mt-0.5 mb-1.5" style={{ color: textSec }}>{timeAgo(notif.created_at)}</p>
-                            {/* Action Buttons */}
+                            {/* Action Buttons: Friend Request */}
                             {notif.notif_type === 'friend_request' && (
-                              <div className="flex gap-2 mb-1">
-                                <button onClick={(e) => { e.stopPropagation(); navigate('/friends?tab=requests'); markRead(notif.id); }}
-                                        className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
-                                        style={{ background: '#6366F1', color: '#fff' }}>Accept</button>
-                                <button onClick={(e) => { e.stopPropagation(); markRead(notif.id); }}
-                                        className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
-                                        style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', color: textPri }}>Dismiss</button>
+                              <div className="flex items-center gap-2 mb-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleAcceptFriendRequest(e, notif)}
+                                  className="text-[10px] font-bold px-3 py-1 rounded-lg transition-all hover:opacity-90 shadow-sm cursor-pointer"
+                                  style={{ background: '#6366F1', color: '#fff' }}
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeclineFriendRequest(e, notif)}
+                                  className="text-[10px] font-bold px-3 py-1 rounded-lg transition-all hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
+                                  style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)', color: textSec }}
+                                >
+                                  Decline
+                                </button>
                               </div>
                             )}
                             {/* Party invite - either party_invite type or legacy system with code: in body */}
                             {(notif.notif_type === 'party_invite' || (notif.notif_type === 'system' && notif.body.includes('code: '))) && (() => {
-                              const code = notif.body.split('code: ')[1]?.trim();
+                              const match = notif.body.match(/code:\s*([A-Za-z0-9]+)/i);
+                              const code = match ? match[1] : notif.body.split('code: ')[1]?.trim();
                               return code ? (
-                                <div className="flex gap-2 mb-1">
-                                  <button onClick={(e) => {
-                                            e.stopPropagation();
-                                            markRead(notif.id);
-                                            setShowNotifDrop(false);
-                                            navigate(`/challenges?join=${code}`);
-                                          }}
-                                          className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
-                                          style={{ background: '#e63946', color: '#fff' }}>Join Party</button>
-                                  <button onClick={(e) => { e.stopPropagation(); markRead(notif.id); }}
-                                          className="text-[10px] font-bold px-3 py-1 rounded transition-all hover:opacity-80"
-                                          style={{ background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', color: textPri }}>Decline</button>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleAcceptPartyInvite(e, notif, code)}
+                                    className="text-[10px] font-bold px-3 py-1 rounded-lg transition-all hover:opacity-90 shadow-sm cursor-pointer"
+                                    style={{ background: '#7C3AED', color: '#fff' }}
+                                  >
+                                    Accept Duel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleDeclinePartyInvite(e, notif)}
+                                    className="text-[10px] font-bold px-3 py-1 rounded-lg transition-all hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
+                                    style={{ background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)', color: textSec }}
+                                  >
+                                    Decline
+                                  </button>
                                 </div>
                               ) : null;
                             })()}
                           </div>
                           
-                          {/* UI actions (Read & Delete) */}
-                          <div className="absolute right-0 top-0 h-full flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* UI actions (Read & Delete) - Always accessible on all devices */}
+                          <div className="shrink-0 flex items-center gap-1 self-start pt-0.5">
                             {!notif.read && (
-                              <button onClick={(e) => { e.stopPropagation(); markRead(notif.id); }} className="hover:scale-110" style={{ color: '#22C55E' }} title="Mark as read">
-                                <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); markRead(notif.id); }}
+                                className="p-1 rounded-lg hover:bg-emerald-500/15 text-emerald-400 transition-all cursor-pointer"
+                                title="Mark as read"
+                              >
+                                <span className="material-symbols-outlined text-[15px]">done</span>
                               </button>
                             )}
-                            <button onClick={(e) => deleteNotif(e, notif.id, notif.read)} className="hover:scale-110" style={{ color: '#EF4444' }} title="Clear notification">
-                              <span className="material-symbols-outlined text-[16px]">cancel</span>
+                            <button
+                              type="button"
+                              onClick={(e) => deleteNotif(e, notif.id, notif.read)}
+                              className="p-1 rounded-lg hover:bg-red-500/15 text-gray-400 hover:text-red-400 transition-all cursor-pointer"
+                              title="Dismiss notification"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">close</span>
                             </button>
                           </div>
-
-                          {!notif.read && <div className="w-2 h-2 rounded-full shrink-0 mt-1 opacity-100 group-hover:opacity-0 transition-opacity" style={{ background: '#6366F1' }} />}
                         </div>
                       </div>
                     );

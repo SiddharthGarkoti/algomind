@@ -725,10 +725,16 @@ class MarkAllNotificationsReadView(APIView):
 
 
 class DeleteNotificationView(APIView):
-    """DELETE /api/auth/notifications/<id>/delete/"""
+    """DELETE or POST /api/auth/notifications/<id>/delete/"""
     permission_classes = [permissions.IsAuthenticated]
 
     def delete(self, request, pk):
+        return self._handle_delete(request, pk)
+
+    def post(self, request, pk):
+        return self._handle_delete(request, pk)
+
+    def _handle_delete(self, request, pk):
         from .models import Notification
         try:
             notif = Notification.objects.get(pk=pk, recipient=request.user)

@@ -6,6 +6,7 @@ export const ARENA_QUESTIONS = [
     slug: 'majority-element',
     diff: 'Easy',
     topic: 'Arrays',
+    tags: ['Arrays', 'Hash Table', 'Boyer-Moore', 'Prefix Sum'],
     companies: ['Google', 'Amazon', 'Microsoft', 'Apple', 'Meta'],
     statement: `Given an integer array nums of size n, return the majority element of the array.
 
@@ -131,6 +132,7 @@ var majorityElement = function(nums) {
     slug: 'two-sum',
     diff: 'Easy',
     topic: 'Arrays',
+    tags: ['Arrays', 'Hash Table', 'Two Pointers'],
     companies: ['Google', 'Amazon', 'Meta', 'Microsoft', 'Uber'],
     statement: `Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.
 
@@ -249,6 +251,7 @@ var twoSum = function(nums, target) {
     slug: 'valid-parentheses',
     diff: 'Easy',
     topic: 'Stack',
+    tags: ['Stack', 'Strings', 'Monotonic Stack'],
     companies: ['Amazon', 'Microsoft', 'Bloomberg', 'Google'],
     statement: `Given a string s containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.
 
@@ -387,6 +390,7 @@ public:
     slug: 'best-time-to-buy-and-sell-stock',
     diff: 'Easy',
     topic: 'Arrays',
+    tags: ['Arrays', 'Two Pointers', 'DP', 'Greedy', 'Prefix Sum'],
     companies: ['Amazon', 'Apple', 'Meta', 'Google', 'Microsoft'],
     statement: `You are given an array prices where prices[i] is the price of a given stock on the ith day.
 
@@ -492,6 +496,7 @@ public:
     slug: 'maximum-subarray',
     diff: 'Medium',
     topic: 'Arrays',
+    tags: ['Arrays', 'DP', 'Prefix Sum', "Kadane's", 'Divide and Conquer'],
     companies: ['Amazon', 'Microsoft', 'Google', 'Apple', 'LinkedIn'],
     statement: `Given an integer array nums, find the subarray with the largest sum, and return its sum.
 
@@ -594,6 +599,7 @@ public:
     slug: 'reverse-linked-list',
     diff: 'Easy',
     topic: 'Linked List',
+    tags: ['Linked List', 'Fast & Slow', 'Recursion'],
     companies: ['Microsoft', 'Amazon', 'Apple', 'Meta', 'Google'],
     statement: `Given the head of a singly linked list, reverse the list, and return the reversed list.`,
     hints: [
@@ -707,6 +713,7 @@ public:
     slug: 'longest-substring-without-repeating-characters',
     diff: 'Medium',
     topic: 'Strings',
+    tags: ['Strings', 'Sliding Window', 'Two Pointers', 'Hash Table'],
     companies: ['Amazon', 'Microsoft', 'Meta', 'Google', 'Adobe'],
     statement: `Given a string s, find the length of the longest substring without repeating characters.
 
@@ -825,6 +832,7 @@ public:
     slug: 'binary-search',
     diff: 'Easy',
     topic: 'Binary Search',
+    tags: ['Binary Search', 'Arrays', 'Two Pointers'],
     companies: ['Apple', 'Google', 'Microsoft', 'Amazon'],
     statement: `Given an array of integers nums which is sorted in ascending order, and an integer target, write a function to search target in nums. If target exists, then return its index. Otherwise, return -1.
 
@@ -939,6 +947,7 @@ public:
     slug: 'climbing-stairs',
     diff: 'Easy',
     topic: 'DP',
+    tags: ['DP', 'Recursion', 'Fibonacci'],
     companies: ['Amazon', 'Google', 'Apple', 'Meta', 'Adobe'],
     statement: `You are climbing a staircase. It takes n steps to reach the top.
 
@@ -1047,6 +1056,7 @@ public:
     slug: '3sum',
     diff: 'Medium',
     topic: 'Arrays',
+    tags: ['Arrays', 'Two Pointers', 'Sorting'],
     companies: ['Meta', 'Amazon', 'Apple', 'Google', 'Microsoft'],
     statement: `Given an integer array nums, return all the triplets [nums[i], nums[j], nums[k]] such that i != j, i != k, and j != k, and nums[i] + nums[j] + nums[k] == 0.
 
@@ -1191,6 +1201,7 @@ public:
     slug: 'department-highest-salary',
     diff: 'Medium',
     topic: 'SQL',
+    tags: ['SQL', 'Database'],
     companies: ['Amazon', 'Google', 'Bloomberg', 'Microsoft', 'Oracle'],
     statement: `Find employees who have the highest salary in each of the departments.
 Return the result table in any order.
@@ -1293,6 +1304,7 @@ WHERE (e.departmentId, e.salary) IN (
     slug: 'lru-cache-lld',
     diff: 'Medium',
     topic: 'LLD',
+    tags: ['Linked List', 'Hash Table', 'Design', 'Queue'],
     companies: ['Google', 'Amazon', 'Microsoft', 'Uber', 'Apple'],
     statement: `Design a data structure that follows the constraints of a Least Recently Used (LRU) cache.
 

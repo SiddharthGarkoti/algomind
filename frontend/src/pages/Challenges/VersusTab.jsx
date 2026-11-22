@@ -1,9 +1,64 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../../utils/api.js';
 import { ARENA_QUESTIONS } from '../../data/arenaQuestions.js';
 import VersusIDE from './VersusIDE.jsx';
 
-// Pick question helper
+// Comprehensive categorized DSA curriculum
+export const TOPIC_GROUPS = [
+  {
+    category: 'All Categories',
+    icon: 'shuffle',
+    items: [
+      { id: 'All', name: 'All Topics (Random Mix)', tag: 'General', icon: 'shuffle' },
+    ]
+  },
+  {
+    category: 'Data Structures',
+    icon: 'account_tree',
+    items: [
+      { id: 'Arrays', name: 'Arrays & Matrices', tag: 'Linear', icon: 'data_array' },
+      { id: 'Strings', name: 'Strings & Parsing', tag: 'Linear', icon: 'short_text' },
+      { id: 'Linked List', name: 'Linked Lists (Singly/Doubly)', tag: 'Linear', icon: 'linear_scale' },
+      { id: 'Stack', name: 'Stacks & Queues', tag: 'Linear', icon: 'layers' },
+      { id: 'Hash Table', name: 'Hash Tables & Sets', tag: 'Lookup', icon: 'tag' },
+      { id: 'Trees', name: 'Binary Trees & BST', tag: 'Hierarchical', icon: 'park' },
+      { id: 'Heaps', name: 'Heaps & Priority Queues', tag: 'Hierarchical', icon: 'align_vertical_bottom' },
+      { id: 'Graphs', name: 'Graphs & Disjoint Set (Union-Find)', tag: 'Non-linear', icon: 'hub' },
+      { id: 'Trie', name: 'Tries (Prefix Trees)', tag: 'Tree', icon: 'account_tree' },
+    ]
+  },
+  {
+    category: 'Core Algorithms',
+    icon: 'psychology',
+    items: [
+      { id: 'Two Pointers', name: 'Two Pointers Technique', tag: 'Search', icon: 'compare_arrows' },
+      { id: 'Sliding Window', name: 'Sliding Window', tag: 'Optimization', icon: 'view_carousel' },
+      { id: 'Binary Search', name: 'Binary Search & Search Space', tag: 'Search', icon: 'manage_search' },
+      { id: 'BFS', name: 'Breadth-First Search (BFS)', tag: 'Traversal', icon: 'waves' },
+      { id: 'DFS', name: 'Depth-First Search (DFS)', tag: 'Traversal', icon: 'alt_route' },
+      { id: 'DP', name: 'Dynamic Programming (1D / 2D / Grid)', tag: 'Optimization', icon: 'auto_graph' },
+      { id: 'Greedy', name: 'Greedy Algorithms', tag: 'Heuristic', icon: 'bolt' },
+      { id: 'Backtracking', name: 'Backtracking & Recursion', tag: 'Exhaustive', icon: 'undo' },
+      { id: 'Bit Manipulation', name: 'Bit Manipulation & Bitmasks', tag: 'Bitwise', icon: 'memory' },
+    ]
+  },
+  {
+    category: 'Sub-Algorithms & Patterns',
+    icon: 'pattern',
+    items: [
+      { id: 'Fast & Slow', name: 'Fast & Slow Pointers (Floyd)', tag: 'Pattern', icon: 'speed' },
+      { id: 'Prefix Sum', name: "Prefix Sum & Kadane's Algorithm", tag: 'Pattern', icon: 'functions' },
+      { id: 'Monotonic Stack', name: 'Monotonic Stack & Deque', tag: 'Pattern', icon: 'stacked_bar_chart' },
+      { id: 'Intervals', name: 'Interval Merging & Overlap', tag: 'Pattern', icon: 'view_week' },
+      { id: 'Topological Sort', name: "Topological Sort (Kahn's / DFS)", tag: 'Pattern', icon: 'timeline' },
+      { id: 'Shortest Path', name: 'Dijkstra / Shortest Paths', tag: 'Pattern', icon: 'route' },
+      { id: 'Knapsack', name: '0/1 & Unbounded Knapsack', tag: 'Pattern', icon: 'backpack' },
+      { id: 'Flood Fill', name: 'Matrix Traversal & Flood Fill', tag: 'Pattern', icon: 'grid_view' },
+    ]
+  }
+];
+
+// Pick question helper with intelligent matching and safe fallback
 function pickQuestion(selectionType, topic, lowerRating = 1000) {
   let pool = [...ARENA_QUESTIONS];
 
@@ -15,8 +70,16 @@ function pickQuestion(selectionType, topic, lowerRating = 1000) {
     const diffPool = pool.filter(q => q.diff.toLowerCase() === targetDiff.toLowerCase());
     if (diffPool.length > 0) pool = diffPool;
   } else if (topic && topic !== 'All') {
-    const topicPool = pool.filter(q => q.topic.toLowerCase() === topic.toLowerCase());
-    if (topicPool.length > 0) pool = topicPool;
+    const t = topic.toLowerCase();
+    const matched = pool.filter(q => {
+      if (q.topic && q.topic.toLowerCase() === t) return true;
+      if (q.tags && q.tags.some(tag => tag.toLowerCase() === t || t.includes(tag.toLowerCase()) || tag.toLowerCase().includes(t))) return true;
+      if (q.title && q.title.toLowerCase().includes(t)) return true;
+      if (q.statement && q.statement.toLowerCase().includes(t)) return true;
+      if (q.hints && q.hints.some(h => h.toLowerCase().includes(t))) return true;
+      return false;
+    });
+    if (matched.length > 0) pool = matched;
   }
 
   const chosen = pool[Math.floor(Math.random() * pool.length)] || ARENA_QUESTIONS[0];
@@ -43,6 +106,24 @@ export default function VersusTab({ isDark, onActiveMatchChange }) {
   const [sentInvites, setSentInvites] = useState(new Set());
   const [copiedCode, setCopiedCode] = useState(false);
 
+  // Categorized dropdown state
+  const [topicDropdownOpen, setTopicDropdownOpen] = useState(false);
+  const [topicSearchQuery, setTopicSearchQuery] = useState('');
+  const topicDropdownRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (topicDropdownRef.current && !topicDropdownRef.current.contains(e.target)) {
+        setTopicDropdownOpen(false);
+      }
+    };
+    if (topicDropdownOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [topicDropdownOpen]);
+
   // Quick save config
   const defaultSaved = {
     versus_mode: 'competitive',
@@ -65,9 +146,6 @@ export default function VersusTab({ isDark, onActiveMatchChange }) {
   const [formTopic, setFormTopic] = useState(savedConfig.versus_topic || 'Arrays');
   const [formDuration, setFormDuration] = useState(savedConfig.duration_minutes || 30);
   const [saveAsDefault, setSaveAsDefault] = useState(true);
-
-  // Available topics from arena questions
-  const availableTopics = ['All', 'Arrays', 'Strings', 'Stack', 'Linked List', 'Binary Search', 'DP'];
 
   // Current user info
   const [currentUser, setCurrentUser] = useState({});
@@ -117,8 +195,12 @@ export default function VersusTab({ isDark, onActiveMatchChange }) {
   // Load friends for direct invite
   const loadFriends = async () => {
     try {
-      const res = await api.get('/friends/');
-      setFriends(Array.isArray(res) ? res : res.results || []);
+      const res = await api.get('/friends/list/');
+      const raw = Array.isArray(res) ? res : (res?.results || []);
+      const normalized = raw
+        .map(item => item?.friend ? { ...item.friend, friendship_id: item.id } : item)
+        .filter(f => f && (f.id || f.username));
+      setFriends(normalized);
     } catch {
       setFriends([]);
     }
@@ -576,235 +658,514 @@ export default function VersusTab({ isDark, onActiveMatchChange }) {
       )}
 
       {/* ─── MODAL: CREATE 1V1 ROOM ─── */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          onClick={() => setShowCreateModal(false)}>
-          <div className="w-full max-w-lg rounded-3xl p-6 space-y-5 shadow-2xl"
-            style={{ background: panelBg, border: `1px solid ${border}` }}
-            onClick={e => e.stopPropagation()}>
-            
-            <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: border }}>
-              <div>
-                <h3 className="text-base font-bold" style={{ color: textPri }}>Configure 1v1 Room</h3>
-                <p className="text-xs mt-0.5" style={{ color: textSec }}>Setup match rules and problem selection</p>
-              </div>
-              <button onClick={() => setShowCreateModal(false)} className="cursor-pointer">
-                <span className="material-symbols-outlined" style={{ color: textSec }}>close</span>
-              </button>
-            </div>
+      {showCreateModal && (() => {
+        const allItems = TOPIC_GROUPS.flatMap(g => g.items);
+        const selectedTopicItem = allItems.find(it => it.id === formTopic) || {
+          id: formTopic,
+          name: formTopic,
+          tag: 'DSA',
+          icon: 'category'
+        };
 
-            {/* Rule: Competitive vs Casual */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>
-                Match Rules
-              </label>
-              <div className="grid grid-cols-2 gap-3">
+        const filteredGroups = TOPIC_GROUPS.map(group => {
+          const q = topicSearchQuery.trim().toLowerCase();
+          if (!q) return group;
+          const filteredItems = group.items.filter(it =>
+            it.name.toLowerCase().includes(q) ||
+            it.id.toLowerCase().includes(q) ||
+            it.tag.toLowerCase().includes(q) ||
+            group.category.toLowerCase().includes(q)
+          );
+          return { ...group, items: filteredItems };
+        }).filter(group => group.items.length > 0);
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 sm:p-6 overflow-y-auto"
+            onClick={() => setShowCreateModal(false)}
+          >
+            <div
+              className="w-full max-w-2xl rounded-3xl p-6 sm:p-7 space-y-6 shadow-2xl relative my-auto border"
+              style={{ background: panelBg, borderColor: border }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-4 border-b" style={{ borderColor: border }}>
+                <div>
+                  <h3 className="text-lg font-bold tracking-tight" style={{ color: textPri }}>
+                    Configure 1v1 Room
+                  </h3>
+                  <p className="text-xs mt-0.5" style={{ color: textSec }}>
+                    Set match rules, choose DSA curriculum topic, and set time limit
+                  </p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setFormMode('competitive')}
-                  className="p-3.5 rounded-2xl border text-left transition-all cursor-pointer"
-                  style={{
-                    background: formMode === 'competitive' ? 'rgba(124, 58, 237, 0.12)' : surfLow,
-                    borderColor: formMode === 'competitive' ? '#7C3AED' : border,
-                  }}
+                  onClick={() => setShowCreateModal(false)}
+                  className="p-1.5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
                 >
-                  <div className="flex items-center gap-1.5 font-bold text-xs" style={{ color: formMode === 'competitive' ? '#A78BFA' : textPri }}>
-                    <span className="material-symbols-outlined text-sm">shield</span>
-                    Competitive
-                  </div>
-                  <p className="text-[10px] mt-1 leading-snug" style={{ color: textSec }}>
-                    Strict fair play. Tab switching or window blur is flagged as a foul.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFormMode('casual')}
-                  className="p-3.5 rounded-2xl border text-left transition-all cursor-pointer"
-                  style={{
-                    background: formMode === 'casual' ? 'rgba(99, 102, 241, 0.12)' : surfLow,
-                    borderColor: formMode === 'casual' ? '#6366F1' : border,
-                  }}
-                >
-                  <div className="flex items-center gap-1.5 font-bold text-xs" style={{ color: formMode === 'casual' ? '#818CF8' : textPri }}>
-                    <span className="material-symbols-outlined text-sm">sports_esports</span>
-                    Casual
-                  </div>
-                  <p className="text-[10px] mt-1 leading-snug" style={{ color: textSec }}>
-                    Relaxed 1v1. Window and tab switching is freely permitted.
-                  </p>
-                </button>
-              </div>
-            </div>
-
-            {/* Question Selection */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>
-                Problem Selection
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setFormSelection('topic')}
-                  className="p-3 rounded-2xl border text-left transition-all cursor-pointer"
-                  style={{
-                    background: formSelection === 'topic' ? 'rgba(124, 58, 237, 0.1)' : surfLow,
-                    borderColor: formSelection === 'topic' ? '#7C3AED' : border,
-                  }}
-                >
-                  <div className="text-xs font-bold" style={{ color: formSelection === 'topic' ? '#A78BFA' : textPri }}>
-                    Topic Selection
-                  </div>
-                  <p className="text-[10px] mt-0.5" style={{ color: textSec }}>
-                    Picks randomly within chosen category
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setFormSelection('balanced')}
-                  className="p-3 rounded-2xl border text-left transition-all cursor-pointer"
-                  style={{
-                    background: formSelection === 'balanced' ? 'rgba(124, 58, 237, 0.1)' : surfLow,
-                    borderColor: formSelection === 'balanced' ? '#7C3AED' : border,
-                  }}
-                >
-                  <div className="text-xs font-bold" style={{ color: formSelection === 'balanced' ? '#A78BFA' : textPri }}>
-                    Balanced Profile Match
-                  </div>
-                  <p className="text-[10px] mt-0.5" style={{ color: textSec }}>
-                    Calibrates difficulty to lower-profile player
-                  </p>
+                  <span className="material-symbols-outlined text-lg" style={{ color: textSec }}>close</span>
                 </button>
               </div>
 
-              {/* Topic Pills if Topic Selection */}
-              {formSelection === 'topic' && (
-                <div className="flex gap-1.5 flex-wrap pt-1">
-                  {availableTopics.map(top => (
+              {/* Match Rules: Competitive vs Casual */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>
+                    Match Rules
+                  </label>
+                  <span className="text-[11px]" style={{ color: textSec }}>
+                    Controls anti-cheat &amp; tab foul enforcement
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <button
+                    type="button"
+                    onClick={() => setFormMode('competitive')}
+                    className="p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden group"
+                    style={{
+                      background: formMode === 'competitive' ? 'rgba(124, 58, 237, 0.12)' : surfLow,
+                      borderColor: formMode === 'competitive' ? '#7C3AED' : border,
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 font-bold text-xs" style={{ color: formMode === 'competitive' ? '#A78BFA' : textPri }}>
+                        <span className="material-symbols-outlined text-base">shield</span>
+                        <span>Competitive</span>
+                      </div>
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                        style={{
+                          background: formMode === 'competitive' ? 'rgba(124, 58, 237, 0.25)' : 'rgba(255,255,255,0.06)',
+                          color: formMode === 'competitive' ? '#C4B5FD' : textSec,
+                        }}
+                      >
+                        Strict Fair Play
+                      </span>
+                    </div>
+                    <p className="text-[11px] mt-2 leading-relaxed" style={{ color: textSec }}>
+                      Tab switching or window blur logged as anti-cheat fouls · Ranked
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormMode('casual')}
+                    className="p-4 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden group"
+                    style={{
+                      background: formMode === 'casual' ? 'rgba(99, 102, 241, 0.12)' : surfLow,
+                      borderColor: formMode === 'casual' ? '#6366F1' : border,
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 font-bold text-xs" style={{ color: formMode === 'casual' ? '#818CF8' : textPri }}>
+                        <span className="material-symbols-outlined text-base">sports_esports</span>
+                        <span>Casual</span>
+                      </div>
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                        style={{
+                          background: formMode === 'casual' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255,255,255,0.06)',
+                          color: formMode === 'casual' ? '#A5B4FC' : textSec,
+                        }}
+                      >
+                        Relaxed Duel
+                      </span>
+                    </div>
+                    <p className="text-[11px] mt-2 leading-relaxed" style={{ color: textSec }}>
+                      Window &amp; tab switching freely allowed · Unranked friendly match
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Problem Selection Mode */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>
+                    Problem Selection
+                  </label>
+                  <span className="text-[11px]" style={{ color: textSec }}>
+                    {formSelection === 'topic' ? 'Filtered by chosen DSA curriculum' : 'Auto-balanced to player ratings'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <button
+                    type="button"
+                    onClick={() => setFormSelection('topic')}
+                    className="p-3.5 rounded-2xl border text-left transition-all cursor-pointer"
+                    style={{
+                      background: formSelection === 'topic' ? 'rgba(124, 58, 237, 0.12)' : surfLow,
+                      borderColor: formSelection === 'topic' ? '#7C3AED' : border,
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold" style={{ color: formSelection === 'topic' ? '#A78BFA' : textPri }}>
+                        Topic &amp; Pattern Selection
+                      </span>
+                      {formSelection === 'topic' && (
+                        <span className="material-symbols-outlined text-sm text-purple-400">check_circle</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] mt-1" style={{ color: textSec }}>
+                      Choose specific Data Structure, Algo, or Pattern
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormSelection('balanced')}
+                    className="p-3.5 rounded-2xl border text-left transition-all cursor-pointer"
+                    style={{
+                      background: formSelection === 'balanced' ? 'rgba(124, 58, 237, 0.12)' : surfLow,
+                      borderColor: formSelection === 'balanced' ? '#7C3AED' : border,
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold" style={{ color: formSelection === 'balanced' ? '#A78BFA' : textPri }}>
+                        Balanced Profile Match
+                      </span>
+                      {formSelection === 'balanced' && (
+                        <span className="material-symbols-outlined text-sm text-purple-400">check_circle</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] mt-1" style={{ color: textSec }}>
+                      Calibrate difficulty to the lower-rated player
+                    </p>
+                  </button>
+                </div>
+
+                {/* Categorized Dropdown Menu */}
+                {formSelection === 'topic' && (
+                  <div className="pt-1.5 relative" ref={topicDropdownRef}>
+                    <label className="text-[11px] font-semibold block mb-1.5" style={{ color: textSec }}>
+                      Select Curriculum Topic or Pattern:
+                    </label>
+
+                    {/* Dropdown Trigger Card */}
                     <button
-                      key={top}
                       type="button"
-                      onClick={() => setFormTopic(top)}
-                      className="px-2.5 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer"
-                      style={formTopic === top ? { background: '#7C3AED', color: '#fff' } : { background: surfLow, color: textSec, border: `1px solid ${border}` }}
+                      onClick={() => setTopicDropdownOpen(!topicDropdownOpen)}
+                      className="w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer hover:border-purple-500/50"
+                      style={{
+                        background: surfLow,
+                        borderColor: topicDropdownOpen ? '#7C3AED' : border,
+                        boxShadow: topicDropdownOpen ? '0 0 0 2px rgba(124, 58, 237, 0.2)' : 'none',
+                      }}
                     >
-                      {top}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: 'rgba(124, 58, 237, 0.15)', color: '#A78BFA' }}
+                        >
+                          <span className="material-symbols-outlined text-base">
+                            {selectedTopicItem.icon || 'category'}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold truncate" style={{ color: textPri }}>
+                              {selectedTopicItem.name}
+                            </span>
+                            <span
+                              className="text-[9px] font-semibold px-2 py-0.5 rounded-md"
+                              style={{ background: 'rgba(124, 58, 237, 0.15)', color: '#A78BFA' }}
+                            >
+                              {selectedTopicItem.tag}
+                            </span>
+                          </div>
+                          <p className="text-[11px] truncate mt-0.5" style={{ color: textSec }}>
+                            Click to select another data structure, algorithm, or pattern
+                          </p>
+                        </div>
+                      </div>
+
+                      <span
+                        className="material-symbols-outlined text-sm transition-transform duration-200"
+                        style={{
+                          color: textSec,
+                          transform: topicDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                        }}
+                      >
+                        expand_more
+                      </span>
+                    </button>
+
+                    {/* Dropdown Overlay Menu */}
+                    {topicDropdownOpen && (
+                      <div
+                        className="absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl shadow-2xl border overflow-hidden p-3 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+                        style={{
+                          background: isDark ? '#161622' : '#FFFFFF',
+                          borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+                          maxHeight: '340px',
+                        }}
+                      >
+                        {/* Search Input */}
+                        <div className="pb-2.5 mb-2 border-b" style={{ borderColor: border }}>
+                          <div className="relative">
+                            <span className="material-symbols-outlined absolute left-2.5 top-2 text-xs" style={{ color: textSec }}>
+                              search
+                            </span>
+                            <input
+                              type="text"
+                              value={topicSearchQuery}
+                              onChange={(e) => setTopicSearchQuery(e.target.value)}
+                              placeholder="Search data structures, algorithms, patterns..."
+                              autoFocus
+                              className="w-full pl-8 pr-7 py-1.5 rounded-xl text-xs outline-none bg-transparent border"
+                              style={{
+                                borderColor: border,
+                                color: textPri,
+                              }}
+                            />
+                            {topicSearchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => setTopicSearchQuery('')}
+                                className="absolute right-2 top-2 text-xs cursor-pointer hover:opacity-80"
+                                style={{ color: textSec }}
+                              >
+                                <span className="material-symbols-outlined text-xs">close</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Categorized Scrollable Items */}
+                        <div className="overflow-y-auto space-y-3 pr-1" style={{ maxHeight: '230px' }}>
+                          {filteredGroups.length === 0 ? (
+                            <div className="text-center py-6 text-xs" style={{ color: textSec }}>
+                              No topics match &quot;{topicSearchQuery}&quot;
+                            </div>
+                          ) : (
+                            filteredGroups.map((group) => (
+                              <div key={group.category} className="space-y-1">
+                                <div className="px-2 py-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: textSec }}>
+                                  <span className="material-symbols-outlined text-xs">{group.icon}</span>
+                                  <span>{group.category}</span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                                  {group.items.map((item) => {
+                                    const isSelected = formTopic === item.id;
+                                    return (
+                                      <button
+                                        key={item.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setFormTopic(item.id);
+                                          setTopicDropdownOpen(false);
+                                          setTopicSearchQuery('');
+                                        }}
+                                        className="px-2.5 py-2 rounded-xl text-left flex items-center justify-between transition-all cursor-pointer group"
+                                        style={{
+                                          background: isSelected ? 'rgba(124, 58, 237, 0.15)' : 'transparent',
+                                          border: isSelected ? '1px solid rgba(124, 58, 237, 0.4)' : '1px solid transparent',
+                                        }}
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span
+                                            className="material-symbols-outlined text-sm shrink-0"
+                                            style={{ color: isSelected ? '#A78BFA' : textSec }}
+                                          >
+                                            {item.icon}
+                                          </span>
+                                          <span
+                                            className="text-xs truncate font-medium group-hover:text-purple-400"
+                                            style={{ color: isSelected ? '#A78BFA' : textPri }}
+                                          >
+                                            {item.name}
+                                          </span>
+                                        </div>
+                                        <span
+                                          className="text-[9px] px-1.5 py-0.5 rounded shrink-0 ml-1"
+                                          style={{
+                                            background: isSelected ? 'rgba(124, 58, 237, 0.25)' : surfLow,
+                                            color: isSelected ? '#C4B5FD' : textSec,
+                                          }}
+                                        >
+                                          {item.tag}
+                                        </span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Match Duration */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>
+                    Match Duration
+                  </label>
+                  <span className="text-xs font-mono font-bold" style={{ color: '#A78BFA' }}>
+                    {formDuration} minutes
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-2.5">
+                  {[15, 30, 45, 60].map(mins => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => setFormDuration(mins)}
+                      className="py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                      style={formDuration === mins
+                        ? { background: '#7C3AED', color: '#fff', boxShadow: '0 2px 10px rgba(124, 58, 237, 0.3)' }
+                        : { background: surfLow, color: textSec, border: `1px solid ${border}` }
+                      }
+                    >
+                      <span className="material-symbols-outlined text-xs opacity-75">timer</span>
+                      <span>{mins}m</span>
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Duration */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider" style={{ color: textSec }}>
-                Match Duration
-              </label>
-              <div className="flex gap-2">
-                {[15, 30, 45, 60].map(mins => (
-                  <button
-                    key={mins}
-                    type="button"
-                    onClick={() => setFormDuration(mins)}
-                    className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer"
-                    style={formDuration === mins ? { background: '#7C3AED', color: '#fff' } : { background: surfLow, color: textSec, border: `1px solid ${border}` }}
-                  >
-                    {mins}m
-                  </button>
-                ))}
+              {/* Preferences & Launch Action */}
+              <div className="pt-2 flex flex-col gap-3">
+                <label className="flex items-center gap-2 cursor-pointer text-xs" style={{ color: textPri }}>
+                  <input
+                    type="checkbox"
+                    checked={saveAsDefault}
+                    onChange={e => setSaveAsDefault(e.target.checked)}
+                    className="w-4 h-4 rounded accent-violet-600 cursor-pointer"
+                  />
+                  <span>Remember settings as 1-click Quick Launch default</span>
+                </label>
+
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => handleCreateMatch({
+                    versus_mode: formMode,
+                    versus_selection: formSelection,
+                    versus_topic: formTopic,
+                    duration_minutes: formDuration,
+                  })}
+                  className="w-full py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 text-white font-bold text-sm transition-all hover:opacity-95 cursor-pointer shadow-lg active:scale-[0.99]"
+                  style={{
+                    background: 'linear-gradient(135deg, #7C3AED, #6366F1)',
+                    boxShadow: '0 4px 16px rgba(124, 58, 237, 0.35)',
+                  }}
+                >
+                  <span>Launch 1v1 Room</span>
+                  <span className="material-symbols-outlined text-base">arrow_forward</span>
+                </button>
               </div>
             </div>
-
-            {/* Quick Save Checkbox */}
-            <label className="flex items-center gap-2 cursor-pointer text-xs" style={{ color: textPri }}>
-              <input
-                type="checkbox"
-                checked={saveAsDefault}
-                onChange={e => setSaveAsDefault(e.target.checked)}
-                className="rounded accent-violet-600"
-              />
-              <span>Remember settings as 1-click Quick Launch default</span>
-            </label>
-
-            {/* Submit */}
-            <div className="pt-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => handleCreateMatch({
-                  versus_mode: formMode,
-                  versus_selection: formSelection,
-                  versus_topic: formTopic,
-                  duration_minutes: formDuration,
-                })}
-                className="w-full py-3 px-4 rounded-2xl text-left border transition-all hover:opacity-95 text-white cursor-pointer shadow-md"
-                style={{ background: '#7C3AED', borderColor: 'rgba(124, 58, 237, 0.4)' }}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold">Launch 1v1 Room</div>
-                    <div className="text-[11px] opacity-80 font-normal">
-                      Initializes room and opens opponent lobby
-                    </div>
-                  </div>
-                  <span className="material-symbols-outlined text-base">
-                    rocket_launch
-                  </span>
-                </div>
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ─── MODAL: INVITE FRIENDS ─── */}
       {showInviteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           onClick={() => setShowInviteModal(false)}>
-          <div className="w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl"
+          <div className="w-full max-w-md rounded-3xl p-6 space-y-4 shadow-2xl"
             style={{ background: panelBg, border: `1px solid ${border}` }}
             onClick={e => e.stopPropagation()}>
             
-            <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: border }}>
-              <h3 className="text-base font-bold" style={{ color: textPri }}>Invite Friends to Duel</h3>
-              <button onClick={() => setShowInviteModal(false)} className="cursor-pointer">
-                <span className="material-symbols-outlined" style={{ color: textSec }}>close</span>
+            <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: border }}>
+              <div>
+                <h3 className="text-base font-bold" style={{ color: textPri }}>Invite Friends to Duel</h3>
+                <p className="text-xs mt-0.5" style={{ color: textSec }}>Send direct in-app invite with room #{party?.code}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(false)}
+                className="p-1 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base" style={{ color: textSec }}>close</span>
               </button>
             </div>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
               {friends.length === 0 ? (
-                <p className="text-center py-6 text-xs" style={{ color: textSec }}>
-                  No friends connected yet. Share the room code directly!
-                </p>
+                <div className="text-center py-8 rounded-2xl" style={{ background: surfLow }}>
+                  <span className="material-symbols-outlined text-3xl block mb-2" style={{ color: textSec, opacity: 0.6 }}>group_off</span>
+                  <p className="text-xs font-semibold" style={{ color: textPri }}>No friends connected yet</p>
+                  <p className="text-[11px] mt-1" style={{ color: textSec }}>Share room code #{party?.code} directly with your opponent.</p>
+                </div>
               ) : (
-                friends.map(f => (
-                  <div key={f.id} className="flex items-center justify-between p-2.5 rounded-2xl"
-                    style={{ background: surfLow }}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs text-white"
-                        style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}>
-                        {f.username[0].toUpperCase()}
-                      </div>
-                      <span className="text-xs font-semibold" style={{ color: textPri }}>{f.username}</span>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={sendingInvite === f.id || sentInvites.has(f.id)}
-                      onClick={() => handleInviteFriend(f.id)}
-                      className="px-3 py-1 rounded-xl text-[10px] font-bold transition-all disabled:opacity-50 cursor-pointer"
-                      style={{
-                        background: sentInvites.has(f.id) ? 'rgba(34, 197, 94, 0.15)' : '#7C3AED',
-                        color: sentInvites.has(f.id) ? '#22C55E' : '#fff'
-                      }}
+                friends.map(f => {
+                  const isSent = sentInvites.has(f.id);
+                  const isSending = sendingInvite === f.id;
+                  return (
+                    <div
+                      key={f.id}
+                      className="flex items-center justify-between p-3 rounded-2xl transition-all"
+                      style={{ background: surfLow, border: `1px solid ${border}` }}
                     >
-                      {sendingInvite === f.id ? 'Sending...' : sentInvites.has(f.id) ? '✓ Sent' : 'Invite'}
-                    </button>
-                  </div>
-                ))
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs text-white shrink-0 overflow-hidden shadow-sm"
+                          style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
+                        >
+                          {f.avatar ? (
+                            <img src={f.avatar} alt={f.username} className="w-full h-full object-cover" />
+                          ) : (
+                            (f.username || '?')[0].toUpperCase()
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold truncate" style={{ color: textPri }}>{f.username}</p>
+                          <p className="text-[10px] truncate" style={{ color: textSec }}>
+                            {f.rating ? `Rating: ${f.rating}` : 'Friend'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={isSending || isSent}
+                        onClick={() => handleInviteFriend(f.id)}
+                        className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all disabled:opacity-60 cursor-pointer flex items-center gap-1 shrink-0"
+                        style={{
+                          background: isSent ? 'rgba(34, 197, 94, 0.15)' : '#7C3AED',
+                          color: isSent ? '#22C55E' : '#fff',
+                          border: isSent ? '1px solid rgba(34, 197, 94, 0.3)' : 'none',
+                        }}
+                      >
+                        {isSending ? (
+                          <span>Sending...</span>
+                        ) : isSent ? (
+                          <>
+                            <span className="material-symbols-outlined text-xs">check</span>
+                            <span>Invite Sent</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-xs">send</span>
+                            <span>Send Invite</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })
               )}
+            </div>
+
+            <div className="pt-2 flex items-center justify-between text-xs border-t" style={{ borderColor: border }}>
+              <span style={{ color: textSec }}>Direct Room Code:</span>
+              <button
+                type="button"
+                onClick={copyRoomCode}
+                className="font-mono font-bold px-2.5 py-1 rounded-lg text-xs cursor-pointer flex items-center gap-1 hover:bg-white/10"
+                style={{ color: '#A78BFA', background: surfLow }}
+              >
+                <span>#{party?.code}</span>
+                <span className="material-symbols-outlined text-xs">{copiedCode ? 'check' : 'content_copy'}</span>
+              </button>
             </div>
           </div>
         </div>
