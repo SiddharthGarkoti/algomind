@@ -20,6 +20,7 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
   const bgColor   = isDark ? '#121315' : '#FFFFFF';
   const borderCol = isDark ? 'rgba(70,69,84,0.15)' : 'rgba(0,0,0,0.07)';
   const textMuted = isDark ? '#908fa0' : '#64748B';
+  const textPri   = isDark ? '#F8FAFC' : '#0F172A';
 
   useEffect(() => {
     const fn = (e) => {
@@ -205,83 +206,124 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
           {/* Profile Dropdown */}
           <div
             ref={profileMenuRef}
-            className={`absolute bottom-full left-2 w-52 mb-2 rounded-2xl shadow-2xl overflow-hidden py-2 z-[70]${isProfileOpen ? ' block' : ' hidden'}`}
-            style={{ background: isDark ? '#292a2c' : '#FFFFFF', border: `1px solid ${borderCol}` }}
+            className={`absolute bottom-full left-2 w-56 mb-2 rounded-2xl shadow-xl overflow-hidden p-1.5 z-[70]${isProfileOpen ? ' block' : ' hidden'}`}
+            style={{
+              background: isDark ? '#18191c' : '#FFFFFF',
+              border: `1px solid ${borderCol}`,
+              boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.5)' : '0 12px 32px rgba(0,0,0,0.08)',
+            }}
           >
-            {/* Plan Tier Banner */}
+            {/* Plan Tier Status Card */}
             {user?.plan_tier === 'pro' ? (
               <div
-                className="mx-2 mb-2 rounded-xl p-3 cursor-pointer hover:opacity-90 transition-opacity"
+                className="rounded-xl p-2.5 mb-1 cursor-pointer hover:opacity-90 transition-all border"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.15), rgba(99, 102, 241, 0.15))',
-                  border: '1px solid rgba(167, 139, 250, 0.3)',
+                  background: isDark ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.05)',
+                  borderColor: isDark ? 'rgba(124, 58, 237, 0.25)' : 'rgba(124, 58, 237, 0.2)',
                 }}
                 onClick={() => { setIsProfileOpen(false); navigate('/plans'); }}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">👑</span>
-                  <div>
-                    <p className="text-[11px] font-extrabold" style={{ color: '#A78BFA' }}>AlgoMind Pro Active</p>
-                    <p className="text-[9px]" style={{ color: isDark ? '#908fa0' : '#64748B' }}>All features unlocked · Manage Plan</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="material-symbols-outlined text-base shrink-0" style={{ color: '#A78BFA' }}>
+                      workspace_premium
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold leading-tight truncate" style={{ color: textPri }}>
+                        Pro Active
+                      </p>
+                      <p className="text-[10px] leading-tight mt-0.5 truncate" style={{ color: textMuted }}>
+                        All features unlocked
+                      </p>
+                    </div>
                   </div>
+                  <span className="text-[10px] font-semibold flex items-center shrink-0 ml-1" style={{ color: '#A78BFA' }}>
+                    Manage <span className="material-symbols-outlined text-xs ml-0.5">chevron_right</span>
+                  </span>
                 </div>
               </div>
             ) : user?.plan_tier === 'plus' ? (
               <div
-                className="mx-2 mb-2 rounded-xl p-3 cursor-pointer hover:opacity-90 transition-opacity"
+                className="rounded-xl p-2.5 mb-1 cursor-pointer hover:opacity-90 transition-all border"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15))',
-                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  background: isDark ? 'rgba(99, 102, 241, 0.08)' : 'rgba(99, 102, 241, 0.05)',
+                  borderColor: isDark ? 'rgba(99, 102, 241, 0.25)' : 'rgba(99, 102, 241, 0.2)',
                 }}
                 onClick={() => { setIsProfileOpen(false); navigate('/plans'); }}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">⚡</span>
-                  <div>
-                    <p className="text-[11px] font-extrabold" style={{ color: '#6366F1' }}>AlgoMind Plus Active</p>
-                    <p className="text-[9px]" style={{ color: isDark ? '#908fa0' : '#64748B' }}>Upgrade to Pro · Unlimited features</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="material-symbols-outlined text-base shrink-0" style={{ color: '#6366F1' }}>
+                      bolt
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold leading-tight truncate" style={{ color: textPri }}>
+                        Plus Active
+                      </p>
+                      <p className="text-[10px] leading-tight mt-0.5 truncate" style={{ color: textMuted }}>
+                        Upgrade to Pro
+                      </p>
+                    </div>
                   </div>
+                  <span className="text-[10px] font-semibold flex items-center shrink-0 ml-1" style={{ color: '#6366F1' }}>
+                    Upgrade <span className="material-symbols-outlined text-xs ml-0.5">chevron_right</span>
+                  </span>
                 </div>
               </div>
             ) : (
               <div
-                className="mx-2 mb-2 rounded-xl p-3 cursor-pointer hover:opacity-90 transition-opacity"
+                className="rounded-xl p-2.5 mb-1 cursor-pointer hover:opacity-90 transition-all border"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15))',
-                  border: '1px solid rgba(99, 102, 241, 0.2)',
+                  background: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                  borderColor: borderCol,
                 }}
                 onClick={() => { setIsProfileOpen(false); navigate('/plans'); }}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">⚡</span>
-                  <div>
-                    <p className="text-[11px] font-extrabold" style={{ color: '#6366F1' }}>Upgrade to Plus</p>
-                    <p className="text-[9px]" style={{ color: isDark ? '#908fa0' : '#64748B' }}>₹100/month · Unlock all features</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="material-symbols-outlined text-base shrink-0" style={{ color: '#F59E0B' }}>
+                      bolt
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold leading-tight truncate" style={{ color: textPri }}>
+                        Upgrade Plan
+                      </p>
+                      <p className="text-[10px] leading-tight mt-0.5 truncate" style={{ color: textMuted }}>
+                        Unlock all features
+                      </p>
+                    </div>
                   </div>
+                  <span className="text-[10px] font-semibold flex items-center shrink-0 ml-1" style={{ color: '#6366F1' }}>
+                    View <span className="material-symbols-outlined text-xs ml-0.5">chevron_right</span>
+                  </span>
                 </div>
               </div>
             )}
 
-            <button
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
-              style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}
-              onClick={() => { setIsProfileOpen(false); navigate('/profile'); }}>
-              <span className="material-symbols-outlined text-lg">person</span> Profile
-            </button>
+            <div className="pt-1 border-t" style={{ borderColor: borderCol }}>
+              <button
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors hover:bg-white/5 cursor-pointer"
+                style={{ color: textPri }}
+                onClick={() => { setIsProfileOpen(false); navigate('/profile'); }}>
+                <span className="material-symbols-outlined text-base opacity-75">person</span> Profile
+              </button>
 
-            <button
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
-              style={{ color: isDark ? '#e3e2e5' : '#0F172A' }}
-              onClick={() => { setIsProfileOpen(false); navigate('/settings'); }}>
-              <span className="material-symbols-outlined text-lg">settings</span> Settings
-            </button>
+              <button
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors hover:bg-white/5 cursor-pointer"
+                style={{ color: textPri }}
+                onClick={() => { setIsProfileOpen(false); navigate('/settings'); }}>
+                <span className="material-symbols-outlined text-base opacity-75">settings</span> Settings
+              </button>
+            </div>
 
-            <button
-              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"
-              style={{ color: '#EF4444' }}
-              onClick={handleLogout}>
-              <span className="material-symbols-outlined text-lg">logout</span> Log Out
-            </button>
+            <div className="pt-1 border-t mt-1" style={{ borderColor: borderCol }}>
+              <button
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors hover:bg-red-500/10 cursor-pointer"
+                style={{ color: '#EF4444' }}
+                onClick={handleLogout}>
+                <span className="material-symbols-outlined text-base">logout</span> Log Out
+              </button>
+            </div>
           </div>
 
           {/* Profile Button */}
@@ -309,10 +351,10 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
                 </span>
                 {user?.plan_tier !== 'pro' && (
                 <button
-                  className="text-[9px] font-bold flex items-center gap-0.5 hover:opacity-70 leading-none"
+                  className="text-[9px] font-bold flex items-center gap-1 hover:opacity-70 leading-none"
                   style={{ color: '#F59E0B' }}
                   onClick={e => { e.stopPropagation(); navigate('/plans'); }}>
-                  <span>⚡</span> Upgrade
+                  <span className="material-symbols-outlined text-[12px]">bolt</span> Upgrade
                 </button>
                 )}
               </div>
