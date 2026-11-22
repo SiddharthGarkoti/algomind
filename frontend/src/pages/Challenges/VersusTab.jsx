@@ -783,32 +783,38 @@ export default function VersusTab({ isDark, onActiveMatchChange }) {
                 <button
                   type="button"
                   onClick={() => setFormSelection('topic')}
-                  className="p-3.5 rounded-2xl border text-left transition-all cursor-pointer"
+                  className="p-3.5 rounded-2xl border text-left transition-all cursor-pointer relative"
                   style={{
-                    background: formSelection === 'topic' ? 'rgba(124, 58, 237, 0.12)' : surfLow,
+                    background: formSelection === 'topic' ? 'rgba(124, 58, 237, 0.14)' : surfLow,
                     borderColor: formSelection === 'topic' ? '#7C3AED' : border,
+                    boxShadow: formSelection === 'topic' ? '0 0 0 1px #7C3AED' : 'none',
                   }}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold" style={{ color: formSelection === 'topic' ? '#A78BFA' : textPri }}>
                       Topic &amp; Pattern Selection
                     </span>
-                    {formSelection === 'topic' && (
+                    {formSelection === 'topic' ? (
                       <span className="material-symbols-outlined text-sm text-purple-400">check_circle</span>
+                    ) : (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                        190+ topics
+                      </span>
                     )}
                   </div>
                   <p className="text-[11px] mt-1" style={{ color: textSec }}>
-                    Choose specific Data Structures, Algorithms, or Patterns
+                    Click here to choose specific Data Structures, Algorithms, or Patterns
                   </p>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setFormSelection('balanced')}
-                  className="p-3.5 rounded-2xl border text-left transition-all cursor-pointer"
+                  className="p-3.5 rounded-2xl border text-left transition-all cursor-pointer relative"
                   style={{
-                    background: formSelection === 'balanced' ? 'rgba(124, 58, 237, 0.12)' : surfLow,
+                    background: formSelection === 'balanced' ? 'rgba(124, 58, 237, 0.14)' : surfLow,
                     borderColor: formSelection === 'balanced' ? '#7C3AED' : border,
+                    boxShadow: formSelection === 'balanced' ? '0 0 0 1px #7C3AED' : 'none',
                   }}
                 >
                   <div className="flex items-center justify-between">
@@ -820,10 +826,30 @@ export default function VersusTab({ isDark, onActiveMatchChange }) {
                     )}
                   </div>
                   <p className="text-[11px] mt-1" style={{ color: textSec }}>
-                    Calibrate difficulty to the lower-rated player
+                    Calibrate difficulty automatically to the lower-rated player
                   </p>
                 </button>
               </div>
+
+              {/* Informational callout if Balanced is active */}
+              {formSelection === 'balanced' && (
+                <div
+                  className="p-3 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all"
+                  style={{ background: surfLow, borderColor: border }}
+                >
+                  <div className="flex items-center gap-2" style={{ color: textSec }}>
+                    <span className="material-symbols-outlined text-sm text-purple-400 shrink-0">info</span>
+                    <span>Currently auto-balancing question difficulty based on both players&apos; ratings.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormSelection('topic')}
+                    className="text-xs font-bold px-3 py-1.5 rounded-xl bg-purple-600/15 hover:bg-purple-600/25 text-purple-300 border border-purple-500/30 transition-all cursor-pointer shrink-0 text-center"
+                  >
+                    Select Topics &amp; Patterns &rarr;
+                  </button>
+                </div>
+              )}
 
               {/* LeetCode-Style Multi-Select Topic Cloud (190+ Topics, Data Structures, Algorithms & Patterns) */}
               {formSelection === 'topic' && (
