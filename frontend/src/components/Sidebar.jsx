@@ -52,10 +52,10 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
     ? (user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.username ?? 'user')}`)
     : null;
 
-  const handleLogout = async () => {
+  const handleLogout = async (e) => {
+    e?.stopPropagation?.();
     setIsProfileOpen(false);
     await logout();
-    navigate('/');
   };
 
   const NavItem = ({ path, icon, label, faded = false }) => (
@@ -208,18 +208,59 @@ function Sidebar({ isDark, navigate: navProp, onOpenChat }) {
             className={`absolute bottom-full left-2 w-52 mb-2 rounded-2xl shadow-2xl overflow-hidden py-2 z-[70]${isProfileOpen ? ' block' : ' hidden'}`}
             style={{ background: isDark ? '#292a2c' : '#FFFFFF', border: `1px solid ${borderCol}` }}
           >
-            {/* Upgrade Banner */}
-            <div className="mx-2 mb-2 rounded-xl p-3 cursor-pointer hover:opacity-90 transition-opacity"
-              style={{ background: 'linear-gradient(135deg,rgba(99,102,241,0.15),rgba(168,85,247,0.15))', border: '1px solid rgba(99,102,241,0.2)' }}
-              onClick={() => { setIsProfileOpen(false); navigate('/plans'); }}>
-              <div className="flex items-center gap-2">
-                <span className="text-lg">⚡</span>
-                <div>
-                  <p className="text-[11px] font-extrabold" style={{ color: '#6366F1' }}>Upgrade to Plus</p>
-                  <p className="text-[9px]" style={{ color: isDark ? '#908fa0' : '#64748B' }}>₹100/month · Unlock all features</p>
+            {/* Plan Tier Banner */}
+            {user?.plan_tier === 'pro' ? (
+              <div
+                className="mx-2 mb-2 rounded-xl p-3 cursor-pointer hover:opacity-90 transition-opacity"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.15), rgba(99, 102, 241, 0.15))',
+                  border: '1px solid rgba(167, 139, 250, 0.3)',
+                }}
+                onClick={() => { setIsProfileOpen(false); navigate('/plans'); }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">👑</span>
+                  <div>
+                    <p className="text-[11px] font-extrabold" style={{ color: '#A78BFA' }}>AlgoMind Pro Active</p>
+                    <p className="text-[9px]" style={{ color: isDark ? '#908fa0' : '#64748B' }}>All features unlocked · Manage Plan</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : user?.plan_tier === 'plus' ? (
+              <div
+                className="mx-2 mb-2 rounded-xl p-3 cursor-pointer hover:opacity-90 transition-opacity"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15))',
+                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                }}
+                onClick={() => { setIsProfileOpen(false); navigate('/plans'); }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">⚡</span>
+                  <div>
+                    <p className="text-[11px] font-extrabold" style={{ color: '#6366F1' }}>AlgoMind Plus Active</p>
+                    <p className="text-[9px]" style={{ color: isDark ? '#908fa0' : '#64748B' }}>Upgrade to Pro · Unlimited features</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="mx-2 mb-2 rounded-xl p-3 cursor-pointer hover:opacity-90 transition-opacity"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15))',
+                  border: '1px solid rgba(99, 102, 241, 0.2)',
+                }}
+                onClick={() => { setIsProfileOpen(false); navigate('/plans'); }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">⚡</span>
+                  <div>
+                    <p className="text-[11px] font-extrabold" style={{ color: '#6366F1' }}>Upgrade to Plus</p>
+                    <p className="text-[9px]" style={{ color: isDark ? '#908fa0' : '#64748B' }}>₹100/month · Unlock all features</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:opacity-80"

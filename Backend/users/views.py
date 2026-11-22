@@ -433,13 +433,15 @@ class RegisterView(generics.CreateAPIView):
 
 
 class LogoutView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        try:
-            RefreshToken(request.data['refresh']).blacklist()
-        except Exception:
-            pass
+        refresh_token = request.data.get('refresh')
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except Exception:
+                pass
         return Response({'detail': 'Logged out.'})
 
 

@@ -16,10 +16,21 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('monaco-editor') || id.includes('@monaco-editor')) return 'monaco';
-          if (id.includes('react-dom') || id.includes('react-router-dom') || (id.includes('node_modules/react/') && !id.includes('react-dom'))) return 'react-vendor';
-          if (id.includes('framer-motion')) return 'framer';
-          if (id.includes('lucide-react')) return 'icons';
+          if (id.includes('node_modules')) {
+            if (id.includes('monaco-editor') || id.includes('@monaco-editor')) {
+              return 'monaco-vendor';
+            }
+            if (id.includes('react-router') || id.includes('react-router-dom')) {
+              return 'router-vendor';
+            }
+            if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+              return 'react-vendor';
+            }
+            return 'vendor';
+          }
+          if (id.includes('arenaQuestions')) {
+            return 'arena-questions';
+          }
         },
       },
     },

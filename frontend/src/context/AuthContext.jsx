@@ -4,19 +4,45 @@ import api from '../utils/api.js';
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user,         setUser]         = useState(null);
-  const [loading,      setLoading]      = useState(true);
+  // Hydrate user profile immediately from localStorage for instant rendering
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // If no access token exists, or if profile is already hydrated from cache, loading is false immediately
+  const [loading, setLoading] = useState(() => {
+    if (!api.getToken()) return false;
+    const saved = localStorage.getItem('user');
+    return !saved;
+  });
+
   const [isGuest,      setIsGuest]      = useState(false);
   const [guestHandles, setGuestHandles] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('guest_handles') || '{}'); }
     catch { return {}; }
   });
 
-  // On mount: restore real auth OR restore guest session
+  // Helper to keep React state and localStorage cache in sync
+  const _setUserAndCache = useCallback((profile) => {
+    setUser(profile);
+    if (profile) {
+      try { localStorage.setItem('user', JSON.stringify(profile)); } catch {}
+    } else {
+      localStorage.removeItem('user');
+    }
+  }, []);
+
+  // On mount: restore real auth OR restore guest session, and revalidate profile in background
   useEffect(() => {
     const handleExpired = () => {
       api.clearTokens();
-      setUser(null);
+      _setUserAndCache(null);
+      setLoading(false);
     };
     window.addEventListener('algomind:auth-expired', handleExpired);
 
@@ -25,23 +51,30 @@ export function AuthProvider({ children }) {
       setIsGuest(true);
     }
 
-    // Try to restore real session from stored JWT
+    // If no JWT stored, finalize not loading
     if (!api.getToken()) {
+      _setUserAndCache(null);
       setLoading(false);
       return () => window.removeEventListener('algomind:auth-expired', handleExpired);
     }
 
+    // Validate token and refresh cached profile from backend
     api.get('/auth/profile/', { noCache: true })
       .then(p => {
         if (p && typeof p.streak === 'number' && p.streak > 100) p.streak = 1;
-        setUser(p);
+        _setUserAndCache(p);
         api.post('/analytics/sync/').catch(() => {});
       })
-      .catch(() => api.clearTokens())
+      .catch((err) => {
+        if (err?.detail?.includes('401') || err?.status === 401) {
+          api.clearTokens();
+          _setUserAndCache(null);
+        }
+      })
       .finally(() => setLoading(false));
 
     return () => window.removeEventListener('algomind:auth-expired', handleExpired);
-  }, []);
+  }, [_setUserAndCache]);
 
   // ── helpers ──────────────────────────────────────────────────────
   const _clearGuest = () => {
@@ -66,38 +99,35 @@ export function AuthProvider({ children }) {
     api.setTokens(data.access, data.refresh);
     const profile = await api.get('/auth/profile/', { noCache: true });
     if (profile && typeof profile.streak === 'number' && profile.streak > 100) profile.streak = 1;
-    setUser(profile);
+    _setUserAndCache(profile);
     _clearGuest();
     // Auto-sync platform profiles on login
     api.post('/analytics/sync/').catch(() => {});
     return profile;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [_setUserAndCache]);
 
   // ── register ─────────────────────────────────────────────────────
-  // otp is required — user must verify email before account creation
   const register = useCallback(async (username, email, password, password2, otp = '') => {
     const data = await api.post('/auth/register/', { username, email, password, password2, otp });
     api.setTokens(data.access, data.refresh);
-    setUser(data.user);
+    _setUserAndCache(data.user);
     _clearGuest();
     // Auto-sync platform profiles on registration/login
     api.post('/analytics/sync/').catch(() => {});
     return data.user;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [_setUserAndCache]);
 
   // ── OAuth login (called by OAuthCallbackPage) ─────────────────────
-  // Tokens were already minted by the backend; just store them and
-  // hydrate the user profile via a normal /profile/ call.
   const loginFromOAuth = useCallback(async (access, refresh) => {
     api.setTokens(access, refresh);
     const profile = await api.get('/auth/profile/', { noCache: true });
     if (profile && typeof profile.streak === 'number' && profile.streak > 100) profile.streak = 1;
-    setUser(profile);
+    _setUserAndCache(profile);
     _clearGuest();
     // Auto-sync platform profiles on login
     api.post('/analytics/sync/').catch(() => {});
     return profile;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [_setUserAndCache]);
 
   // ── guest login ──────────────────────────────────────────────────
   const loginAsGuest = useCallback((lcHandle, cfHandle) => {
@@ -111,15 +141,30 @@ export function AuthProvider({ children }) {
   // ── logout ───────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     const refresh = api.getRefreshToken();
-    try { await api.post('/auth/logout/', { refresh }); } catch { /* best-effort */ }
-    api.clearTokens();
-    _clearGuest();
-    setUser(null);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    try {
+      if (refresh) {
+        await api.post('/auth/logout/', { refresh }).catch(() => {});
+      }
+    } catch {
+      /* best-effort */
+    } finally {
+      api.clearTokens();
+      _clearGuest();
+      _setUserAndCache(null);
+      setLoading(false);
+      window.location.href = '/';
+    }
+  }, [_setUserAndCache]);
 
   // ── update user globally ─────────────────────────────────────────
   const updateUser = useCallback((data) => {
-    setUser(prev => prev ? { ...prev, ...data } : prev);
+    setUser(prev => {
+      const next = prev ? { ...prev, ...data } : prev;
+      if (next) {
+        try { localStorage.setItem('user', JSON.stringify(next)); } catch {}
+      }
+      return next;
+    });
   }, []);
 
   return (

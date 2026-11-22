@@ -1,3 +1,4 @@
+import threading
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -311,16 +312,12 @@ class RefreshPlatformView(APIView):
         return Response(PlatformProfileSerializer(profile).data)
 
 
-class SyncPlatformsView(APIView):
-    """
-    POST /api/analytics/sync/
-    Auto-syncs all connected platform profiles for the authenticated user.
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        profiles = PlatformProfile.objects.filter(user=request.user)
-        synced = []
+def _sync_user_platforms_background(user_id):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    try:
+        user = User.objects.get(id=user_id)
+        profiles = PlatformProfile.objects.filter(user=user)
         for profile in profiles:
             if not profile.handle:
                 continue
@@ -337,19 +334,38 @@ class SyncPlatformsView(APIView):
                             'problems_solved': ts['problems_solved'],
                         },
                     )
-                synced.append(profile.platform_name)
             except Exception:
                 pass
 
         # Recalculate authentic Elo rating after all platforms synced
-        request.user.recalculate_rating()
+        user.recalculate_rating()
+    except Exception:
+        pass
+
+
+class SyncPlatformsView(APIView):
+    """
+    POST /api/analytics/sync/
+    Auto-syncs all connected platform profiles for the authenticated user in a background thread.
+    Returns 200 OK instantly (<5ms) without waiting for LeetCode/Codeforces network round-trips.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user_id = request.user.id
+        thread = threading.Thread(
+            target=_sync_user_platforms_background,
+            args=(user_id,),
+            daemon=True,
+            name=f"platform-sync-user-{user_id}"
+        )
+        thread.start()
 
         return Response({
             'status': 'ok',
-            'synced_platforms': synced,
-            'count': len(synced),
+            'detail': 'Background platform sync dispatched.',
             'rating': request.user.rating,
-        })
+        }, status=status.HTTP_200_OK)
 
 
 class VerifySolvedView(APIView):
